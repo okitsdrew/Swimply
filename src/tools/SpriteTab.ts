@@ -8,8 +8,21 @@ const CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const MAX_SIZE = 128;
 const MAX_UNDO = 100;
 
-type Tool = 'pencil' | 'eraser' | 'fill' | 'picker';
-const TOOL_KEYS: Record<string, Tool> = { b: 'pencil', e: 'eraser', g: 'fill', i: 'picker' };
+type Tool = 'pencil' | 'eraser' | 'fill' | 'picker' | 'select';
+const TOOL_KEYS: Record<string, Tool> = { b: 'pencil', e: 'eraser', g: 'fill', i: 'picker', s: 'select' };
+
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+// Copied pixels as colours, not palette letters, so they paste into any sprite. null is see-through, and pasting
+// never covers what is underneath with it.
+interface Clip extends Rect {
+  colors: (string | null)[];
+}
 
 interface Snapshot {
   width: number;
@@ -21,7 +34,7 @@ interface Snapshot {
 const snap = (s: Sprite): Snapshot => ({ width: s.width, height: s.height, palette: s.palette.map((c) => ({ ...c })), pixels: [...s.pixels] });
 
 // The pixel editor. Left mouse draws with the chosen tool, right mouse erases, Alt+click picks a colour, the mouse
-// wheel zooms. Every stroke is one undo step (Ctrl+Z, Ctrl+Y). Edits change the working copy at once and the asset
+// wheel zooms. The select tool moves, copies and pastes boxes of pixels, also from one sprite to another. Every stroke is one undo step (Ctrl+Z, Ctrl+Y). Edits change the working copy at once and the asset
 // preview after each stroke; Save writes them to src/data/sprites.json.
 export class SpriteTab {
   private current: Sprite | null = null;
@@ -35,6 +48,12 @@ export class SpriteTab {
   private small = [1, 2, 4].map(() => el('canvas', { class: 'small' }));
   private stroke: { button: number; last: [number, number] | null } | null = null;
   private hover: [number, number] | null = null;
+  // The select tool's rectangle, and pixels lifted out of the sprite (pasted, or moved) that float above it until
+  // they are dropped. The clipboard is shared by every sprite, so a torso copied from one frame pastes into the next.
+  private selection: Rect | null = null;
+  private floating: Clip | null = null;
+  private clipboard: Clip | null = null;
+  private drag: { from: [number, number]; start: [number, number] } | null = null;
   private status = el('div', { class: 'hint' });
   private list = el('div', {});
   private props = el('div', {});
@@ -71,7 +90,15 @@ export class SpriteTab {
     const k = e.key.toLowerCase();
     if (ctrl && k === 'z' && !e.shiftKey) return this.undo(), true;
     if (ctrl && (k === 'y' || (k === 'z' && e.shiftKey))) return this.redo(), true;
+    if (ctrl && k === 'c') return this.copy(), true;
+    if (ctrl && k === 'x') return this.copy() && this.clearSelection(), true;
+    if (ctrl && k === 'v') return this.paste(), true;
+    if (ctrl && k === 'a') return this.dropFloating(), (this.selection = { x: 0, y: 0, w: this.current.width, h: this.current.height }), this.setTool('select'), true;
     if (ctrl) return false;
+    if (k === 'delete' || k === 'backspace') return this.clearSelection(), true;
+    if (k === 'enter' || k === 'escape') return this.dropFloating(), (this.selection = null), this.draw(), true;
+    const arrow = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, -1], arrowdown: [0, 1] }[k];
+    if (arrow && (this.selection || this.floating)) return this.nudge(arrow[0], arrow[1]), true;
     if (TOOL_KEYS[k]) return this.setTool(TOOL_KEYS[k]), true;
     if (k === 'm') return (this.mirror = !this.mirror), this.refresh(), true;
     if (k === '+' || k === '=') return this.setZoom(this.zoom + 2), true;
@@ -113,7 +140,7 @@ export class SpriteTab {
       this.props.replaceChildren(el('p', { class: 'hint', text: 'No sprite yet. Press New, or convert some code art.' }));
       return;
     }
-    const tools = (['pencil', 'eraser', 'fill', 'picker'] as Tool[]).map((t) =>
+    const tools = (['pencil', 'eraser', 'fill', 'picker', 'select'] as Tool[]).map((t) =>
       button(`${t} (${Object.keys(TOOL_KEYS).find((k) => TOOL_KEYS[k] === t)})`, () => this.setTool(t), { class: t === this.tool ? 'on' : '' }),
     );
     const swatches = s.palette.map((c, j) => {
@@ -141,6 +168,7 @@ export class SpriteTab {
         button('redo', () => this.redo()),
       ),
       el('p', { class: 'hint', text: 'Right mouse erases. Alt+click picks a colour. Wheel zooms.' }),
+      el('p', { class: 'hint', text: 'Select: drag a box, then drag it (or use the arrow keys) to move it. Ctrl+C, Ctrl+X, Ctrl+V copy, cut and paste, also between sprites; a paste lands where it was copied from. Delete clears, Enter or Esc drops it.' }),
       el('h3', { text: 'Palette' }),
       el('div', { class: 'swatches' }, ...swatches),
       ...colorEdit,
@@ -185,6 +213,8 @@ export class SpriteTab {
   }
 
   private open(s: Sprite): void {
+    this.dropFloating();
+    this.selection = null;
     this.current = s;
     this.color = Math.min(this.color, Math.max(0, s.palette.length - 1));
     this.fitZoom();
@@ -192,8 +222,13 @@ export class SpriteTab {
   }
 
   private setTool(t: Tool): void {
+    if (t !== 'select') {
+      this.dropFloating();
+      this.selection = null;
+    }
     this.tool = t;
     this.buildProps();
+    this.draw();
   }
 
   private pickColor(j: number): void {
@@ -217,13 +252,14 @@ export class SpriteTab {
 
   // --- drawing ---
 
-  private cell(e: PointerEvent): [number, number] | null {
+  // The pixel under the pointer; with `outside`, also positions past the edge (for dragging a selection).
+  private cell(e: PointerEvent, outside = false): [number, number] | null {
     const s = this.current;
     if (!s) return null;
     const r = this.canvas.getBoundingClientRect();
     const x = Math.floor(((e.clientX - r.left) / r.width) * s.width);
     const y = Math.floor(((e.clientY - r.top) / r.height) * s.height);
-    return x >= 0 && y >= 0 && x < s.width && y < s.height ? [x, y] : null;
+    return outside || (x >= 0 && y >= 0 && x < s.width && y < s.height) ? [x, y] : null;
   }
 
   private down(e: PointerEvent): void {
@@ -231,6 +267,7 @@ export class SpriteTab {
     const at = this.cell(e);
     if (!s || !at) return;
     e.preventDefault();
+    if (e.button === 0 && this.tool === 'select') return this.selectDown(at);
     if (e.button === 0 && (e.altKey || this.tool === 'picker')) {
       const j = s.pixels[at[1] * s.width + at[0]];
       if (j >= 0) this.pickColor(j);
@@ -252,13 +289,15 @@ export class SpriteTab {
   private move(e: PointerEvent): void {
     const at = this.cell(e);
     this.hover = at;
-    if (this.stroke && at) this.paintTo(at);
+    if (this.drag) this.selectDrag(this.cell(e, true)!);
+    else if (this.stroke && at) this.paintTo(at);
     else this.draw();
     const s = this.current;
     if (s) this.status.textContent = at ? `x ${at[0]}, y ${at[1]}   (${s.width}×${s.height}, zoom ${this.zoom})` : `${s.width}×${s.height}, zoom ${this.zoom}`;
   }
 
   private up(): void {
+    this.drag = null;
     if (!this.stroke) return;
     this.stroke = null;
     this.endStroke();
@@ -348,7 +387,25 @@ export class SpriteTab {
       g.lineTo((s.width * z) / 2, s.height * z);
       g.stroke();
     }
-    if (this.hover) {
+    const f = this.floating;
+    f?.colors.forEach((c, i) => {
+      if (!c) return;
+      g.fillStyle = c;
+      g.fillRect((f.x + (i % f.w)) * z, (f.y + Math.floor(i / f.w)) * z, z, z);
+    });
+    const box = f ?? this.selection;
+    if (box) {
+      g.lineWidth = 1;
+      g.setLineDash([4, 4]);
+      g.strokeStyle = '#ffffff';
+      g.strokeRect(box.x * z + 0.5, box.y * z + 0.5, box.w * z - 1, box.h * z - 1);
+      g.lineDashOffset = 4;
+      g.strokeStyle = '#000000';
+      g.strokeRect(box.x * z + 0.5, box.y * z + 0.5, box.w * z - 1, box.h * z - 1);
+      g.setLineDash([]);
+      g.lineDashOffset = 0;
+    }
+    if (this.hover && this.tool !== 'select') {
       g.strokeStyle = '#f2d7a6';
       g.strokeRect(this.hover[0] * z + 0.5, this.hover[1] * z + 0.5, z - 1, z - 1);
     }
@@ -367,6 +424,135 @@ export class SpriteTab {
         g.fillRect((i % s.width) * scale, Math.floor(i / s.width) * scale, scale, scale);
       });
     });
+  }
+
+  // --- select, copy and paste ---
+
+  // Pressing inside the selection grabs it to move; pressing elsewhere drops anything floating and starts a new
+  // rectangle.
+  private selectDown(at: [number, number]): void {
+    const box = this.floating ?? this.selection;
+    if (box && at[0] >= box.x && at[1] >= box.y && at[0] < box.x + box.w && at[1] < box.y + box.h) {
+      if (!this.floating) this.lift();
+      this.drag = { from: at, start: [this.floating!.x, this.floating!.y] };
+      return;
+    }
+    this.dropFloating();
+    this.selection = { x: at[0], y: at[1], w: 1, h: 1 };
+    this.drag = { from: at, start: [-1, -1] };
+    this.draw();
+  }
+
+  private selectDrag(at: [number, number]): void {
+    const s = this.current!;
+    const d = this.drag!;
+    if (this.floating) {
+      this.floating.x = d.start[0] + at[0] - d.from[0];
+      this.floating.y = d.start[1] + at[1] - d.from[1];
+    } else {
+      const cx = Math.max(0, Math.min(s.width - 1, at[0]));
+      const cy = Math.max(0, Math.min(s.height - 1, at[1]));
+      const x = Math.min(d.from[0], cx);
+      const y = Math.min(d.from[1], cy);
+      this.selection = { x, y, w: Math.abs(cx - d.from[0]) + 1, h: Math.abs(cy - d.from[1]) + 1 };
+    }
+    this.draw();
+  }
+
+  private grab(r: Rect): Clip {
+    const s = this.current!;
+    const colors: (string | null)[] = [];
+    for (let y = r.y; y < r.y + r.h; y++) {
+      for (let x = r.x; x < r.x + r.w; x++) {
+        const j = s.pixels[y * s.width + x];
+        colors.push(j >= 0 ? s.palette[j].hex : null);
+      }
+    }
+    return { ...r, colors };
+  }
+
+  private copy(): boolean {
+    if (this.floating) this.clipboard = { ...this.floating, colors: [...this.floating.colors] };
+    else if (this.selection) this.clipboard = this.grab(this.selection);
+    else return false;
+    this.status.textContent = `Copied ${this.clipboard.w}×${this.clipboard.h}. Ctrl+V pastes it, also into another sprite.`;
+    return true;
+  }
+
+  // Pastes where it was copied from, which is what animation frames need; drag it or use the arrow keys to move it.
+  private paste(): void {
+    const s = this.current;
+    const c = this.clipboard;
+    if (!s || !c) return;
+    this.dropFloating();
+    this.remember();
+    this.floating = { ...c, x: Math.min(c.x, Math.max(0, s.width - c.w)), y: Math.min(c.y, Math.max(0, s.height - c.h)), colors: [...c.colors] };
+    this.selection = null;
+    this.setTool('select');
+  }
+
+  // Cuts the selected pixels out of the sprite so they can move.
+  private lift(): void {
+    const s = this.current!;
+    const r = this.selection!;
+    this.remember();
+    this.floating = this.grab(r);
+    for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) s.pixels[y * s.width + x] = -1;
+    this.selection = null;
+    this.changed();
+  }
+
+  // Stamps floating pixels into the sprite, adding any colour the palette lacks. Part of the same undo step as the
+  // paste or move that made them float.
+  private dropFloating(): void {
+    const s = this.current;
+    const f = this.floating;
+    if (!s || !f) return;
+    this.floating = null;
+    let full = false;
+    f.colors.forEach((hex, i) => {
+      const x = f.x + (i % f.w);
+      const y = f.y + Math.floor(i / f.w);
+      if (!hex || x < 0 || y < 0 || x >= s.width || y >= s.height) return;
+      let j = s.palette.findIndex((c) => c.hex === hex);
+      if (j < 0) {
+        const used = new Set(s.palette.map((c) => c.ch));
+        const ch = [...CHARS].find((c) => !used.has(c));
+        if (!ch) return void (full = true);
+        j = s.palette.push({ ch, hex }) - 1;
+      }
+      s.pixels[y * s.width + x] = j;
+    });
+    this.selection = { x: Math.max(0, f.x), y: Math.max(0, f.y), w: Math.min(f.w, s.width - Math.max(0, f.x)), h: Math.min(f.h, s.height - Math.max(0, f.y)) };
+    if (this.selection.w <= 0 || this.selection.h <= 0) this.selection = null;
+    if (full) alert(`The palette is full (${CHARS.length} colours), so some pasted pixels were left out.`);
+    this.changed();
+    this.endStroke();
+    this.buildProps();
+  }
+
+  private clearSelection(): boolean {
+    if (this.floating) {
+      this.floating = null;
+    } else if (this.selection) {
+      const s = this.current!;
+      const r = this.selection;
+      this.remember();
+      for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) s.pixels[y * s.width + x] = -1;
+      this.endStroke();
+    } else {
+      return false;
+    }
+    this.selection = null;
+    this.changed();
+    return true;
+  }
+
+  private nudge(dx: number, dy: number): void {
+    if (!this.floating) this.lift();
+    this.floating!.x += dx;
+    this.floating!.y += dy;
+    this.draw();
   }
 
   // --- undo ---
@@ -388,6 +574,8 @@ export class SpriteTab {
   }
 
   private restore(from: Snapshot[], to: Snapshot[]): void {
+    this.dropFloating();
+    this.selection = null;
     const s = this.current;
     const back = s && from.pop();
     if (!s || !back) return;
