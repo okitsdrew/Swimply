@@ -6,10 +6,11 @@ export const Tex = {
   hero: 'hero',
   arrow: 'arrow',
   shadow: 'shadow',
-  dummy: 'dummy',
   smoke: 'smoke',
   glow: 'glow',
 } as const;
+
+export const shadeFrames = ['shade_0', 'shade_1'];
 
 export const heroWalkFrames = ['hero_walk0', 'hero_walk1', 'hero_walk2', 'hero_walk3'];
 
@@ -27,6 +28,26 @@ function fromGrid(scene: Phaser.Scene, key: string, rows: string[], palette: Pal
   });
   g.generateTexture(key, rows[0].length, rows.length);
   g.destroy();
+}
+
+// Adds a one-pixel border of `ch` round every filled pixel, so a dark sprite still reads on a dark floor.
+function outlined(rows: string[], ch: string): string[] {
+  const filled = (x: number, y: number) => (rows[y - 1]?.[x - 1] ?? '.') !== '.';
+  const out: string[] = [];
+  for (let y = 0; y < rows.length + 2; y++) {
+    let line = '';
+    for (let x = 0; x < rows[0].length + 2; x++) {
+      if (filled(x, y)) {
+        line += rows[y - 1][x - 1];
+        continue;
+      }
+      let near = false;
+      for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) if (filled(x + dx, y + dy)) near = true;
+      line += near ? ch : '.';
+    }
+    out.push(line);
+  }
+  return out;
 }
 
 function softCircle(scene: Phaser.Scene, key: string, size: number, color: number, alpha: number): void {
@@ -102,29 +123,29 @@ export function makeArt(scene: Phaser.Scene): void {
     P: 0xe0c8ff,
   });
 
-  fromGrid(
-    scene,
-    Tex.dummy,
-    [
-      '...tttt...',
-      '..tTTTTt..',
-      '..tTttTt..',
-      '...tttt...',
-      '....pp....',
-      'pppppppppp',
-      '.tTTTTTTt.',
-      '.tTtttTTt.',
-      '.tTTTTTTt.',
-      '.tTTtTTTt.',
-      '..tTTTTt..',
-      '....pp....',
-      '....pp....',
-      '....pp....',
-      '...pppp...',
-      '..pppppp..',
-    ],
-    { t: 0x6e5a3c, T: 0x8f7650, p: 0x3e3226 },
-  );
+  // The Shade: a tattered teal wraith with glowing yellow eyes; two hem frames flicker as it drifts.
+  const shadeTop = [
+    '....kkkk....',
+    '...kKKKKk...',
+    '..kKkkkkKk..',
+    '..kkEkkEkk..',
+    '..kkekkekk..',
+    '.kkKkkkkKkk.',
+    'kkKkkkkkkKkk',
+    'Kk.kkkkkk.kK',
+    'k..kKkkKk..k',
+    '...kkkkkk...',
+    '..kKkkkkKk..',
+    '..kkkkkkkk..',
+    '.kkKkkkkKkk.',
+    '.kkkkkkkkkk.',
+  ];
+  const shadeHems = [
+    ['.k.kk.kk.k..', 'k...k..k...k', '....k.....k.'],
+    ['..kk.kk.kk..', '.k..k..k..k.', '.k.....k....'],
+  ];
+  const shadeColors = { k: 0x154f61, K: 0x1f6e86, E: 0xffe14a, e: 0xb08a10, O: 0x8a8a98 };
+  shadeHems.forEach((hem, i) => fromGrid(scene, shadeFrames[i], outlined([...shadeTop, ...hem], 'O'), shadeColors));
 
   softCircle(scene, Tex.glow, 32, 0xffffff, 0.9);
   softCircle(scene, Tex.shadow, 16, 0x000000, 0.6);

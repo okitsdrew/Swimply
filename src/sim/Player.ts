@@ -1,10 +1,10 @@
 import { bow, dash, player as cfgPlayer, teleport } from '../config/character';
 import { feel } from '../config/feel';
 import { render } from '../config/render';
-import { Circle } from '../core/geometry';
 import { Input } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { stats } from './stats';
+import { CollisionWorld } from './World';
 
 const tmp = { x: 0, y: 0 };
 
@@ -46,8 +46,6 @@ export class Player {
   dashEndVx = 0;
   dashEndVy = 0;
   dashCooldownMax = 0;
-  // Walls the teleport cannot pass through; the scene keeps this current.
-  obstacles: readonly Circle[] = [];
   teleportCooldown = 0;
   teleportTime = 0;
   lockTime = 0;
@@ -68,11 +66,21 @@ export class Player {
   shootSlowTimer = 0;
   private lastMoveX = 0;
   private lastMoveY = 0;
+  private body = { x: 0, y: 0, radius: 0 };
 
   onFire: (x: number, y: number, dirX: number, dirY: number) => void = () => {};
   onDashStart: () => void = () => {};
   onTeleport: (fromX: number, fromY: number, toX: number, toY: number, travelTime: number) => void = () => {};
   onTeleportArrive: (x: number, y: number) => void = () => {};
+
+  // What his body and his teleport cannot pass through.
+  constructor(private world: CollisionWorld) {}
+
+  // Back to a fresh start at (x, y), keeping the callbacks the scene wired up.
+  reset(x: number, y: number): void {
+    const { onFire, onDashStart, onTeleport, onTeleportArrive } = this;
+    Object.assign(this, new Player(this.world), { onFire, onDashStart, onTeleport, onTeleportArrive, x, y });
+  }
 
   get dashing(): boolean {
     return this.dashTime > 0;
@@ -144,6 +152,12 @@ export class Player {
     }
 
     if (!this.dashing) this.dashCooldown = Math.max(0, this.dashCooldown - dt);
+    this.body.x = this.x;
+    this.body.y = this.y;
+    this.body.radius = cfgPlayer.bodyRadius;
+    this.world.resolve(this.body);
+    this.x = this.body.x;
+    this.y = this.body.y;
     this.updateFire(dt, input);
   }
 
@@ -225,24 +239,11 @@ export class Player {
     }
   }
 
-  // How much of a jump he gets (0 to 1) before his body would meet an obstacle on the way.
+  // How much of a jump he gets (0 to 1) before his body would meet something solid on the way.
   private clipJump(jx: number, jy: number): number {
     const len = Math.hypot(jx, jy);
     if (len < 1e-3) return 1;
-    let best = 1;
-    for (const o of this.obstacles) {
-      const r = o.radius + cfgPlayer.bodyRadius;
-      const fx = this.x - o.x;
-      const fy = this.y - o.y;
-      const c = fx * fx + fy * fy - r * r;
-      if (c <= 0) continue;
-      const a = len * len;
-      const b = 2 * (fx * jx + fy * jy);
-      const disc = b * b - 4 * a * c;
-      if (disc < 0) continue;
-      const t = (-b - Math.sqrt(disc)) / (2 * a);
-      if (t >= 0 && t < best) best = t;
-    }
+    const best = this.world.sweep(this.x, this.y, jx, jy, cfgPlayer.bodyRadius);
     return best < 1 ? Math.max(0, best - 4 / len) : 1;
   }
 

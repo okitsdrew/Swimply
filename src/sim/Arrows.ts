@@ -1,9 +1,10 @@
 import { bow } from '../config/character';
-import { Circle, segmentCircle } from '../core/geometry';
+import { segmentCircle } from '../core/geometry';
 import { toScreen, toWorld } from '../core/iso';
 import { Pool } from '../core/pool';
 import { stats } from './stats';
 import { Target } from './targets';
+import { CollisionWorld } from './World';
 
 export interface Arrow {
   active: boolean;
@@ -29,7 +30,7 @@ export class Arrows {
   private contacts: { t: number; target: Target }[] = [];
 
   onBlocked: (x: number, y: number) => void = () => {};
-  onHit: (target: Target, damage: number, arrowX: number, arrowY: number) => void = () => {};
+  onHit: (target: Target, damage: number, arrowX: number, arrowY: number, dirX: number, dirY: number) => void = () => {};
   onRelease: (a: Arrow) => void = () => {};
   onSpawn: (a: Arrow) => void = () => {};
 
@@ -73,7 +74,7 @@ export class Arrows {
     }
   }
 
-  update(dt: number, targets: readonly Target[], obstacles: readonly Circle[]): void {
+  update(dt: number, targets: readonly Target[], world: CollisionWorld): void {
     for (const a of this.pool.items) {
       if (!a.active) continue;
       const stepPx = Math.min(a.speed * dt, a.range - a.traveled);
@@ -81,14 +82,8 @@ export class Arrows {
       const x1 = a.x + a.dirX * step;
       const y1 = a.y + a.dirY * step;
 
-      // Terrain stops the arrow where it first touches an obstacle; anything behind that point is safe.
-      let wall = -1;
-      for (const o of obstacles) {
-        if (o.x + o.radius < Math.min(a.x, x1) || o.x - o.radius > Math.max(a.x, x1)) continue;
-        if (o.y + o.radius < Math.min(a.y, y1) || o.y - o.radius > Math.max(a.y, y1)) continue;
-        const t = segmentCircle(a.x, a.y, a.dirX, a.dirY, step, o.x, o.y, o.radius);
-        if (t >= 0 && (wall < 0 || t < wall)) wall = t;
-      }
+      // Terrain stops the arrow where it first touches something solid; anything behind that point is safe.
+      const wall = world.raycast(a.x, a.y, a.dirX, a.dirY, step);
       // Swept test along this frame's segment so fast arrows can't tunnel through targets.
       this.contacts.length = 0;
       for (const target of targets) {
@@ -101,7 +96,7 @@ export class Arrows {
       let stopAt = -1;
       for (const { t, target } of this.contacts) {
         a.hits.add(target.id);
-        this.onHit(target, a.damage, a.x + a.dirX * t, a.y + a.dirY * t);
+        this.onHit(target, a.damage, a.x + a.dirX * t, a.y + a.dirY * t, a.dirX, a.dirY);
         if (a.pierce > 0) {
           a.pierce--;
         } else {
@@ -124,6 +119,10 @@ export class Arrows {
       a.traveled += stepPx;
       if (a.traveled >= a.range - 1e-6) this.release(a);
     }
+  }
+
+  clear(): void {
+    for (const a of this.pool.items) if (a.active) this.release(a);
   }
 
   private release(a: Arrow): void {
