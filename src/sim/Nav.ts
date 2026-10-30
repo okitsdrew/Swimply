@@ -8,8 +8,9 @@ import { CollisionWorld } from './World';
 export interface Navigator {
   // Call once per step with the target's position (the player).
   setGoal(x: number, y: number): void;
-  // The unit direction a walker of radius r at (x, y) should head in. Straight at the goal when nothing blocks it.
-  direction(x: number, y: number, r: number, out: Vec2): Vec2;
+  // The unit direction a walker of radius r at (x, y) should head in, put in out. Straight at the goal when nothing
+  // blocks it. Returns the distance to the point it is heading for (the goal, or the next tile on its route).
+  direction(x: number, y: number, r: number, out: Vec2): number;
 }
 
 const SQRT2 = Math.SQRT2;
@@ -47,7 +48,7 @@ export class FlowField implements Navigator {
     this.build(tile);
   }
 
-  direction(x: number, y: number, r: number, out: Vec2): Vec2 {
+  direction(x: number, y: number, r: number, out: Vec2): number {
     let tx = this.gx;
     let ty = this.gy;
     if (this.hasFloorBlocks && !this.clearLine(x, y, tx, ty, r)) {
@@ -62,7 +63,7 @@ export class FlowField implements Navigator {
     const d = Math.hypot(dx, dy) || 1;
     out.x = dx / d;
     out.y = dy / d;
-    return out;
+    return d;
   }
 
   private tileOf(x: number, y: number): number {
