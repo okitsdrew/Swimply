@@ -98,6 +98,7 @@ export class SpriteTab {
       el('div', { class: 'bar' },
         button('New', () => this.create()),
         button('Duplicate', () => this.duplicate(), { disabled: !this.current }),
+        button('Revert', () => this.revert(), { disabled: !this.current, title: 'go back to the saved version of this sprite' }),
         button('Delete', () => this.remove(), { disabled: !this.current }),
       ),
       el('h3', { text: 'Code art' }),
@@ -472,14 +473,49 @@ export class SpriteTab {
     this.open(copy);
   }
 
+  // Throws away this sprite's unsaved changes and goes back to how it is in sprites.json. Other sprites keep their
+  // changes, and Ctrl+Z brings the discarded drawing back if it was a mistake.
+  private revert(): void {
+    const s = this.current;
+    if (!s) return;
+    const saved = this.ws.savedSprite(s);
+    if (!saved && this.preview.codeArt(s.id)) {
+      // Never saved, so its "original" is the code art it was converted from.
+      if (!confirm(`"${s.name}" has never been saved. Go back to the code-drawn "${s.id}"? Your drawing is thrown away.`)) return;
+      this.drop(s);
+      return;
+    }
+    if (!saved) {
+      alert(`"${s.name}" has not been saved yet, so there is no saved version to go back to. Delete removes it.`);
+      return;
+    }
+    if (saved.id !== s.id) {
+      alert(`This sprite was renamed from "${saved.id}". Change its id back first, so assets keep finding it.`);
+      return;
+    }
+    this.remember();
+    Object.assign(s, { name: saved.name, ...snap(saved) });
+    this.ws.touch('sprites');
+    this.preview.setSprite(s);
+    this.fitZoom();
+    this.refresh();
+  }
+
   private remove(): void {
     const s = this.current;
     if (!s) return;
     const users = this.ws.assets.filter((a) => a.parts.some((p) => p.texture === s.id)).map((a) => a.name);
     const warn = users.length ? `\n\nThese assets draw it: ${users.join(', ')}. If there is no code art called "${s.id}", they will show a missing texture.` : '';
     if (!confirm(`Delete the sprite "${s.name}"?${warn}\n\nIt is gone from the file once you save (git still has the old version).`)) return;
+    this.drop(s);
+  }
+
+  // Takes a sprite out of the working copy; code art of the same name shows again.
+  private drop(s: Sprite): void {
     this.ws.sprites.splice(this.ws.sprites.indexOf(s), 1);
+    this.history.delete(s.id);
     this.ws.touch('sprites');
+    this.preview.restoreCodeArt(s.id);
     this.current = this.ws.sprites[0] ?? null;
     if (this.current) this.fitZoom();
     this.refresh();

@@ -20,7 +20,22 @@ export class Workspace {
   assets: Asset[] = assets.list().map((a) => ({ ...a, parts: a.parts.map((p) => ({ ...p })), collision: a.collision.map((c) => ({ ...c })) }));
   floors: Floor[] = floors.list().map((f) => ({ ...f, colors: [...f.colors] }));
   readonly dirty = new Set<FileKind>();
+  // Each sprite as it is in sprites.json, so one sprite can go back to its saved look without touching the others.
+  private savedSprites = new WeakMap<Sprite, Sprite>();
   private listeners = new Set<() => void>();
+
+  constructor() {
+    this.rememberSavedSprites();
+  }
+
+  private rememberSavedSprites(): void {
+    for (const s of this.sprites) this.savedSprites.set(s, { ...s, palette: s.palette.map((c) => ({ ...c })), pixels: [...s.pixels] });
+  }
+
+  // The saved version of a sprite, or undefined for one made since the last save.
+  savedSprite(s: Sprite): Sprite | undefined {
+    return this.savedSprites.get(s);
+  }
 
   onChange(fn: () => void): void {
     this.listeners.add(fn);
@@ -41,6 +56,7 @@ export class Workspace {
     for (const kind of [...this.dirty]) {
       await saveFile(PATHS[kind], text[kind]());
       this.dirty.delete(kind);
+      if (kind === 'sprites') this.rememberSavedSprites();
     }
     this.listeners.forEach((l) => l());
   }

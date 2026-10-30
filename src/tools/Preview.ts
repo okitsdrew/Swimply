@@ -20,8 +20,8 @@ class PreviewScene extends Phaser.Scene {
   private pending: { asset: Asset | null; floor: Floor; hero: boolean } | null = null;
   ready = false;
   onReady: () => void = () => {};
-  // Code-drawn textures and their sizes, noted before any drawn sprite replaces them.
-  readonly codeArt = new Map<string, { width: number; height: number }>();
+  // A copy of each code-drawn texture, kept before any drawn sprite replaces it, so it can be put back.
+  readonly codeArt = new Map<string, HTMLCanvasElement>();
 
   constructor() {
     super('preview');
@@ -32,7 +32,11 @@ class PreviewScene extends Phaser.Scene {
     for (const k of this.textures.getTextureKeys()) {
       if (k.startsWith('__')) continue;
       const f = this.textures.getFrame(k);
-      this.codeArt.set(k, { width: f.cutWidth, height: f.cutHeight });
+      const copy = document.createElement('canvas');
+      copy.width = f.cutWidth;
+      copy.height = f.cutHeight;
+      copy.getContext('2d')!.drawImage(f.source.image as CanvasImageSource, f.cutX, f.cutY, f.cutWidth, f.cutHeight, 0, 0, f.cutWidth, f.cutHeight);
+      this.codeArt.set(k, copy);
     }
     for (const s of sprites.list()) applySprite(this, s);
     this.cameras.main.setBackgroundColor(0x0b0a10);
@@ -92,6 +96,18 @@ class PreviewScene extends Phaser.Scene {
     applySprite(this, sprite);
     if (this.pending) this.show(this.pending.asset, this.pending.floor, this.pending.hero);
   }
+
+  restoreCodeArt(key: string): void {
+    const code = this.codeArt.get(key);
+    if (!this.ready || !code) return;
+    const c = document.createElement('canvas');
+    c.width = code.width;
+    c.height = code.height;
+    c.getContext('2d')!.drawImage(code, 0, 0);
+    if (this.textures.exists(key)) this.textures.remove(key);
+    this.textures.addCanvas(key, c);
+    if (this.pending) this.show(this.pending.asset, this.pending.floor, this.pending.hero);
+  }
 }
 
 export class Preview {
@@ -127,7 +143,13 @@ export class Preview {
 
   // The size of the code-drawn texture of this name, if there is one, even when a sprite now replaces it.
   codeArt(key: string): { width: number; height: number } | undefined {
-    return this.scene.codeArt.get(key);
+    const c = this.scene.codeArt.get(key);
+    return c && { width: c.width, height: c.height };
+  }
+
+  // Puts the code-drawn texture back after the sprite that replaced it is reverted or deleted.
+  restoreCodeArt(key: string): void {
+    this.scene.restoreCodeArt(key);
   }
 
   // Every texture the game can draw: code art and drawn sprites. Asset parts pick from these.
