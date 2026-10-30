@@ -9,8 +9,6 @@ export const render = defineConfig(
     isoScale: Math.SQRT1_2,
     // Each art pixel is drawn as this many screen pixels.
     pixelScale: 2,
-    // Size of one floor tile in world units.
-    tileSize: 64,
     arrowScale: 3.375,
     bowScale: 1,
     // How far above the ground arrows fly, in screen pixels.
@@ -21,7 +19,6 @@ export const render = defineConfig(
   {
     isoScale: { min: 0.3, max: 1.5, step: 0.01 },
     pixelScale: { min: 1, max: 6, step: 1 },
-    tileSize: { min: 16, max: 256, step: 8 },
     arrowScale: { min: 0.5, max: 10, step: 0.125 },
     bowScale: { min: 0.3, max: 3, step: 0.05 },
     arrowHeight: { min: 0, max: 40, step: 1 },

@@ -21,6 +21,8 @@ export const shade = defineConfig(
     knockbackDecay: 12,
     // How far ahead a Shade looks for a pillar to walk round.
     avoidLookahead: 70,
+    // How much shorter the other side of a pillar must get before a Shade changes which way it goes round.
+    avoidSwitch: 0.4,
     // Seconds the spawn mark shows before the Shade rises; it cannot hurt until then.
     spawnTell: 0.7,
     bobHeight: 1.5,
@@ -42,6 +44,7 @@ export const shade = defineConfig(
     knockback: { min: 0, max: 1000, step: 10 },
     knockbackDecay: { min: 1, max: 60, step: 1 },
     avoidLookahead: { min: 0, max: 300, step: 5 },
+    avoidSwitch: { min: 0, max: 2, step: 0.05 },
     spawnTell: { min: 0, max: 3, step: 0.05 },
     bobHeight: { min: 0, max: 8, step: 0.5 },
     bobSpeed: { min: 0, max: 20, step: 0.5 },

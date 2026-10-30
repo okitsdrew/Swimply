@@ -8,6 +8,7 @@ export const Tex = {
   shadow: 'shadow',
   smoke: 'smoke',
   glow: 'glow',
+  pillar: 'pillar',
 } as const;
 
 export const shadeFrames = ['shade_0', 'shade_1'];
@@ -62,6 +63,27 @@ function softCircle(scene: Phaser.Scene, key: string, size: number, color: numbe
     }
   }
   g.generateTexture(key, size, size);
+  g.destroy();
+}
+
+// A low round stump: a side band between two ellipses, drawn pixel by pixel so the edges stay crisp. Its ground
+// point (the middle of the bottom ellipse) is 15 of its 22 rows down, which is the asset's originY in assets.json.
+function pillar(scene: Phaser.Scene): void {
+  const w = 28;
+  const h = 22;
+  const inside = (x: number, y: number, cy: number) => ((x - w / 2) / (w / 2)) ** 2 + ((y - cy) / 7) ** 2 <= 1;
+  const g = scene.make.graphics({}, false);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const px = x + 0.5;
+      const py = y + 0.5;
+      if (inside(px, py, 7)) g.fillStyle(0x3a3350, 1);
+      else if (inside(px, py, 15) || (py >= 7 && py <= 15)) g.fillStyle(0x2b2638, 1);
+      else continue;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  g.generateTexture(Tex.pillar, w, h);
   g.destroy();
 }
 
@@ -150,4 +172,5 @@ export function makeArt(scene: Phaser.Scene): void {
   softCircle(scene, Tex.glow, 32, 0xffffff, 0.9);
   softCircle(scene, Tex.shadow, 16, 0x000000, 0.6);
   softCircle(scene, Tex.smoke, 12, 0x8a8698, 0.9);
+  pillar(scene);
 }

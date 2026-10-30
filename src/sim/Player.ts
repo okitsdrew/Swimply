@@ -155,7 +155,7 @@ export class Player {
     this.body.x = this.x;
     this.body.y = this.y;
     this.body.radius = cfgPlayer.bodyRadius;
-    this.world.resolve(this.body);
+    this.world.resolve(this.body, this.teleporting);
     this.x = this.body.x;
     this.y = this.body.y;
     this.updateFire(dt, input);
@@ -239,12 +239,17 @@ export class Player {
     }
   }
 
-  // How much of a jump he gets (0 to 1) before his body would meet something solid on the way.
+  // How much of a jump he gets (0 to 1). He passes over water but not through pillars or the map's edge, and never
+  // lands in water: a jump that would end there is cut back to the last spot where he can stand.
   private clipJump(jx: number, jy: number): number {
     const len = Math.hypot(jx, jy);
     if (len < 1e-3) return 1;
-    const best = this.world.sweep(this.x, this.y, jx, jy, cfgPlayer.bodyRadius);
-    return best < 1 ? Math.max(0, best - 4 / len) : 1;
+    const r = cfgPlayer.bodyRadius;
+    const best = this.world.sweep(this.x, this.y, jx, jy, r, true);
+    let f = best < 1 ? Math.max(0, best - 4 / len) : 1;
+    const back = 4 / len;
+    while (f > 0 && this.world.onBlockingFloor(this.x + jx * f, this.y + jy * f, r)) f = Math.max(0, f - back);
+    return f;
   }
 
   private updateTeleport(dt: number): void {

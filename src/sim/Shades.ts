@@ -3,6 +3,7 @@ import { render } from '../config/render';
 import { shade } from '../config/shade';
 import { Circle } from '../core/geometry';
 import { toScreen } from '../core/iso';
+import { Navigator } from './Nav';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
@@ -17,14 +18,18 @@ export interface Shade extends Target {
   rising: number;
   flash: number;
   phase: number;
-  // The pillar it is walking round and which way, so it does not dither head-on.
+  // The pillar it is walking round and which side it passes on (1 or -1), so it does not dither head-on.
   avoid: Circle | null;
   side: number;
 }
 
 const off = { x: 0, y: 0 };
+const way = { x: 0, y: 0 };
+// Extra gap kept from a pillar's edge while walking round it.
+const CLEARANCE = 2;
 
-// Shades walk straight at the player, round pillars, and push gently off each other. No drawing:
+// Shades walk at the player (round water by the navigator's route, round pillars by steering), and push gently
+// off each other. No drawing:
 // render/ShadesView reads `list`.
 export class Shades {
   readonly list: Shade[] = [];
@@ -79,7 +84,7 @@ export class Shades {
     return false;
   }
 
-  update(dt: number, px: number, py: number, world: CollisionWorld): void {
+  update(dt: number, world: CollisionWorld, nav: Navigator): void {
     const turn = 1 - Math.exp(-shade.turnRate * dt);
     const kdecay = Math.exp(-shade.knockbackDecay * dt);
     const sepK = shade.separation * Math.min(1, shade.separationRate * dt);
@@ -97,12 +102,8 @@ export class Shades {
         continue;
       }
 
-      let dx = px - s.x;
-      let dy = py - s.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      dx /= dist;
-      dy /= dist;
-      [dx, dy] = this.steer(s, dx, dy, world);
+      const dist = nav.direction(s.x, s.y, s.radius, way);
+      const [dx, dy] = this.steer(s, way.x, way.y, dist, world);
 
       let speed = shade.speed;
       // The iso projection squashes vertical screen travel, so even out on-screen speed the way the player's is.
@@ -141,19 +142,21 @@ export class Shades {
     }
   }
 
-  // Bends the walking direction round a pillar in the way. The first time one blocks the path the Shade picks
-  // the side nearer its heading and keeps it until clear, so nothing stalls head-on.
-  private steer(s: Shade, dx: number, dy: number, world: CollisionWorld): [number, number] {
+  // Walks the shortest way round a pillar in its path: it heads for the pillar's edge along a tangent, then follows
+  // the curve until the way is clear. It picks the side nearer its heading and keeps that side while the pillar is
+  // in the way, switching only if the other side becomes clearly shorter, so it never dithers head-on.
+  private steer(s: Shade, dx: number, dy: number, dist: number, world: CollisionWorld): [number, number] {
     const look = shade.avoidLookahead;
     let blocked: Circle | null = null;
-    let worst = Infinity;
+    let nearest = Infinity;
     for (const o of world.near(s.x, s.y, look + s.radius, this.nearby)) {
-      const ox = s.x - o.x;
-      const oy = s.y - o.y;
-      const od = Math.hypot(ox, oy) || 1;
-      const gap = od - o.radius - s.radius;
-      if (gap > look || ox * dx + oy * dy > 0.3 * od || gap >= worst) continue;
-      worst = gap;
+      const ox = o.x - s.x;
+      const oy = o.y - s.y;
+      const along = ox * dx + oy * dy;
+      const R = o.radius + s.radius + CLEARANCE;
+      // Behind it, beside its path, or past the point it is walking to: not in the way.
+      if (along <= 0 || Math.abs(ox * dy - oy * dx) >= R || along - o.radius > dist || along >= nearest) continue;
+      nearest = along;
       blocked = o;
     }
     if (!blocked) {
@@ -161,19 +164,23 @@ export class Shades {
       return [dx, dy];
     }
     const o = blocked;
-    const ox = s.x - o.x;
-    const oy = s.y - o.y;
-    const od = Math.hypot(ox, oy) || 1;
-    const lean = (-oy / od) * dx + (ox / od) * dy;
-    if (s.avoid !== o && Math.abs(lean) < 1e-3) s.side = s.id % 2 ? 1 : -1;
-    if (Math.abs(lean) > 0.25) s.side = lean > 0 ? 1 : -1;
+    const ox = o.x - s.x;
+    const oy = o.y - s.y;
+    const d = Math.hypot(ox, oy) || 1;
+    const R = o.radius + s.radius + CLEARANCE;
+    // The two tangent directions from the Shade to the pillar's edge (straight along the edge when touching it).
+    const a = Math.asin(Math.min(1, R / d));
+    const tangent = (side: number): [number, number] => {
+      const c = Math.cos(a * side);
+      const sn = Math.sin(a * side);
+      return [(ox * c - oy * sn) / d, (ox * sn + oy * c) / d];
+    };
+    const left = tangent(1);
+    const right = tangent(-1);
+    const gainLeft = left[0] * dx + left[1] * dy - (right[0] * dx + right[1] * dy);
+    if (s.avoid !== o) s.side = Math.abs(gainLeft) < 1e-3 ? (s.id % 2 ? 1 : -1) : gainLeft > 0 ? 1 : -1;
+    else if (gainLeft * s.side < -shade.avoidSwitch) s.side = -s.side;
     s.avoid = o;
-    const tx = (-oy / od) * s.side;
-    const ty = (ox / od) * s.side;
-    const a = Math.max(0.35, Math.min(1, 1.4 - worst / Math.max(look, 1e-3)));
-    const rx = dx * (1 - a) + tx * a;
-    const ry = dy * (1 - a) + ty * a;
-    const l = Math.hypot(rx, ry) || 1;
-    return [rx / l, ry / l];
+    return s.side > 0 ? left : right;
   }
 }
