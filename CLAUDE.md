@@ -29,6 +29,7 @@ Drew is new to making games and to programming. Teach as you go: explain what yo
 - `npm run check`: layer check plus type check.
 - `npm run build`: check, then build to `dist/` (what CI runs).
 - `npm run preview`: serve the built `dist/`.
+- Asset maker: `localhost:5173/asset-maker.html` while `npm run dev` runs.
 
 ## Code map
 
@@ -41,4 +42,6 @@ Drew is new to making games and to programming. Teach as you go: explain what yo
 - `src/sim/`: `World.ts` (the `CollisionWorld` interface and `MapWorld`, built from a map: asset circles, blocking floor boxes, the map's edge), `Nav.ts` (the `Navigator` interface and `FlowField`, which routes walkers round blocking floor), `Player` (movement, dash, teleport, firing), `Arrows`, `Shades`, `Run` (waves and run state), `stats.ts` (effective stats; the upgrade baseline is added here later).
 - `src/render/`: `MapView` (floor and placed assets), `PlayerView`, `BowView`, `ArrowsView`, `ShadesView`, `RunHud`, `Fx`, `art.ts` (code-drawn textures under the keys in `Tex`; asset parts name these keys).
 - `src/scenes/ArenaScene.ts`: the arena, loaded from a map file (`arena` by default). Runs the sim on a fixed time step (`step()`), draws once per frame. Dev menu buttons: restart, next wave, spawn, kill all, hold waves, pause, step, hitboxes (also shows blocking floor and markers), next map.
-- `scripts/check-layers.mjs`: the layer guard.
+- `src/tools/`: the asset maker (`asset-maker.html`, dev server only; also the "Asset maker" dev menu button). `assetMaker.ts` (the page and tabs), `Workspace.ts` (working copies and save), `files.ts` (writes the JSON in the hand-written style), `SpriteTab.ts` (pixel editor), `AssetTab.ts`, `FloorTab.ts`, `Preview.ts` (a small Phaser view using the game's own `MapView`).
+- `src/data/sprites.ts`/`sprites.json`: drawn pixel art; `render/art.ts` turns each sprite into a texture over any code art of the same name.
+- `scripts/check-layers.mjs`: the layer guard. `scripts/data-api.ts`: the dev-server save API the tools use.

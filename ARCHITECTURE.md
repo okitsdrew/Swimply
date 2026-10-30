@@ -35,7 +35,10 @@ Game content lives as JSON under `src/data/`, read through one registry per kind
 
 - `floors.json`: floor kinds (`id`, `name`, `colors`, `blocks`). A floor that blocks cannot be walked on or landed on by a teleport; arrows and teleports pass over it.
 - `assets.json`: placeable things (`id`, `name`, `category`, `parts`, `collision`, `marker`). Collision belongs to the asset. A marker (such as `playerStart`) has no parts and is invisible in play.
+- `sprites.json`: pixel art drawn in the asset maker (`id`, `name`, `palette` from characters to colours, `rows` of characters, `.` is see-through). Each sprite becomes a texture under its id, so a sprite named like a code-drawn texture (`pillar`, `shade_0`) replaces that art in the game; delete the sprite and the code art comes back. Animation frames are separate sprites (`shade_0`, `shade_1`).
 - `maps/<id>.json`: one area map per file, the file name is its id. `format`, `kind: "area"`, `name`, `tileSize`, a `legend` from characters to floor ids, `floor` as rows of characters (row = world y, character = world x, from the top-left), and `objects` as `{ "asset", "x", "y", "size" }` in world units.
+
+The tools write these files through a small dev-server API (`scripts/data-api.ts`): it only exists under `npm run dev`, only accepts the data files above, and after a tool saves it tells an open game tab to reload instead of reloading the tool (which would lose its undo history). Tools keep their own working copy of the data and never change the game's registries.
 
 Every file is checked on load. A mistake (unknown id, wrong type, short row) is reported in the browser console and skipped or given a default, never a crash. Map files carry a `format` number with migrations, like the save.
 
@@ -50,5 +53,7 @@ Do it deliberately: change this file and `scripts/check-layers.mjs` together, an
 - **Shades spawn on the map's edge**, which can be off screen in a big map, and maps have no spawn zones yet. Spawn zone markers come with the level editor.
 - **Assets have no rotation, flip, light, twin or walkable height yet**, and floors have no edge or fleck style. The map and asset formats only hold what the game uses today; new optional fields are added when a feature needs them, which never breaks a saved file.
 - **Pathfinding only knows about floor tiles.** Shades follow a flow field round blocking floor (`sim/Nav.ts`) and steer round pillars as they meet them. A big solid asset (a wall piece) would need to mark its tiles in the flow field too; add that when such assets exist.
+- **Saving in a tool reloads the game tab**, so a run in progress restarts. The level editor's "play here" is where keeping your place matters; revisit then.
+- **Ids used in maps cannot be renamed in the asset maker**, because the maps would lose the thing. Renaming across maps belongs in the level editor, which can rewrite map files.
 - **No sound yet.** `PlayerView.onStep` and the fire, dash and teleport callbacks are the hooks for it.
 - **Deploy workflow not added yet.** Pushing a workflow file needs the GitHub login to have the `workflow` permission, and GitHub Pages on a private repo needs a paid GitHub plan. Until both are sorted, play with `npm run dev` (or `npm run preview`) on the Deck. The ready-made workflow is Heaven's `deploy.yml`.
