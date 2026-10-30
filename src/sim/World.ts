@@ -2,12 +2,15 @@ import { Box, Circle, pushOut, pushOutOfBoxes, segmentBox, segmentCircle } from 
 import { AreaMap, tileAt } from '../data/maps';
 
 // What every moving thing asks about solid ground. Systems hold a CollisionWorld, never the list of shapes
-// behind it, so the hand-coded arena can be swapped for a world built from map data without touching them.
+// behind it, so how the world is built from map data can change without touching them.
 export interface CollisionWorld {
-  // Pushes a circle out of everything solid.
-  resolve(c: Circle): void;
+  // Pushes a circle out of everything solid. With overFloors, blocking floors (water) are ignored, as for a teleport
+  // in flight.
+  resolve(c: Circle, overFloors?: boolean): void;
   // How much of a move (0 to 1) a circle of radius r can make from (x, y) before it touches something solid.
-  sweep(x: number, y: number, dx: number, dy: number, r: number): number;
+  sweep(x: number, y: number, dx: number, dy: number, r: number, overFloors?: boolean): number;
+  // True if a circle of radius r at (x, y) overlaps a blocking floor, so nothing can stand there.
+  onBlockingFloor(x: number, y: number, r: number): boolean;
   // Distance along a ray (unit direction) to the first solid thing within len, or -1.
   raycast(x: number, y: number, dirX: number, dirY: number, len: number): number;
   // Solid circles near a point, for steering round them.
@@ -52,13 +55,13 @@ export class MapWorld implements CollisionWorld {
     this.frame.push({ x0: -k, y0: 0, x1: 0, y1: h }, { x0: w, y0: 0, x1: w + k, y1: h });
   }
 
-  resolve(c: Circle): void {
+  resolve(c: Circle, overFloors = false): void {
     pushOut(c, this.circles);
-    pushOutOfBoxes(c, this.floorBoxes);
+    if (!overFloors) pushOutOfBoxes(c, this.floorBoxes);
     pushOutOfBoxes(c, this.frame);
   }
 
-  sweep(x: number, y: number, dx: number, dy: number, r: number): number {
+  sweep(x: number, y: number, dx: number, dy: number, r: number, overFloors = false): number {
     const len = Math.hypot(dx, dy);
     if (len < 1e-6) return 1;
     const ux = dx / len;
@@ -69,9 +72,18 @@ export class MapWorld implements CollisionWorld {
       const t = segmentCircle(x, y, ux, uy, len, o.x, o.y, o.radius + r);
       if (t > 0 && t / len < best) best = t / len;
     }
-    for (const b of this.floorBoxes) best = Math.min(best, boxFraction(x, y, ux, uy, len, b, r));
+    if (!overFloors) for (const b of this.floorBoxes) best = Math.min(best, boxFraction(x, y, ux, uy, len, b, r));
     for (const b of this.frame) best = Math.min(best, boxFraction(x, y, ux, uy, len, b, r));
     return best;
+  }
+
+  onBlockingFloor(x: number, y: number, r: number): boolean {
+    for (const b of this.floorBoxes) {
+      const nx = Math.max(b.x0, Math.min(b.x1, x));
+      const ny = Math.max(b.y0, Math.min(b.y1, y));
+      if ((x - nx) ** 2 + (y - ny) ** 2 < r * r) return true;
+    }
+    return false;
   }
 
   raycast(x: number, y: number, dirX: number, dirY: number, len: number): number {
