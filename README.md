@@ -1,3 +1,7 @@
 # Swimply
 
-A fast, readable action game. Work in progress.
+A fast, readable action game built with TypeScript, Phaser 3 and Vite. Work in progress.
+
+- `npm install` to set up, `npm run dev` to play with hot reload, `npm run build` to check and build.
+- In the game, press the backtick key (`) to open the dev menu.
+- Read `DESIGN.md` for what the game is, `ARCHITECTURE.md` for how the code is organised, and `CLAUDE.md` for how Claude works in this repo.
