@@ -2,7 +2,8 @@
 // `defineConfig`. A section returns a live object that systems read every frame, so dev menu edits apply at once.
 // Edits are saved as overrides of the defaults, so changing a default later still reaches everything not edited.
 
-export type Param = { min: number; max: number; step: number } | 'bool';
+// 'color' is a number like 0x7a46c8, shown in the dev menu as a colour picker.
+export type Param = { min: number; max: number; step: number } | 'bool' | 'color';
 type Value = number | boolean;
 type Values = Record<string, Value>;
 

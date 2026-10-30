@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { dash, player as cfgPlayer, teleport } from '../config/character';
-import { camera, cloak, feel } from '../config/feel';
+import { camera, cloak, feel, heroLook } from '../config/feel';
 import { render } from '../config/render';
 import { ellipseHalfSize, toScreen, toWorld, Vec2 } from '../core/iso';
 import { Player } from '../sim/Player';
@@ -14,9 +14,6 @@ const SHOULDER_X = 4;
 const SHOULDER_Y = 12;
 const CHEST_Y = 10;
 
-const SLEEVE = 0x7a46c8;
-const SLEEVE_EDGE = 0x1a0c30;
-const GLOVE = 0x17121f;
 
 const screen = { x: 0, y: 0 };
 const ahead = { x: 0, y: 0 };
@@ -138,11 +135,12 @@ export class PlayerView {
     g.fillTriangle(r.x, r.y, (l.x + r.x) / 2, (l.y + r.y) / 2, (r.x + tipX) / 2 + 2 * px, (r.y + tipY) / 2);
     g.fillTriangle(l.x, l.y, r.x, r.y, tipX, tipY);
 
-    // The two glowing eyes, in the teleport's purple.
+    // The two glowing eyes; colour and place in the hero look config.
     const pulse = 0.85 + 0.15 * Math.sin(this.time * 6);
     eyes.forEach((e, i) => {
       e.setVisible(this.body.visible)
-        .setPosition(cx + (i === 0 ? -2.5 : 2.5) * px, cy - 15 * px)
+        .setPosition(cx + (i === 0 ? -1 : 1) * heroLook.eyeSpread * px, cy - heroLook.eyeHeight * px)
+        .setTint(heroLook.eyeGlowColor)
         .setScale(px * 0.17)
         .setAlpha(cloak.eyeGlow * pulse * this.body.alpha)
         .setDepth(this.body.depth + 0.2);
@@ -294,9 +292,10 @@ export class PlayerView {
     const g = this.arms;
     g.clear().setDepth(screen.y + 0.3).setAlpha(this.body.alpha);
     for (const [width, color] of [
-      [3 * px, SLEEVE_EDGE],
-      [2 * px, SLEEVE],
+      [(heroLook.sleeveWidth + heroLook.sleeveEdge) * px, heroLook.sleeveEdgeColor],
+      [heroLook.sleeveWidth * px, heroLook.sleeveColor],
     ] as const) {
+      if (width <= 0) continue;
       g.lineStyle(width, color, 1);
       for (const arm of [armA, armB]) {
         g.beginPath();
@@ -306,9 +305,9 @@ export class PlayerView {
         g.strokePath();
       }
     }
-    g.fillStyle(GLOVE, 1);
-    g.fillCircle(armA.hand.x, armA.hand.y, 1.2 * px);
-    g.fillCircle(armB.hand.x, armB.hand.y, 1.2 * px);
+    g.fillStyle(heroLook.gloveColor, 1);
+    g.fillCircle(armA.hand.x, armA.hand.y, heroLook.gloveSize * px);
+    g.fillCircle(armB.hand.x, armB.hand.y, heroLook.gloveSize * px);
 
     if (sliding) this.slideDust(dt);
     this.bow.draw(
@@ -332,6 +331,7 @@ export class PlayerView {
       img
         .setVisible(t > 0.01)
         .setPosition(hand.x, hand.y)
+        .setTint(heroLook.handGlowColor)
         .setScale(px * (0.32 + Math.sin(this.time * 12 + i * 2) * 0.05))
         .setAlpha(t * f.handGlow)
         .setDepth(screen.y + 0.4);
