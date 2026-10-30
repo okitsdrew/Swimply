@@ -30,7 +30,7 @@ The whole early game is the **Mindscape** plus a **single hub room**. Nothing el
 
 ## Enemies
 
-- **Shade:** easy fodder to learn on. 100 health. Walks at the player.
+- **Shade:** easy fodder to learn on. 10 health (the bow does 5 a shot, so two shots). Walks at the player.
 - **Mini-boss (built late):** dash and melee. 300 health. A visible windup, then a dash at about 75% of the player's dash speed, locked on to where the player was when the windup began, then a strike. After a miss it turns toward the player. Collision is checked along the whole dash path.
 
 ## Out of scope for now (do not plan or build)

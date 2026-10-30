@@ -5,12 +5,12 @@ export const shade = defineConfig(
   'shade',
   'enemies',
   {
-    hp: 100,
+    hp: 10,
     speed: 170,
     // Keeps on-screen speed equal in every direction, as the player's does.
     uniformScreenSpeed: true,
     radius: 20,
-    scale: 0.85,
+    scale: 1,
     // The player dies when his hit circle meets this fraction of the Shade's radius.
     contactScale: 0.6,
     turnRate: 6,
