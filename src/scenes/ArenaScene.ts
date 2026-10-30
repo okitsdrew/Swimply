@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { arena } from '../config/arena';
 import { player as cfgPlayer } from '../config/character';
 import { camera } from '../config/feel';
 import { render } from '../config/render';
@@ -8,10 +7,12 @@ import { shade } from '../config/shade';
 import { sim } from '../config/sim';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
+import { AreaMap, findMarker, maps } from '../data/maps';
 import { DevMenu } from '../dev/DevMenu';
 import { ArrowsView } from '../render/ArrowsView';
 import { makeArt } from '../render/art';
 import { Fx } from '../render/Fx';
+import { MapView } from '../render/MapView';
 import { PlayerView } from '../render/PlayerView';
 import { RunHud } from '../render/RunHud';
 import { ShadesView } from '../render/ShadesView';
@@ -19,17 +20,18 @@ import { Arrows } from '../sim/Arrows';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
 import { Shades } from '../sim/Shades';
-import { ArenaWorld } from '../sim/World';
+import { MapWorld } from '../sim/World';
 
-const COLORS = [0x17151d, 0x19161f, 0x1b1822, 0x15131a];
-const PILLAR = 0x2b2638;
-const PILLAR_TOP = 0x3a3350;
+const DEFAULT_MAP = 'arena';
 
-// Phase 2: a plain square arena with a ring of pillars, endless waves of Shades, death and restart.
-// The sim runs on a fixed time step here; drawing runs once per screen frame.
+// The arena: a map from src/data/maps, endless waves of Shades, death and restart. The sim runs on a fixed time
+// step here; drawing runs once per screen frame. Switching map restarts the scene with the new map's id.
 export class ArenaScene extends Phaser.Scene {
   private input2!: Input;
-  private world = new ArenaWorld();
+  private mapId = DEFAULT_MAP;
+  private map!: AreaMap;
+  private world!: MapWorld;
+  private mapView!: MapView;
   private player!: Player;
   private view!: PlayerView;
   private fx!: Fx;
@@ -39,12 +41,9 @@ export class ArenaScene extends Phaser.Scene {
   private shadesView!: ShadesView;
   private run!: Run;
   private hud!: RunHud;
-  private floor!: Phaser.GameObjects.Graphics;
   private debug!: Phaser.GameObjects.Graphics;
   private showHitboxes = false;
-  private lastLayoutKey = '';
   private camCenter = { x: 0, y: 0 };
-  private p = [toScreen(0, 0), toScreen(0, 0), toScreen(0, 0), toScreen(0, 0)];
   // Sim time owed to the fixed step, carried between frames.
   private acc = 0;
   private hitStop = 0;
@@ -56,14 +55,27 @@ export class ArenaScene extends Phaser.Scene {
     super('arena');
   }
 
+  init(data: { map?: string }): void {
+    if (data.map) this.mapId = data.map;
+  }
+
   create(): void {
+    // A missing map (renamed or deleted file) falls back to any map rather than a blank screen.
+    const map = maps.get(this.mapId) ?? maps.get(DEFAULT_MAP) ?? maps.list()[0];
+    if (!map) throw new Error('No maps in src/data/maps');
+    this.map = map;
+    this.mapId = map.id;
+    this.world = new MapWorld(map);
+    this.acc = 0;
+    this.paused = false;
+    this.stepsQueued = 0;
+
     makeArt(this);
     this.cameras.main.setBackgroundColor(0x0b0a10);
     this.input2 = new Input([new KeyboardMouseSource(this.game.canvas)]);
     this.fx = new Fx(this);
-    this.floor = this.add.graphics().setDepth(-1e9);
+    this.mapView = new MapView(this, map);
     this.debug = this.add.graphics().setDepth(1e7);
-    this.syncLayout();
 
     this.player = new Player(this.world);
     this.view = new PlayerView(this, this.player, this.fx);
@@ -110,19 +122,24 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Pause', run: () => (this.paused = !this.paused) },
       { label: 'Step', run: () => { this.paused = true; this.stepsQueued++; } },
       { label: 'Toggle hitboxes', run: () => (this.showHitboxes = !this.showHitboxes) },
+      { label: `Next map (${map.name})`, run: () => this.nextMap() },
     ]);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input2.destroy());
   }
 
-  private get half(): number {
-    return (arena.roomTiles * render.tileSize) / 2;
+  private nextMap(): void {
+    const all = maps.list();
+    const next = all[(all.indexOf(this.map) + 1) % all.length];
+    this.scene.restart({ map: next.id });
   }
 
   private startRun(): void {
     this.shades.clear();
     this.shadesView.clear();
     this.arrows.clear();
-    this.player.reset(0, this.half * 0.5);
+    // The map's player start marker, or the middle of the map if it has none.
+    const start = findMarker(this.map, 'playerStart') ?? { x: this.world.width / 2, y: this.world.height / 2 };
+    this.player.reset(start.x, start.y);
     this.view.setVisible(true);
     this.run.reset();
     this.hitStop = 0;
@@ -131,17 +148,19 @@ export class ArenaScene extends Phaser.Scene {
     this.camCenter = { x: s.x, y: s.y };
   }
 
-  // A random spot along the room's edge, far enough from the player and clear of pillars.
+  // A random spot along the map's edge, far enough from the player and clear of anything solid.
   private spawnPoint(): Vec2 {
-    const h = this.half - shade.radius * 1.5;
+    const m = shade.radius * 1.5;
+    const w = this.world.width - m;
+    const h = this.world.height - m;
     const p = { x: 0, y: 0, radius: shade.radius };
     let best = { x: 0, y: 0 };
     let bestDist = -1;
     for (let i = 0; i < 12; i++) {
-      const along = (Math.random() * 2 - 1) * h;
       const side = Math.floor(Math.random() * 4);
-      p.x = side < 2 ? along : side === 2 ? -h : h;
-      p.y = side < 2 ? (side === 0 ? -h : h) : along;
+      const along = Math.random();
+      p.x = side < 2 ? m + along * (w - m) : side === 2 ? m : w;
+      p.y = side < 2 ? (side === 0 ? m : h) : m + along * (h - m);
       this.world.resolve(p);
       const d = Math.hypot(p.x - this.player.x, p.y - this.player.y);
       if (d > bestDist) {
@@ -158,7 +177,7 @@ export class ArenaScene extends Phaser.Scene {
     const input = this.input2;
     const cam = this.cameras.main;
     input.update();
-    this.syncLayout();
+    this.mapView.render();
     this.aim = input.aim ? toWorld(cam.scrollX + input.aim.x, cam.scrollY + input.aim.y + render.aimHeight) : null;
 
     // Fixed time step: real time is banked, then spent in equal steps. A kill's hit-stop and the dev pause
@@ -226,52 +245,7 @@ export class ArenaScene extends Phaser.Scene {
     this.fx.addShake(run.deathShake);
   }
 
-  // Rebuilds the pillars and redraws the floor when the arena's layout values change in the dev menu.
-  private syncLayout(): void {
-    const key = `${arena.roomTiles},${arena.pillars},${arena.pillarRing},${arena.pillarRadius},${render.tileSize},${render.isoScale}`;
-    if (key === this.lastLayoutKey) return;
-    this.lastLayoutKey = key;
-    const w = this.world;
-    w.half = this.half;
-    w.pillars.length = 0;
-    const n = Math.round(arena.pillars);
-    for (let i = 0; i < n; i++) {
-      const angle = Math.PI / 4 + (i / n) * Math.PI * 2;
-      w.pillars.push({ x: Math.cos(angle) * arena.pillarRing, y: Math.sin(angle) * arena.pillarRing, radius: arena.pillarRadius });
-    }
-    this.drawFloor();
-  }
-
-  private drawFloor(): void {
-    const t = render.tileSize;
-    const tiles = Math.round(arena.roomTiles);
-    const g = this.floor;
-    g.clear();
-    const o = -this.half;
-    for (let x = 0; x < tiles; x++) {
-      for (let y = 0; y < tiles; y++) {
-        toScreen(o + x * t, o + y * t, this.p[0]);
-        toScreen(o + (x + 1) * t, o + y * t, this.p[1]);
-        toScreen(o + (x + 1) * t, o + (y + 1) * t, this.p[2]);
-        toScreen(o + x * t, o + (y + 1) * t, this.p[3]);
-        g.fillStyle(COLORS[(x * 7 + y * 13) % COLORS.length], 1).fillPoints(this.p, true);
-      }
-    }
-    const h = this.half;
-    g.lineStyle(3, 0x3a3350, 1).strokePoints([toScreen(-h, -h), toScreen(h, -h), toScreen(h, h), toScreen(-h, h)], true);
-    // Pillars are low stumps drawn into the floor for now, so they never cover a sprite. Real art comes with the
-    // asset maker.
-    const lift = 8 * render.pixelScale;
-    for (const pl of this.world.pillars) {
-      const s = toScreen(pl.x, pl.y);
-      const e = { x: pl.radius * render.isoScale * Math.SQRT2, y: pl.radius * render.isoScale * Math.SQRT1_2 };
-      g.fillStyle(PILLAR, 1).fillEllipse(s.x, s.y, e.x * 2, e.y * 2);
-      g.fillRect(s.x - e.x, s.y - lift, e.x * 2, lift);
-      g.fillStyle(PILLAR_TOP, 1).fillEllipse(s.x, s.y - lift, e.x * 2, e.y * 2);
-    }
-  }
-
-  // Dev aid: circles for what actually collides, drawn flat on the ground.
+  // Dev aid: circles and boxes for what actually collides, drawn flat on the ground, and the map's markers.
   private drawDebug(): void {
     const g = this.debug;
     g.clear();
@@ -288,7 +262,16 @@ export class ArenaScene extends Phaser.Scene {
       ring(s.x, s.y, s.radius, 0xffcc44);
       ring(s.x, s.y, s.radius * shade.contactScale, 0xff4466);
     }
-    for (const pl of this.world.pillars) ring(pl.x, pl.y, pl.radius, 0x66ffaa);
+    for (const c of this.world.circles) ring(c.x, c.y, c.radius, 0x66ffaa);
+    for (const b of this.world.floorBoxes) {
+      g.lineStyle(1, 0x66ffaa, 0.8).strokePoints([toScreen(b.x0, b.y0), toScreen(b.x1, b.y0), toScreen(b.x1, b.y1), toScreen(b.x0, b.y1)], true);
+    }
+    for (const o of this.map.objects) {
+      if (!o.asset.marker) continue;
+      ring(o.x, o.y, 12, 0xf2d7a6);
+      const s = toScreen(o.x, o.y);
+      g.lineStyle(1, 0xf2d7a6, 1).lineBetween(s.x - 6, s.y, s.x + 6, s.y).lineBetween(s.x, s.y - 6, s.x, s.y + 6);
+    }
     for (const a of this.arrows.pool.items) if (a.active) ring(a.x, a.y, a.hitRadius, 0xa060ff);
   }
 }
