@@ -1,0 +1,17 @@
+{
+  "assets": [
+    {
+      "id": "pillar",
+      "name": "Stone pillar",
+      "category": "props",
+      "parts": [{ "texture": "pillar", "originY": 0.68 }],
+      "collision": [{ "radius": 28 }]
+    },
+    {
+      "id": "player-start",
+      "name": "Player start",
+      "category": "markers",
+      "marker": "playerStart"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "floors": [
+    {
+      "id": "stone",
+      "name": "Dark stone",
+      "colors": ["#17151d", "#19161f", "#1b1822", "#15131a"]
+    },
+    {
+      "id": "water",
+      "name": "Still water",
+      "colors": ["#0f2430", "#112835", "#10262f", "#0e2129"],
+      "blocks": true
+    }
+  ]
+}
