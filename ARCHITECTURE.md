@@ -29,16 +29,26 @@ The rules that keep the code from turning into spaghetti. `npm run check` enforc
 8. **The sim runs on a fixed time step** (from phase 2), so dodges and hit timing behave the same on every machine.
 9. **Every system ships with its dev menu entries,** in the same change.
 
+## Data files
+
+Game content lives as JSON under `src/data/`, read through one registry per kind (rule 4):
+
+- `floors.json`: floor kinds (`id`, `name`, `colors`, `blocks`). A floor that blocks cannot be walked on; arrows fly over it.
+- `assets.json`: placeable things (`id`, `name`, `category`, `parts`, `collision`, `marker`). Collision belongs to the asset. A marker (such as `playerStart`) has no parts and is invisible in play.
+- `maps/<id>.json`: one area map per file, the file name is its id. `format`, `kind: "area"`, `name`, `tileSize`, a `legend` from characters to floor ids, `floor` as rows of characters (row = world y, character = world x, from the top-left), and `objects` as `{ "asset", "x", "y", "size" }` in world units.
+
+Every file is checked on load. A mistake (unknown id, wrong type, short row) is reported in the browser console and skipped or given a default, never a crash. Map files carry a `format` number with migrations, like the save.
+
 ## Adding a layer or breaking a rule
 
 Do it deliberately: change this file and `scripts/check-layers.mjs` together, and say why in the commit. A quick fix that bypasses a layer goes on the debt list below.
 
 ## Debt list
 
-- **The arena is hand-coded.** Its room size and pillar ring live in the `arena` config section and `ArenaWorld` (`sim/World.ts`). The data layer phase replaces both with a map file; systems only see the `CollisionWorld` interface, so they do not change.
-- **Pillars are drawn into the floor layer**, so a sprite behind one is drawn over it. Depth-sorted pillar art comes with the asset maker.
 - **No render interpolation.** Drawing shows the latest fixed step. If the step rate is not a multiple of the screen's refresh rate, motion can judder slightly; raise `sim.stepRate` or add interpolation if it shows.
 - **Damage has no pierce flag yet.** Shade contact never goes through dash or teleport invulnerability. The flag arrives with the mini-boss, the first thing that needs it.
-- **Shades spawn on the room's edge**, which can be off screen in a big room. Authored spawn zones come with the level editor.
+- **Shades spawn on the map's edge**, which can be off screen in a big map, and maps have no spawn zones yet. Spawn zone markers come with the level editor.
+- **Assets have no rotation, flip, light, twin or walkable height yet**, and floors have no edge or fleck style. The map and asset formats only hold what the game uses today; new optional fields are added when a feature needs them, which never breaks a saved file.
+- **Blocking floors stop teleports as well as walking.** Teleport uses the same sweep as walking, so it cannot cross water. Change `MapWorld.sweep` if teleporting over water should be allowed.
 - **No sound yet.** `PlayerView.onStep` and the fire, dash and teleport callbacks are the hooks for it.
 - **Deploy workflow not added yet.** Pushing a workflow file needs the GitHub login to have the `workflow` permission, and GitHub Pages on a private repo needs a paid GitHub plan. Until both are sorted, play with `npm run dev` (or `npm run preview`) on the Deck. The ready-made workflow is Heaven's `deploy.yml`.
