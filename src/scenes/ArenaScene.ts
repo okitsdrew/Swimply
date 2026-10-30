@@ -126,6 +126,7 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Step', run: () => { this.paused = true; this.stepsQueued++; } },
       { label: 'Toggle hitboxes', run: () => (this.showHitboxes = !this.showHitboxes) },
       { label: `Next map (${map.name})`, run: () => this.nextMap() },
+      { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
     ]);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input2.destroy());
   }
