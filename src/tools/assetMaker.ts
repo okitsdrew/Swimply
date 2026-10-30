@@ -30,6 +30,11 @@ const props = el('aside', { class: 'props' });
 const tabBar = el('nav', {});
 const status = el('span', { class: 'status' });
 const saveButton = button('Save (Ctrl+S)', () => void save());
+const discardButton = button('Discard unsaved', () => {
+  if (!confirm(`Throw away every unsaved change (${[...ws.dirty].join(', ')}) and go back to the saved files?`)) return;
+  ws.discard();
+  location.reload();
+});
 
 function showTab(name: string): void {
   active = name;
@@ -39,13 +44,14 @@ function showTab(name: string): void {
 
 function updateStatus(): void {
   const dirty = [...ws.dirty];
-  status.textContent = dirty.length ? `Not saved yet: ${dirty.join(', ')}` : 'Everything is saved.';
+  status.textContent = (dirty.length ? `Not saved yet: ${dirty.join(', ')}.` : 'Everything is saved.') + (ws.draftNote ? ` ${ws.draftNote}` : '');
   status.className = dirty.length ? 'status warn' : 'status';
-  saveButton.disabled = !dirty.length;
+  saveButton.disabled = discardButton.disabled = !dirty.length;
 }
 
 async function save(): Promise<void> {
   if (!ws.dirty.size) return;
+  ws.draftNote = '';
   status.textContent = 'Saving…';
   try {
     await ws.save();
@@ -56,7 +62,7 @@ async function save(): Promise<void> {
 }
 
 document.body.append(
-  el('header', {}, el('h1', { text: 'Swimply asset maker' }), tabBar, saveButton, status, el('a', { href: '/', target: '_blank', text: 'open the game' })),
+  el('header', {}, el('h1', { text: 'Swimply asset maker' }), tabBar, saveButton, discardButton, status, el('a', { href: '/', target: '_blank', text: 'open the game' })),
   el('div', { class: 'layout' }, list, center, props),
 );
 ws.onChange(updateStatus);
