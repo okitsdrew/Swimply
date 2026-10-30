@@ -35,9 +35,9 @@ Drew is new to making games and to programming. Teach as you go: explain what yo
 - `src/config/store.ts`: `defineConfig` and the tweaks store. `src/config/render.ts`: the render section.
 - `src/core/iso.ts`: world to screen projection and back. `src/core/save.ts`: versioned save.
 - `src/dev/DevMenu.ts`: the dev menu, built from the config registry. ` (backtick) toggles it.
-- `src/config/character.ts` (player, bow, dash, teleport), `feel.ts` (arms, bow, cloak, camera), `render.ts`, `dummy.ts`: tunables, each with its dev menu range.
+- `src/config/character.ts` (player, bow, dash, teleport), `feel.ts` (arms, bow, cloak, camera), `render.ts`, `sim.ts` (fixed step, slow motion, god mode), `arena.ts`, `shade.ts`, `run.ts` (waves, death, hit-stop): tunables, each with its dev menu range.
 - `src/core/input.ts`: action-based input. `core/geometry.ts`: circle maths. `core/pool.ts`: object pool.
-- `src/sim/`: `Player` (movement, dash, teleport, firing), `Arrows`, `Dummies`, `stats.ts` (effective stats; the upgrade baseline is added here later).
-- `src/render/`: `PlayerView`, `BowView`, `ArrowsView`, `DummiesView`, `Fx`, `art.ts` (code-drawn textures under the keys in `Tex`).
-- `src/scenes/ArenaScene.ts`: phase 1 test room with training dummies. Dev menu buttons include a hitbox display.
+- `src/sim/`: `World.ts` (the `CollisionWorld` interface and the arena's walls and pillars), `Player` (movement, dash, teleport, firing), `Arrows`, `Shades`, `Run` (waves and run state), `stats.ts` (effective stats; the upgrade baseline is added here later).
+- `src/render/`: `PlayerView`, `BowView`, `ArrowsView`, `ShadesView`, `RunHud`, `Fx`, `art.ts` (code-drawn textures under the keys in `Tex`).
+- `src/scenes/ArenaScene.ts`: the phase 2 arena. Runs the sim on a fixed time step (`step()`), draws once per frame. Dev menu buttons: restart, next wave, spawn, kill all, hold waves, pause, step, hitboxes.
 - `scripts/check-layers.mjs`: the layer guard.
