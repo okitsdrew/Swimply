@@ -33,7 +33,7 @@ The rules that keep the code from turning into spaghetti. `npm run check` enforc
 
 Game content lives as JSON under `src/data/`, read through one registry per kind (rule 4):
 
-- `floors.json`: floor kinds (`id`, `name`, `colors`, `blocks`). A floor that blocks cannot be walked on; arrows fly over it.
+- `floors.json`: floor kinds (`id`, `name`, `colors`, `blocks`). A floor that blocks cannot be walked on or landed on by a teleport; arrows and teleports pass over it.
 - `assets.json`: placeable things (`id`, `name`, `category`, `parts`, `collision`, `marker`). Collision belongs to the asset. A marker (such as `playerStart`) has no parts and is invisible in play.
 - `maps/<id>.json`: one area map per file, the file name is its id. `format`, `kind: "area"`, `name`, `tileSize`, a `legend` from characters to floor ids, `floor` as rows of characters (row = world y, character = world x, from the top-left), and `objects` as `{ "asset", "x", "y", "size" }` in world units.
 
@@ -49,6 +49,6 @@ Do it deliberately: change this file and `scripts/check-layers.mjs` together, an
 - **Damage has no pierce flag yet.** Shade contact never goes through dash or teleport invulnerability. The flag arrives with the mini-boss, the first thing that needs it.
 - **Shades spawn on the map's edge**, which can be off screen in a big map, and maps have no spawn zones yet. Spawn zone markers come with the level editor.
 - **Assets have no rotation, flip, light, twin or walkable height yet**, and floors have no edge or fleck style. The map and asset formats only hold what the game uses today; new optional fields are added when a feature needs them, which never breaks a saved file.
-- **Blocking floors stop teleports as well as walking.** Teleport uses the same sweep as walking, so it cannot cross water. Change `MapWorld.sweep` if teleporting over water should be allowed.
+- **Pathfinding only knows about floor tiles.** Shades follow a flow field round blocking floor (`sim/Nav.ts`) and steer round pillars as they meet them. A big solid asset (a wall piece) would need to mark its tiles in the flow field too; add that when such assets exist.
 - **No sound yet.** `PlayerView.onStep` and the fire, dash and teleport callbacks are the hooks for it.
 - **Deploy workflow not added yet.** Pushing a workflow file needs the GitHub login to have the `workflow` permission, and GitHub Pages on a private repo needs a paid GitHub plan. Until both are sorted, play with `npm run dev` (or `npm run preview`) on the Deck. The ready-made workflow is Heaven's `deploy.yml`.
