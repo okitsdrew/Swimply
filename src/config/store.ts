@@ -59,7 +59,8 @@ export function listSections(): Section[] {
 
 export function setValue(section: string, key: string, value: Value): void {
   const s = sections.get(section);
-  if (!s) return;
+  // Unknown sections and keys are ignored, so a tweaks file from an older version (or from Heaven) imports safely.
+  if (!s || !(key in s.defaults) || typeof value !== typeof s.defaults[key]) return;
   s.values[key] = value;
   if (value === s.defaults[key]) {
     delete overrides[section]?.[key];

@@ -35,5 +35,9 @@ Drew is new to making games and to programming. Teach as you go: explain what yo
 - `src/config/store.ts`: `defineConfig` and the tweaks store. `src/config/render.ts`: the render section.
 - `src/core/iso.ts`: world to screen projection and back. `src/core/save.ts`: versioned save.
 - `src/dev/DevMenu.ts`: the dev menu, built from the config registry. ` (backtick) toggles it.
-- `src/scenes/BootScene.ts`: the foundation placeholder scene.
+- `src/config/character.ts` (player, bow, dash, teleport), `feel.ts` (arms, bow, cloak, camera), `render.ts`, `dummy.ts`: tunables, each with its dev menu range.
+- `src/core/input.ts`: action-based input. `core/geometry.ts`: circle maths. `core/pool.ts`: object pool.
+- `src/sim/`: `Player` (movement, dash, teleport, firing), `Arrows`, `Dummies`, `stats.ts` (effective stats; the upgrade baseline is added here later).
+- `src/render/`: `PlayerView`, `BowView`, `ArrowsView`, `DummiesView`, `Fx`, `art.ts` (code-drawn textures under the keys in `Tex`).
+- `src/scenes/ArenaScene.ts`: phase 1 test room with training dummies. Dev menu buttons include a hitbox display.
 - `scripts/check-layers.mjs`: the layer guard.

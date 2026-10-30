@@ -35,4 +35,7 @@ Do it deliberately: change this file and `scripts/check-layers.mjs` together, an
 
 ## Debt list
 
+- **Collision is a plain list of circles** (`Circle[]`) passed around by the scene. Phase 2 replaces it with a small collision world interface.
+- **The sim steps with a clamped variable time step** for now, as Heaven did. The fixed step (rule 8) arrives in phase 2, when enemy timing starts to matter.
+- **No sound yet.** `PlayerView.onStep` and the fire, dash and teleport callbacks are the hooks for it.
 - **Deploy workflow not added yet.** Pushing a workflow file needs the GitHub login to have the `workflow` permission, and GitHub Pages on a private repo needs a paid GitHub plan. Until both are sorted, play with `npm run dev` (or `npm run preview`) on the Deck. The ready-made workflow is Heaven's `deploy.yml`.
