@@ -20,6 +20,7 @@ import { Arrows } from '../sim/Arrows';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
 import { Shades } from '../sim/Shades';
+import { FlowField } from '../sim/Nav';
 import { MapWorld } from '../sim/World';
 
 const DEFAULT_MAP = 'arena';
@@ -31,6 +32,7 @@ export class ArenaScene extends Phaser.Scene {
   private mapId = DEFAULT_MAP;
   private map!: AreaMap;
   private world!: MapWorld;
+  private nav!: FlowField;
   private mapView!: MapView;
   private player!: Player;
   private view!: PlayerView;
@@ -66,6 +68,7 @@ export class ArenaScene extends Phaser.Scene {
     this.map = map;
     this.mapId = map.id;
     this.world = new MapWorld(map);
+    this.nav = new FlowField(map, this.world);
     this.acc = 0;
     this.paused = false;
     this.stepsQueued = 0;
@@ -228,7 +231,8 @@ export class ArenaScene extends Phaser.Scene {
     }
     if (r.state === 'fighting') this.player.update(dt, this.input2, this.aim);
     r.update(dt);
-    this.shades.update(dt, this.player.x, this.player.y, this.world);
+    this.nav.setGoal(this.player.x, this.player.y);
+    this.shades.update(dt, this.world, this.nav);
     this.arrows.update(dt, this.shades.list, this.world);
     if (r.state === 'fighting' && !this.player.safe && !sim.godMode) {
       if (this.shades.touching(this.player.x, this.player.y, cfgPlayer.hitRadius)) this.die();
@@ -261,6 +265,10 @@ export class ArenaScene extends Phaser.Scene {
       if (!s.alive) continue;
       ring(s.x, s.y, s.radius, 0xffcc44);
       ring(s.x, s.y, s.radius * shade.contactScale, 0xff4466);
+      // Which way it is trying to walk.
+      const a = toScreen(s.x, s.y);
+      const b = toScreen(s.x + s.vx * 0.25, s.y + s.vy * 0.25);
+      g.lineStyle(1, 0xffcc44, 1).lineBetween(a.x, a.y, b.x, b.y);
     }
     for (const c of this.world.circles) ring(c.x, c.y, c.radius, 0x66ffaa);
     for (const b of this.world.floorBoxes) {

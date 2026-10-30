@@ -3,6 +3,7 @@ import { render } from '../config/render';
 import { shade } from '../config/shade';
 import { Circle } from '../core/geometry';
 import { toScreen } from '../core/iso';
+import { Navigator } from './Nav';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
@@ -23,8 +24,10 @@ export interface Shade extends Target {
 }
 
 const off = { x: 0, y: 0 };
+const way = { x: 0, y: 0 };
 
-// Shades walk straight at the player, round pillars, and push gently off each other. No drawing:
+// Shades walk at the player (round water by the navigator's route, round pillars by steering), and push gently
+// off each other. No drawing:
 // render/ShadesView reads `list`.
 export class Shades {
   readonly list: Shade[] = [];
@@ -79,7 +82,7 @@ export class Shades {
     return false;
   }
 
-  update(dt: number, px: number, py: number, world: CollisionWorld): void {
+  update(dt: number, world: CollisionWorld, nav: Navigator): void {
     const turn = 1 - Math.exp(-shade.turnRate * dt);
     const kdecay = Math.exp(-shade.knockbackDecay * dt);
     const sepK = shade.separation * Math.min(1, shade.separationRate * dt);
@@ -97,12 +100,8 @@ export class Shades {
         continue;
       }
 
-      let dx = px - s.x;
-      let dy = py - s.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      dx /= dist;
-      dy /= dist;
-      [dx, dy] = this.steer(s, dx, dy, world);
+      nav.direction(s.x, s.y, s.radius, way);
+      const [dx, dy] = this.steer(s, way.x, way.y, world);
 
       let speed = shade.speed;
       // The iso projection squashes vertical screen travel, so even out on-screen speed the way the player's is.
