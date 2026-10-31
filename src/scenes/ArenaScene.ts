@@ -35,7 +35,7 @@ import { TreeSceneData } from './TreeScene';
 const DEFAULT_MAP = 'mindscape';
 
 // The page address can pick what to play, which is how the level editor's "play here" opens the game:
-//   ?map=water-test   play that map
+//   ?map=spawn        play that map
 //   &at=320,640       start there (world units) instead of at the map's player start
 //   &calm             no Shades appear, to walk round a map
 // The map is kept in the address, so the reload after a tool saves comes back to the same map.
@@ -104,10 +104,10 @@ export class ArenaScene extends Phaser.Scene {
     this.treeOpen = false;
 
     makeArt(this);
-    this.cameras.main.setBackgroundColor(0x0b0a10);
+    this.cameras.main.setBackgroundColor(0x000000);
     this.input2 = new Input([new KeyboardMouseSource(this.game.canvas)]);
     this.fx = new Fx(this);
-    this.mapView = new MapView(this, map);
+    this.mapView = new MapView(this, map, false);
     this.debug = this.add.graphics().setDepth(1e7);
 
     this.player = new Player(this.world);
@@ -396,7 +396,7 @@ export class ArenaScene extends Phaser.Scene {
     this.arrows.update(dt, this.targets, this.world);
     if (r.state === 'fighting' && !this.player.safe && !sim.godMode) {
       const { x, y } = this.player;
-      if (this.shades.touching(x, y, cfgPlayer.hitRadius) || this.wolf.touching(x, y, cfgPlayer.hitRadius)) this.die();
+      if (this.shades.touching(x, y, cfgPlayer.hitRadius) || this.wolf.touching(x, y, cfgPlayer.hitRadius) || this.world.onHurtingFloor(x, y)) this.die();
     }
   }
 

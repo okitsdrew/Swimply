@@ -1,7 +1,8 @@
 import { player } from '../config/character';
-import { Asset, AssetPart } from '../data/assets';
+import Phaser from 'phaser';
+import { Asset, AssetPart, Light } from '../data/assets';
 import { Preview } from './Preview';
-import { button, checkbox, el, ID_PATTERN, numberInput, row, select, suggestInput, textInput, uniqueId } from './ui';
+import { button, checkbox, colorInput, el, ID_PATTERN, numberInput, row, select, suggestInput, textInput, uniqueId } from './ui';
 import { Workspace } from './Workspace';
 
 // Markers the game knows about.
@@ -47,16 +48,17 @@ export class AssetTab {
     if (rebuild) this.buildProps();
   }
 
+  // One tab per category, like the level editor's palette. It follows the open asset, so changing an asset's
+  // category moves the list to its new tab.
   private buildList(): void {
     const byCategory = new Map<string, Asset[]>();
     for (const a of this.ws.assets) byCategory.set(a.category, [...(byCategory.get(a.category) ?? []), a]);
-    const groups = [...byCategory].sort(([a], [b]) => a.localeCompare(b)).flatMap(([cat, list]) => [
-      el('h3', { text: cat }),
-      ...list.map((a) => button(a.name, () => this.open(a), { class: a === this.current ? 'item on' : 'item' })),
-    ]);
+    const cats = [...byCategory.keys()].sort((a, b) => a.localeCompare(b));
+    const shown = this.current?.category ?? cats[0];
     this.list.replaceChildren(
       el('h2', { text: 'Assets' }),
-      ...groups,
+      el('div', { class: 'bar' }, ...cats.map((c) => button(c, () => this.open(byCategory.get(c)![0]), { class: c === shown ? 'on' : '' }))),
+      ...(byCategory.get(shown) ?? []).map((a) => button(a.name, () => this.open(a), { class: a === this.current ? 'item on' : 'item' })),
       el('div', { class: 'bar' },
         button('New', () => this.create()),
         button('Duplicate', () => this.duplicate(), { disabled: !this.current }),
@@ -87,7 +89,7 @@ export class AssetTab {
       el('h3', { text: 'Parts (drawn back to front)' }),
       ...a.parts.map((p, i) => this.partBox(a, p, i, textures)),
       el('div', { class: 'bar' }, button('Add part', () => {
-        a.parts.push({ texture: textures[0] ?? '', x: 0, y: 0, scale: 1, originX: 0.5, originY: 1, ground: false });
+        a.parts.push({ texture: textures[0] ?? '', x: 0, y: 0, scale: 1, originX: 0.5, originY: 1, ground: false, frames: [], fps: 8 });
         this.edit(true);
       })),
 
@@ -99,7 +101,25 @@ export class AssetTab {
       )),
       el('div', { class: 'bar' }, button('Add circle', () => { a.collision.push({ x: 0, y: 0, radius: 16 }); this.edit(true); })),
       el('p', { class: 'hint', text: `For scale: a floor tile is 64 across and the hero's body is a circle of radius ${player.bodyRadius}.` }),
+
+      el('h3', { text: 'Light' }),
+      row('gives light', checkbox(!!a.light, (v) => {
+        a.light = v ? { color: '#ffb840', x: 0, y: -8, radius: 60, intensity: 0.5, flicker: 0 } : null;
+        this.edit(true);
+      })),
+      ...(a.light ? this.lightRows(a.light) : []),
     );
+  }
+
+  private lightRows(l: Light): HTMLElement[] {
+    return [
+      row('colour', colorInput(l.color, (v) => { l.color = v; this.edit(); })),
+      row('offset x, y', numberInput(l.x, 1, (v) => { l.x = v; this.edit(); }), numberInput(l.y, 1, (v) => { l.y = v; this.edit(); })),
+      row('radius', numberInput(l.radius, 1, (v) => { l.radius = Math.max(1, v); this.edit(); }, { min: 1 })),
+      row('brightness', numberInput(l.intensity, 0.05, (v) => { l.intensity = Phaser.Math.Clamp(v, 0, 1); this.edit(); }, { min: 0, max: 1 })),
+      row('flicker', numberInput(l.flicker, 0.05, (v) => { l.flicker = Phaser.Math.Clamp(v, 0, 1); this.edit(); }, { min: 0, max: 1 })),
+      el('p', { class: 'hint', text: 'Offset and radius are in art pixels from the ground point, like parts. Brightness and flicker go from 0 to 1. A map\'s darkness is set in the level editor.' }),
+    ];
   }
 
   private partBox(a: Asset, p: AssetPart, i: number, textures: string[]): HTMLElement {
@@ -115,6 +135,12 @@ export class AssetTab {
       row('origin x, y', numberInput(p.originX, 0.01, (v) => { p.originX = v; this.edit(); }), numberInput(p.originY, 0.01, (v) => { p.originY = v; this.edit(); })),
       row('scale', numberInput(p.scale, 0.05, (v) => { p.scale = v; this.edit(); })),
       row('flat on floor', checkbox(p.ground, (v) => { p.ground = v; this.edit(); })),
+      row('frames', textInput((p.frames ?? []).join(', '), (v) => {
+        p.frames = v.split(',').map((f) => f.trim()).filter(Boolean);
+        this.edit();
+      })),
+      el('p', { class: 'hint', text: 'To animate: sprite ids to play in a loop, split by commas (fire, fire_1, fire_2). Empty for a still part.' }),
+      row('frames a second', numberInput(p.fps, 1, (v) => { p.fps = Math.max(0.1, v); this.edit(); }, { min: 0.1 })),
       el('div', { class: 'bar' },
         button('↑', () => move(-1)), button('↓', () => move(1)),
         button('remove', () => { a.parts.splice(i, 1); this.edit(true); }),
@@ -131,7 +157,7 @@ export class AssetTab {
 
   private create(): void {
     const id = uniqueId('asset', this.taken);
-    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], marker: '' };
+    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], marker: '', light: null };
     this.ws.assets.push(a);
     this.ws.touch('assets');
     this.open(a);
@@ -141,7 +167,7 @@ export class AssetTab {
     const a = this.current;
     if (!a) return;
     const id = uniqueId(`${a.id}-copy`, this.taken);
-    const copy: Asset = { ...a, id, name: `${a.name} copy`, parts: a.parts.map((p) => ({ ...p })), collision: a.collision.map((c) => ({ ...c })) };
+    const copy: Asset = { ...a, id, name: `${a.name} copy`, parts: a.parts.map((p) => ({ ...p, frames: [...(p.frames ?? [])] })), collision: a.collision.map((c) => ({ ...c })), light: a.light ? { ...a.light } : null };
     this.ws.assets.splice(this.ws.assets.indexOf(a) + 1, 0, copy);
     this.ws.touch('assets');
     this.open(copy);

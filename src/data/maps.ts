@@ -33,6 +33,8 @@ export interface AreaMap {
   // Row by row, cols * rows entries.
   tiles: Floor[];
   objects: Placed[];
+  // 0 to 1: how dark the map is away from lights. 0 is no darkness at all.
+  darkness: number;
 }
 
 export function tileAt(map: AreaMap, col: number, row: number): Floor | undefined {
@@ -113,7 +115,7 @@ export function parseMap(id: string, data: unknown, problems: Problems): AreaMap
     objects.push({ asset, x: num(e.x, 0, `${w}.x`, problems), y: num(e.y, 0, `${w}.y`, problems), size: num(e.size, 1, `${w}.size`, problems) });
   });
 
-  return { id, name: str(d.name, id, `${where}.name`, problems), tileSize: num(d.tileSize, 64, `${where}.tileSize`, problems), cols, rows, legend: legendIds, tiles, objects };
+  return { id, name: str(d.name, id, `${where}.name`, problems), tileSize: num(d.tileSize, 64, `${where}.tileSize`, problems), cols, rows, legend: legendIds, tiles, objects, darkness: num(d.darkness, 0, `${where}.darkness`, problems) };
 }
 
 function loadAll(): AreaMap[] {

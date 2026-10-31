@@ -30,21 +30,24 @@
       "id": "lamp",
       "name": "Lamp",
       "category": "decor",
-      "parts": [{ "texture": "lamp" }]
+      "parts": [{ "texture": "lamp", "y": 2 }],
+      "collision": [{ "radius": 9 }],
+      "light": { "color": "#ffd070", "y": -6, "radius": 20, "intensity": 0.3, "flicker": 0.1 }
     },
     {
       "id": "standing-lamp",
       "name": "Standing lamp",
       "category": "decor",
       "parts": [{ "texture": "standing_lamp", "originY": 0.97 }],
-      "collision": [{ "radius": 6 }]
+      "collision": [{ "radius": 6 }],
+      "light": { "color": "#ffd070", "y": -21, "radius": 20, "intensity": 0.3, "flicker": 0.1 }
     },
     {
       "id": "fire",
       "name": "Fire",
       "category": "decor",
-      "parts": [{ "texture": "fire", "originY": 0.86 }],
-      "collision": [{ "radius": 12 }]
+      "parts": [{ "texture": "fire", "originY": 0.86, "frames": ["fire", "fire_1", "fire_2"] }],
+      "light": { "color": "#ff9a3a", "y": -6, "radius": 30, "intensity": 0.3, "flicker": 0.4 }
     },
     {
       "id": "column",
@@ -110,11 +113,55 @@
       "collision": [{ "x": -20, "radius": 12 }, { "radius": 12 }, { "x": 20, "radius": 12 }]
     },
     {
+      "id": "tall-granite-wall-se",
+      "name": "Tall Granite wall (SE/NW)",
+      "category": "walls",
+      "parts": [
+        { "texture": "granite_wall_se", "originY": 0.87 },
+        { "texture": "granite_wall_se", "originY": 1.45 }
+      ],
+      "collision": [{ "x": -20, "radius": 12 }, { "radius": 12 }, { "x": 20, "radius": 12 }]
+    },
+    {
+      "id": "lit-tall-granite-wall-se",
+      "name": "Lit Tall Granite wall (SE/NW)",
+      "category": "walls",
+      "parts": [
+        { "texture": "granite_wall_se", "originY": 0.87 },
+        { "texture": "granite_wall_se", "originY": 1.45 },
+        { "texture": "lamp", "originX": 0.64, "originY": 2.62 }
+      ],
+      "collision": [{ "x": -20, "radius": 12 }, { "radius": 12 }, { "x": 20, "radius": 12 }],
+      "light": { "color": "#ffd070", "x": -1, "y": -28, "radius": 30, "intensity": 0.3, "flicker": 0.1 }
+    },
+    {
       "id": "granite-wall-sw",
       "name": "Granite wall (SW/NE)",
       "category": "walls",
       "parts": [{ "texture": "granite_wall_sw", "originY": 0.87 }],
       "collision": [{ "y": -20, "radius": 12 }, { "radius": 12 }, { "y": 20, "radius": 12 }]
+    },
+    {
+      "id": "tall-granite-wall-sw",
+      "name": "Tall Granite wall (SW/NE)",
+      "category": "walls",
+      "parts": [
+        { "texture": "granite_wall_sw", "originY": 0.87 },
+        { "texture": "granite_wall_sw", "originY": 1.45 }
+      ],
+      "collision": [{ "y": -20, "radius": 12 }, { "radius": 12 }, { "y": 20, "radius": 12 }]
+    },
+    {
+      "id": "lit-tall-granite-wall-sw",
+      "name": "Lit Tall Granite wall (SW/NE)",
+      "category": "walls",
+      "parts": [
+        { "texture": "granite_wall_sw", "originY": 0.87 },
+        { "texture": "granite_wall_sw", "originY": 1.45 },
+        { "texture": "lamp", "originX": 0.36, "originY": 2.62 }
+      ],
+      "collision": [{ "y": -20, "radius": 12 }, { "radius": 12 }, { "y": 20, "radius": 12 }],
+      "light": { "color": "#ffd070", "x": 1, "y": -28, "radius": 30, "intensity": 0.3, "flicker": 0.1 }
     },
     {
       "id": "corpse-knight",
@@ -139,6 +186,135 @@
       "name": "Horse corpse",
       "category": "decor",
       "parts": [{ "texture": "corpse_horse", "originY": 0.6, "ground": true }]
+    },
+    {
+      "id": "bow-prop",
+      "name": "Bow (facing east)",
+      "category": "props",
+      "parts": [{ "texture": "bow_prop", "originY": 0.97 }],
+      "collision": [{ "radius": 6 }]
+    },
+    {
+      "id": "pedestal",
+      "name": "Pedestal",
+      "category": "props",
+      "parts": [{ "texture": "pedestal", "originY": 0.9 }, { "texture": "arrow" }],
+      "collision": [{ "radius": 12 }]
+    },
+    {
+      "id": "wooden-table",
+      "name": "Wooden table",
+      "category": "props",
+      "parts": [{ "texture": "wooden_table", "originY": 0.77 }],
+      "collision": [{ "radius": 20 }]
+    },
+    {
+      "id": "wooden-chair-se",
+      "name": "Wooden chair (faces SE)",
+      "category": "props",
+      "parts": [{ "texture": "wooden_chair_se", "originY": 0.85 }],
+      "collision": [{ "radius": 7 }]
+    },
+    {
+      "id": "wooden-chair-sw",
+      "name": "Wooden chair (faces SW)",
+      "category": "props",
+      "parts": [{ "texture": "wooden_chair_sw", "originY": 0.85 }],
+      "collision": [{ "radius": 7 }]
+    },
+    {
+      "id": "fireplace",
+      "name": "Fireplace (SW/NE wall)",
+      "category": "props",
+      "parts": [
+        { "texture": "fireplace", "originY": 0.74 },
+        { "texture": "fire", "x": 4, "y": -2, "scale": 0.8, "frames": ["fire", "fire_1", "fire_2"] }
+      ],
+      "collision": [
+        { "y": -33, "radius": 12 },
+        { "y": -11, "radius": 12 },
+        { "y": 11, "radius": 12 },
+        { "y": 33, "radius": 12 }
+      ],
+      "light": { "color": "#ff9a3a", "x": 4, "y": -8, "radius": 30, "intensity": 0.3, "flicker": 0.4 }
+    },
+    {
+      "id": "bow_pedestal",
+      "name": "bow_pedestal",
+      "category": "props",
+      "parts": [
+        { "texture": "pedestal", "originY": 0.82 },
+        { "texture": "bow_prop", "scale": 0.75, "originX": 0.26, "originY": 1.71 }
+      ],
+      "collision": [{ "radius": 16 }],
+      "light": { "color": "#660399", "x": 1, "y": -34, "radius": 16, "intensity": 0.5, "flicker": 0.2 }
+    },
+    {
+      "id": "timo",
+      "name": "Timo",
+      "category": "characters",
+      "parts": [
+        { "texture": "shadow", "scale": 0.5, "originY": 0.5, "ground": true },
+        {
+          "texture": "timo_idle_0",
+          "originY": 1.5,
+          "frames": [
+            "timo_idle_0",
+            "timo_idle_0",
+            "timo_idle_0",
+            "timo_idle_1",
+            "timo_idle_1",
+            "timo_idle_1",
+            "timo_idle_0",
+            "timo_idle_0",
+            "timo_idle_0",
+            "timo_idle_1",
+            "timo_idle_1",
+            "timo_idle_1",
+            "timo_idle_2",
+            "timo_idle_0",
+            "timo_idle_0",
+            "timo_idle_1",
+            "timo_idle_1",
+            "timo_idle_1"
+          ],
+          "fps": 6
+        }
+      ],
+      "collision": [{ "radius": 8 }]
+    },
+    {
+      "id": "rock-small",
+      "name": "Rock (small)",
+      "category": "rocks",
+      "parts": [{ "texture": "rock_small", "originY": 0.75 }],
+      "collision": [{ "radius": 5 }]
+    },
+    {
+      "id": "rock-medium",
+      "name": "Rock (medium)",
+      "category": "rocks",
+      "parts": [{ "texture": "rock_medium", "originY": 0.72 }],
+      "collision": [{ "radius": 8 }]
+    },
+    {
+      "id": "rock-large",
+      "name": "Rock (large)",
+      "category": "rocks",
+      "parts": [{ "texture": "rock_large", "originY": 0.72 }],
+      "collision": [{ "radius": 13 }]
+    },
+    {
+      "id": "rubble",
+      "name": "rubble",
+      "category": "rocks",
+      "parts": [
+        { "texture": "rock_large" },
+        { "texture": "rock_medium", "x": -6, "y": 4 },
+        { "texture": "rock_small", "x": 6, "y": 3 },
+        { "texture": "rock_small", "y": 7 }
+      ],
+      "collision": [{ "x": -7, "y": -5, "radius": 21 }]
     }
   ]
 }

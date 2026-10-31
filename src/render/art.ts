@@ -9,6 +9,8 @@ export const Tex = {
   shadow: 'shadow',
   smoke: 'smoke',
   glow: 'glow',
+  // A bigger soft circle for map lights, which are drawn large: the small glow would show its pixels.
+  light: 'light',
   pillar: 'pillar',
 } as const;
 
@@ -201,6 +203,9 @@ export function makeCodeArt(scene: Phaser.Scene): void {
   shadeHems.forEach((hem, i) => fromGrid(scene, shadeFrames[i], outlined([...shadeTop, ...hem], 'O'), shadeColors));
 
   softCircle(scene, Tex.glow, 32, 0xffffff, 0.9);
+  softCircle(scene, Tex.light, 128, 0xffffff, 1);
+  // Smoothed when scaled up, unlike the pixel art.
+  scene.textures.get(Tex.light).setFilter(Phaser.Textures.FilterMode.LINEAR);
   softCircle(scene, Tex.shadow, 16, 0x000000, 0.6);
   softCircle(scene, Tex.smoke, 12, 0x8a8698, 0.9);
   pillar(scene);

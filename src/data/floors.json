@@ -35,6 +35,18 @@
       "id": "white_floor",
       "name": "white floor",
       "colors": ["#676767"]
+    },
+    {
+      "id": "flaming_floor",
+      "name": "flaming_floor",
+      "colors": ["#ff7029", "#e22c09", "#ffd119"],
+      "hurts": true
+    },
+    {
+      "id": "void",
+      "name": "Void (empty, blocks walking)",
+      "colors": ["#000000"],
+      "blocks": true
     }
   ]
 }

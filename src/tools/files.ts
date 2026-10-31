@@ -64,15 +64,16 @@ export function assetsText(list: Asset[]): string {
     name: a.name,
     category: a.category,
     marker: a.marker,
-    parts: a.parts.map((p) => compact({ ...p }, { x: 0, y: 0, scale: 1, originX: 0.5, originY: 1, ground: false })),
+    parts: a.parts.map((p) => compact({ ...p, fps: p.frames?.length ? p.fps : 8 }, { x: 0, y: 0, scale: 1, originX: 0.5, originY: 1, ground: false, fps: 8 })),
     collision: a.collision.map((c) => compact({ ...c }, { x: 0, y: 0 })),
-  }, { marker: '' })));
+    light: a.light ? compact({ ...a.light }, { x: 0, y: 0, flicker: 0 }) : null,
+  }, { marker: '', light: null })));
 }
 
 export const hex = (c: number): string => '#' + c.toString(16).padStart(6, '0');
 
 export function floorsText(list: Floor[]): string {
-  return fileText({}, 'floors', list.map((f) => compact({ id: f.id, name: f.name, colors: f.colors.map(hex), blocks: f.blocks }, { blocks: false })));
+  return fileText({}, 'floors', list.map((f) => compact({ id: f.id, name: f.name, colors: f.colors.map(hex), blocks: f.blocks, hurts: f.hurts }, { blocks: false, hurts: false })));
 }
 
 export function spritesText(list: Sprite[]): string {
@@ -100,6 +101,7 @@ export interface MapFile {
   tiles: string[];
   objects: { asset: string; x: number; y: number; size: number }[];
   legend: Record<string, string>;
+  darkness: number;
 }
 
 // Characters for floors that have none yet: easy to tell apart in a text editor.
@@ -129,7 +131,7 @@ export function mapText(m: MapFile): string {
   "format": ${MAP_FORMAT},
   "kind": "area",
   "name": ${JSON.stringify(m.name)},
-  "tileSize": ${m.tileSize},
+  "tileSize": ${m.tileSize},${m.darkness ? `\n  "darkness": ${round(m.darkness)},` : ''}
   "legend": {
 ${legendLines.join(',\n')}
   },

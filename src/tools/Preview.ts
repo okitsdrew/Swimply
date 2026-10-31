@@ -52,6 +52,10 @@ class PreviewScene extends Phaser.Scene {
     if (this.pending) this.show(this.pending.asset, this.pending.floor, this.pending.hero);
   }
 
+  update(): void {
+    this.view?.render();
+  }
+
   show(asset: Asset | null, floor: Floor, hero: boolean): void {
     this.pending = { asset, floor, hero };
     if (!this.ready) return;
@@ -65,6 +69,7 @@ class PreviewScene extends Phaser.Scene {
       legend: {},
       tiles: Array.from({ length: TILES * TILES }, () => floor),
       objects: asset ? [{ asset, x: mid, y: mid, size: 1 }] : [],
+      darkness: 0,
     };
     this.view?.destroy();
     this.view = new MapView(this, map);

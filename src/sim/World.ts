@@ -11,6 +11,8 @@ export interface CollisionWorld {
   sweep(x: number, y: number, dx: number, dy: number, r: number, overFloors?: boolean): number;
   // True if a circle of radius r at (x, y) overlaps a blocking floor, so nothing can stand there.
   onBlockingFloor(x: number, y: number, r: number): boolean;
+  // True if the floor under (x, y) kills the player who stands on it.
+  onHurtingFloor(x: number, y: number): boolean;
   // Distance along a ray (unit direction) to the first solid thing within len, or -1.
   raycast(x: number, y: number, dirX: number, dirY: number, len: number): number;
   // Solid circles near a point, for steering round them.
@@ -28,7 +30,7 @@ export class MapWorld implements CollisionWorld {
   width = 0;
   height = 0;
 
-  constructor(map: AreaMap) {
+  constructor(private map: AreaMap) {
     const t = map.tileSize;
     this.width = map.cols * t;
     this.height = map.rows * t;
@@ -53,6 +55,11 @@ export class MapWorld implements CollisionWorld {
     const k = 1e4;
     this.frame.push({ x0: -k, y0: -k, x1: w + k, y1: 0 }, { x0: -k, y0: h, x1: w + k, y1: h + k });
     this.frame.push({ x0: -k, y0: 0, x1: 0, y1: h }, { x0: w, y0: 0, x1: w + k, y1: h });
+  }
+
+  onHurtingFloor(x: number, y: number): boolean {
+    const t = this.map.tileSize;
+    return !!tileAt(this.map, Math.floor(x / t), Math.floor(y / t))?.hurts;
   }
 
   resolve(c: Circle, overFloors = false): void {
