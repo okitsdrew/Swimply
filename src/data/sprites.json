@@ -1974,6 +1974,156 @@
       ]
     },
     {
+      "id": "timo_laugh",
+      "name": "timo_laugh",
+      "palette": {
+        "k": "#0b0910",
+        "K": "#1c1826",
+        "p": "#9a50ff",
+        "w": "#f0ede9",
+        "a": "#8a8a98",
+        "b": "#ac3ebe",
+        "c": "#b15f5f",
+        "d": "#dddddd"
+      },
+      "rows": [
+        ".....aaaaa.....",
+        "....akkkkka....",
+        "...akkkkkkka...",
+        "..akkkkkkkkka..",
+        ".akkppkkkppkka.",
+        "akkpkkkkkkkpkka",
+        "akkkkkkkkkkkkka",
+        "akkkkkkkkkkkkka",
+        ".akkkppppppkka.",
+        ".akkkkppppkkka.",
+        "..akkkkppkkka..",
+        "...akkkkkkka...",
+        "....akkkkka....",
+        ".....aaaaa....."
+      ]
+    },
+    {
+      "id": "timo_shocked",
+      "name": "timo_shocked",
+      "palette": {
+        "k": "#0b0910",
+        "K": "#1c1826",
+        "p": "#9a50ff",
+        "w": "#f0ede9",
+        "a": "#8a8a98",
+        "b": "#ac3ebe",
+        "c": "#b15f5f",
+        "d": "#dddddd"
+      },
+      "rows": [
+        ".....aaaaa.....",
+        "....akkkkka....",
+        "...akkkkkpka...",
+        "..apppkkkkpka..",
+        ".akkkkkkkkkkka.",
+        "akkpppkkkpppkka",
+        "akkpkpkkkpkpkka",
+        "akkpppkkkpppkka",
+        ".akkkkkkkkkkka.",
+        ".akkkpkkkkkkka.",
+        "..akkpppppkka..",
+        "...akpkkkkka...",
+        "....akkkkka....",
+        ".....aaaaa....."
+      ]
+    },
+    {
+      "id": "timo_mad",
+      "name": "timo_mad",
+      "palette": {
+        "k": "#0b0910",
+        "K": "#1c1826",
+        "p": "#9a50ff",
+        "w": "#f0ede9",
+        "a": "#8a8a98",
+        "b": "#ac3ebe",
+        "c": "#b15f5f",
+        "d": "#dddddd"
+      },
+      "rows": [
+        ".....aaaaa.....",
+        "....akkkkka....",
+        "...akkkkkkka...",
+        "..akkpkkkpkka..",
+        ".akkkkpkpkkkka.",
+        "akkkkkkkkkkkkka",
+        "akkkppkkkppkkka",
+        "akkkkkkkkkkkkka",
+        ".akkkkkkkkkkka.",
+        ".akkkkkkkkkkka.",
+        "..akpppppppka..",
+        "...akkkkkkka...",
+        "....akkkkka....",
+        ".....aaaaa....."
+      ]
+    },
+    {
+      "id": "timo_sad",
+      "name": "timo_sad",
+      "palette": {
+        "k": "#0b0910",
+        "K": "#1c1826",
+        "p": "#9a50ff",
+        "w": "#f0ede9",
+        "a": "#8a8a98",
+        "b": "#ac3ebe",
+        "c": "#b15f5f",
+        "d": "#dddddd"
+      },
+      "rows": [
+        ".....aaaaa.....",
+        "....akkkkka....",
+        "...akkkkkkka...",
+        "..akkkkkkkkka..",
+        ".akkkkkkkkkkka.",
+        "akkpppkkkpppkka",
+        "akkkpkkkkkpkkka",
+        "akkkpkkkkkpkkka",
+        ".akkpkkpkkpkka.",
+        ".akkpkkkkkpkka.",
+        "..akpkkkkkpka..",
+        "...akkkkkkka...",
+        "....akkkkka....",
+        ".....aaaaa....."
+      ]
+    },
+    {
+      "id": "timo_happy",
+      "name": "timo_happy",
+      "palette": {
+        "k": "#0b0910",
+        "K": "#1c1826",
+        "p": "#9a50ff",
+        "w": "#f0ede9",
+        "a": "#8a8a98",
+        "b": "#ac3ebe",
+        "c": "#b15f5f",
+        "d": "#dddddd"
+      },
+      "rows": [
+        ".....aaaaa.....",
+        "....akkkkka....",
+        "...akpkkkpka...",
+        "..akpkkkkkpka..",
+        ".akkkkkkkkkkka.",
+        "akkpppkkkpppkka",
+        "akkpkpkkkpkpkka",
+        "akkpkpkkkpkpkka",
+        ".akkkkkkkkkkka.",
+        ".akkkkkkkkkkka.",
+        "..akkkkpkkkka..",
+        "...akkkkkkka...",
+        "....akkkkka....",
+        ".....aaaaa....."
+      ]
+    },
+    {
       "id": "timo_idle_0",
       "name": "timo_idle_0",
       "palette": {
@@ -2069,7 +2219,14 @@
     {
       "id": "rock_small",
       "name": "rock small",
-      "palette": { "k": "#0b0910", "s": "#24242a", "S": "#3a3a42", "L": "#5c5c66", "l": "#7a7a84", "d": "#141418" },
+      "palette": {
+        "k": "#0b0910",
+        "s": "#24242a",
+        "S": "#3a3a42",
+        "L": "#5c5c66",
+        "l": "#7a7a84",
+        "d": "#141418"
+      },
       "rows": [
         "....kkk.....",
         "..kkklkkk...",
@@ -2086,7 +2243,14 @@
     {
       "id": "rock_medium",
       "name": "rock medium",
-      "palette": { "k": "#0b0910", "s": "#24242a", "S": "#3a3a42", "L": "#5c5c66", "l": "#7a7a84", "d": "#141418" },
+      "palette": {
+        "k": "#0b0910",
+        "s": "#24242a",
+        "S": "#3a3a42",
+        "L": "#5c5c66",
+        "l": "#7a7a84",
+        "d": "#141418"
+      },
       "rows": [
         "...................",
         "........kkkkk......",
@@ -2108,7 +2272,14 @@
     {
       "id": "rock_large",
       "name": "rock large",
-      "palette": { "k": "#0b0910", "s": "#24242a", "S": "#3a3a42", "L": "#5c5c66", "l": "#7a7a84", "d": "#141418" },
+      "palette": {
+        "k": "#0b0910",
+        "s": "#24242a",
+        "S": "#3a3a42",
+        "L": "#5c5c66",
+        "l": "#7a7a84",
+        "d": "#141418"
+      },
       "rows": [
         "..............................",
         "..............................",
