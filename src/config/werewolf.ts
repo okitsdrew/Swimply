@@ -65,7 +65,7 @@ export const werewolfMiniboss = defineConfig(
     quickDashDistance: 75,
     quickDashDuration: 0.1,
     quickDashCooldown: 3,
-    quickDashMinRange: 100,
+    quickDashMinRange: 200,
     quickDashAfterimages: 2,
     quickDashWindupScale: 0.5,
     // The slam hurts the player even mid-dash or mid-teleport.

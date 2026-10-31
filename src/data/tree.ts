@@ -13,6 +13,7 @@ export const STATS = {
   moveSpeed: { kind: 'add', label: 'move speed' },
   range: { kind: 'pct', label: 'arrow range' },
   shardGain: { kind: 'pct', label: 'shards' },
+  runStart: { kind: 'add', label: 'seconds: runs start this far in' },
 } as const;
 
 export type StatId = keyof typeof STATS;
@@ -27,6 +28,9 @@ export interface TreeNode {
   // Price of each level in shards, before tree.costScale. Its length is the node's number of levels.
   costs: number[];
   parents: string[];
+  // Conditions that keep the node hidden until all hold: "treeComplete" (every node without conditions is fully
+  // bought) or "flag:<name>" (a save flag is set).
+  requires: string[];
   x: number;
   y: number;
 }
@@ -50,6 +54,7 @@ function parseTree(data: unknown): TreeNode[] {
       per: num(e.per, 0, `${id}.per`, problems),
       costs,
       parents: list(e.parents, `${id}.parents`, problems).map((p) => str(p, '', `${id} parent`, problems)).filter(Boolean),
+      requires: list(e.requires, `${id}.requires`, problems).map((r) => str(r, '', `${id} requirement`, problems)).filter(Boolean),
       x: num(e.x, 0, `${id}.x`, problems),
       y: num(e.y, 0, `${id}.y`, problems),
     });
@@ -70,8 +75,13 @@ export const maxed = (n: TreeNode): boolean => level(n) >= n.costs.length;
 export const isOpen = (n: TreeNode): boolean =>
   !n.parents.length || n.parents.some((p) => { const parent = treeNodes.get(p); return !!parent && level(parent) > 0; });
 export const cost = (n: TreeNode): number => Math.ceil(n.costs[level(n)] * tree.costScale);
-export const canBuy = (n: TreeNode): boolean => isOpen(n) && !maxed(n) && save.shards >= cost(n);
-export const treeComplete = (): boolean => treeNodes.list().every(maxed);
+export const canBuy = (n: TreeNode): boolean => shown(n) && isOpen(n) && !maxed(n) && save.shards >= cost(n);
+// The tree counts as complete when every node without conditions is fully bought; hidden extras are optional.
+export const treeComplete = (): boolean => treeNodes.list().every((n) => n.requires.length > 0 || maxed(n));
+
+export function shown(n: TreeNode): boolean {
+  return n.requires.every((r) => (r === 'treeComplete' ? treeComplete() : r.startsWith('flag:') ? !!save.flags[r.slice(5)] : false));
+}
 
 // "+15% fire rate" for `levels` levels of the node.
 export function describe(n: TreeNode, levels = 1): string {

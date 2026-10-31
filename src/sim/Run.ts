@@ -1,6 +1,7 @@
 import { run } from '../config/run';
 import { shade } from '../config/shade';
 import { Shades } from './Shades';
+import { stats } from './stats';
 
 export type RunState = 'fighting' | 'dead';
 
@@ -16,6 +17,8 @@ export class Run {
   deadTime = 0;
   // Spawning paused from the dev menu.
   holdSpawns = false;
+  // Where the clock started (above 0 with Time Warp), so the calm at the start still lasts startDelay.
+  private startedAt = 0;
   // Shades owed, carried between steps so fractional rates add up.
   private owed = 0;
 
@@ -28,7 +31,9 @@ export class Run {
     this.state = 'fighting';
     this.kills = 0;
     this.shards = 0;
-    this.time = 0;
+    // Time Warp starts the clock part way in, spawn rate and Shade health included.
+    this.time = stats.runStart();
+    this.startedAt = this.time;
     this.deadTime = 0;
     this.owed = 0;
   }
@@ -64,7 +69,7 @@ export class Run {
       return;
     }
     this.time += dt;
-    if (this.holdSpawns || this.time < run.startDelay) return;
+    if (this.holdSpawns || this.time - this.startedAt < run.startDelay) return;
     this.owed += this.spawnRate * dt;
     while (this.owed >= 1) {
       this.owed--;

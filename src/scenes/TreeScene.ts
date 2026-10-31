@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { save } from '../core/save';
-import { buy, canBuy, cost, describe, isOpen, level, maxed, TreeNode, treeComplete, treeNodes } from '../data/tree';
+import { buy, canBuy, cost, describe, isOpen, level, maxed, shown, TreeNode, treeComplete, treeNodes } from '../data/tree';
 
 export interface TreeSceneData {
   // A line about the run that just ended, shown above the tree.
@@ -28,6 +28,8 @@ interface NodeView {
   label: Phaser.GameObjects.Text;
   price: Phaser.GameObjects.Text;
   pips: Phaser.GameObjects.Graphics;
+  // Whether it was showing last frame, so a node that has just been revealed can pop in.
+  was: boolean;
 }
 
 // The upgrade tree screen, laid over the arena. Click a node to spend memory shards on it; the arena decides
@@ -75,7 +77,7 @@ export class TreeScene extends Phaser.Scene {
         if (!buy(node)) return;
         this.tweens.add({ targets: ring, scale: { from: 1.25, to: 1 }, duration: 180, ease: 'Back.Out' });
       });
-      this.views.push({ node, ring, label, price, pips });
+      this.views.push({ node, ring, label, price, pips, was: shown(node) });
     }
 
     const button = this.add.text(cx, height - 36, '', { ...font, fontSize: '20px', backgroundColor: '#2a2538', padding: { x: 14, y: 8 } })
@@ -106,6 +108,7 @@ export class TreeScene extends Phaser.Scene {
 
     this.lines.clear();
     for (const v of this.views) {
+      if (!shown(v.node)) continue;
       for (const p of v.node.parents) {
         const parent = treeNodes.get(p);
         if (!parent) continue;
@@ -117,6 +120,11 @@ export class TreeScene extends Phaser.Scene {
 
     for (const v of this.views) {
       const n = v.node;
+      const visible = shown(n);
+      for (const o of [v.ring, v.label, v.price, v.pips]) o.setVisible(visible);
+      if (visible && !v.was) this.tweens.add({ targets: [v.ring, v.label, v.price], scale: { from: 0, to: 1 }, duration: 400, ease: 'Back.Out' });
+      v.was = visible;
+      if (!visible) continue;
       const open = isOpen(n);
       const full = maxed(n);
       const fill = full ? colors.gold : !open ? colors.locked : canBuy(n) ? colors.ready : colors.open;

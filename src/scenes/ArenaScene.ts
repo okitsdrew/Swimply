@@ -11,7 +11,7 @@ import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { AreaMap, findMarker, maps } from '../data/maps';
 import { addShards, maxTree, resetTree, treeComplete } from '../data/tree';
-import { save } from '../core/save';
+import { save, writeSave } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
 import { ArrowsView } from '../render/ArrowsView';
 import { makeArt } from '../render/art';
@@ -221,6 +221,11 @@ export class ArenaScene extends Phaser.Scene {
     const p = this.spawnPoint();
     this.wolf.spawn(p.x, p.y);
     this.hud.announce('THE WEREWOLF COMES');
+    // Part of what reveals Time Warp on the tree.
+    if (!save.flags.werewolfSeen) {
+      save.flags.werewolfSeen = true;
+      writeSave();
+    }
   }
 
   private onSlam(): void {
