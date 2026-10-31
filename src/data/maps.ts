@@ -20,6 +20,12 @@ export interface Placed {
   y: number;
   // Scales the asset's art and collision together.
   size: number;
+  // A save flag: the thing is only there while this flag is on. Empty for always.
+  if: string;
+  // A save flag: the thing is only there while this flag is off. Empty for always.
+  unless: string;
+  // A map id: walking into a door marker, or pressing interact next to anything else, goes there. Empty for none.
+  to: string;
 }
 
 export interface AreaMap {
@@ -45,6 +51,12 @@ export function tileAt(map: AreaMap, col: number, row: number): Floor | undefine
 // The first placed marker of a kind, such as "playerStart".
 export function findMarker(map: AreaMap, marker: string): Placed | undefined {
   return map.objects.find((o) => o.asset.marker === marker);
+}
+
+// The map with only the things the save's flags allow, which is how one map serves before and after a story
+// moment (the bow leaves its pedestal once the Mindscape is cleared).
+export function withFlags(map: AreaMap, flags: Record<string, boolean>): AreaMap {
+  return { ...map, objects: map.objects.filter((o) => (!o.if || flags[o.if]) && (!o.unless || !flags[o.unless])) };
 }
 
 // migrations[n] turns a format-n map file into format n+1. Add one whenever MAP_FORMAT goes up, so every map
@@ -112,7 +124,11 @@ export function parseMap(id: string, data: unknown, problems: Problems): AreaMap
     const assetId = str(e.asset, '', `${w}.asset`, problems);
     const asset = assets.get(assetId);
     if (!asset) return problems.push(`${w}: unknown asset ${JSON.stringify(assetId)}, skipped`);
-    objects.push({ asset, x: num(e.x, 0, `${w}.x`, problems), y: num(e.y, 0, `${w}.y`, problems), size: num(e.size, 1, `${w}.size`, problems) });
+    const to = str(e.to, '', `${w}.to`, problems);
+    objects.push({
+      asset, x: num(e.x, 0, `${w}.x`, problems), y: num(e.y, 0, `${w}.y`, problems), size: num(e.size, 1, `${w}.size`, problems),
+      if: str(e.if, '', `${w}.if`, problems), unless: str(e.unless, '', `${w}.unless`, problems), to,
+    });
   });
 
   return { id, name: str(d.name, id, `${where}.name`, problems), tileSize: num(d.tileSize, 64, `${where}.tileSize`, problems), cols, rows, legend: legendIds, tiles, objects, darkness: num(d.darkness, 0, `${where}.darkness`, problems) };

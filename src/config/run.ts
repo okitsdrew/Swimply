@@ -19,8 +19,8 @@ export const run = defineConfig(
     hpPerMinute: 20,
     // Shades never appear closer to the player than this.
     minSpawnDistance: 260,
-    // A Shade spawn zone marker covers a circle this big (times the marker's size). With no zones in the map,
-    // Shades appear along its edge.
+    // A Shade spawn zone marker covers a circle this big (times the marker's size). A map with no zones is calm (dev spawns go
+    // along its edge).
     spawnZoneRadius: 96,
     // Pause after death before the tree opens.
     restartDelay: 0.8,

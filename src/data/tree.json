@@ -16,6 +16,6 @@
     { "id": "split-nock", "name": "Split Nock", "stat": "arrows", "per": 1, "costs": [25], "parents": ["bone-tip"], "x": 200, "y": 160 },
     { "id": "triple-nock", "name": "Triple Nock", "stat": "arrows", "per": 1, "costs": [80], "parents": ["split-nock"], "x": 400, "y": 150 },
 
-    { "id": "time-warp", "name": "Time Warp", "stat": "runStart", "per": 35, "costs": [100], "parents": ["deep-wound"], "requires": ["treeComplete", "flag:werewolfSeen"], "x": 0, "y": -75 }
+    { "id": "time-warp", "name": "Time Warp", "stat": "runStart", "per": 35, "costs": [0], "parents": ["deep-wound"], "requires": ["treeComplete", "flag:werewolfSeen"], "x": 0, "y": -75 }
   ]
 }

@@ -2,6 +2,7 @@ import './tools.css';
 import Phaser from 'phaser';
 import { render } from '../config/render';
 import { run } from '../config/run';
+import { story } from '../config/story';
 import { ellipseHalfSize, toScreen, Vec2 } from '../core/iso';
 import { Asset, assets } from '../data/assets';
 import { floors } from '../data/floors';
@@ -327,7 +328,7 @@ class LevelEditor {
     const map: EditMap = {
       name: id, tileSize: t, cols: n, rows: n, legend: {}, darkness: 0,
       tiles: Array.from({ length: n * n }, () => this.floor),
-      objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1 }] : [],
+      objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1, if: '', unless: '', to: '' }] : [],
     };
     const d = new MapDoc(id, map, null, true);
     this.docs.push(d);
@@ -452,7 +453,7 @@ class LevelEditor {
         const a = assets.get(this.asset);
         if (!a) return;
         const at = this.place(p);
-        d.change((m) => m.objects.push({ asset: a.id, x: at.x, y: at.y, size: 1 }));
+        d.change((m) => m.objects.push({ asset: a.id, x: at.x, y: at.y, size: 1, if: '', unless: '', to: '' }));
         this.selection = [d.map.objects.length - 1];
         this.changed();
         break;
@@ -634,6 +635,7 @@ class LevelEditor {
       if (a.marker) {
         ring(o.x, o.y, 12, 0xf2d7a6);
         if (a.marker === 'shadeSpawn') ring(o.x, o.y, run.spawnZoneRadius * o.size, 0x66d9ef);
+        if (a.marker === 'door') ring(o.x, o.y, story.doorRadius * o.size, 0xc080ff);
       }
       if (this.selection.includes(i)) {
         ring(o.x, o.y, 18, 0xffe14a);
@@ -998,8 +1000,15 @@ class LevelEditor {
       row('asset', select(assets.list().map((a) => a.id), o.asset, (v) => { edit(() => (d.map.objects[sel].asset = v)); this.buildProps(); })),
       row('x, y', numberInput(o.x, 1, (v) => edit(() => (d.map.objects[sel].x = v))), numberInput(o.y, 1, (v) => edit(() => (d.map.objects[sel].y = v)))),
       row('size', numberInput(o.size, 0.1, (v) => edit(() => (d.map.objects[sel].size = Math.max(0.1, v))), { min: 0.1 })),
-      asset?.marker === 'shadeSpawn' ? el('p', { class: 'hint', text: `Shades appear inside the blue ring. Size scales it (radius ${run.spawnZoneRadius} at size 1, in the dev menu's run section). With no zones, Shades appear along the map's edge.` }) : '',
+      asset?.marker === 'shadeSpawn' ? el('p', { class: 'hint', text: `Shades appear inside the blue ring. Size scales it (radius ${run.spawnZoneRadius} at size 1, in the dev menu's run section). A map with no zones is calm: no Shades, no run.` }) : '',
       asset?.marker === 'playerStart' ? el('p', { class: 'hint', text: 'Where a run starts. Only the first player start in a map counts.' }) : '',
+      row('goes to', select(['', ...this.docs.map((m) => m.id).filter((id) => id !== d.id)], o.to ?? '', (v) => edit(() => (d.map.objects[sel].to = v)))),
+      asset?.marker === 'door'
+        ? el('p', { class: 'hint', text: `Walking into the purple ring goes to the map in "goes to". Size scales it (radius ${story.doorRadius} at size 1, in the dev menu's story section).` })
+        : el('p', { class: 'hint', text: 'With "goes to" set, pressing F next to this goes to that map.' }),
+      row('only if', textInput(o.if ?? '', (v) => edit(() => (d.map.objects[sel].if = v)))),
+      row('only unless', textInput(o.unless ?? '', (v) => edit(() => (d.map.objects[sel].unless = v)))),
+      el('p', { class: 'hint', text: 'Save flags, such as mindscapeCleared. "Only if" shows it while the flag is on, "only unless" while it is off. Leave empty for always.' }),
       el('div', { class: 'bar' },
         button('Copy (Ctrl+C)', () => this.copySelected()),
         button('Duplicate (Ctrl+D)', () => this.duplicateSelected()),

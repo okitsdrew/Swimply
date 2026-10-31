@@ -130,7 +130,7 @@ export class Player {
     }
     this.hasCursor = aimWorld !== null;
 
-    if (input.justPressed('dash')) this.dashBuffer = Math.max(dash.inputBuffer, 1e-4);
+    if (input.justPressed('dash') && stats.canDash()) this.dashBuffer = Math.max(dash.inputBuffer, 1e-4);
     if (this.dashBuffer > 0 && !this.dashing && this.dashCooldown <= 0) {
       this.resolveMoveDir(input);
       this.startDash();
@@ -330,7 +330,7 @@ export class Player {
 
   private updateFire(dt: number, input: Input): void {
     this.fireCooldown -= dt;
-    const holding = input.isDown('fire') && !this.fireBlocked;
+    const holding = input.isDown('fire') && !this.fireBlocked && stats.canFire();
     if (this.fireBlocked) this.readyTimer = 0;
     if (holding) {
       this.readyTimer = feel.armReadyTime;

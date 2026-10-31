@@ -99,7 +99,7 @@ export interface MapFile {
   cols: number;
   // cols * rows floor ids, row by row.
   tiles: string[];
-  objects: { asset: string; x: number; y: number; size: number }[];
+  objects: { asset: string; x: number; y: number; size: number; if?: string; unless?: string; to?: string }[];
   legend: Record<string, string>;
   darkness: number;
 }
@@ -125,7 +125,7 @@ export function mapText(m: MapFile): string {
   }
   const rows: string[] = [];
   for (let i = 0; i < m.tiles.length; i += m.cols) rows.push(m.tiles.slice(i, i + m.cols).map((id) => charOf.get(id)).join(''));
-  const objects = m.objects.map((o) => '    ' + oneLine(compact({ asset: o.asset, x: o.x, y: o.y, size: o.size }, { size: 1 })));
+  const objects = m.objects.map((o) => '    ' + oneLine(compact({ asset: o.asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '' }, { size: 1, if: '', unless: '', to: '' })));
   const legendLines = Object.entries(legend).map(([ch, id]) => `    ${JSON.stringify(ch)}: ${JSON.stringify(id)}`);
   return `{
   "format": ${MAP_FORMAT},

@@ -8,7 +8,8 @@ export type Action =
   | 'moveRight'
   | 'fire'
   | 'dash'
-  | 'teleport';
+  | 'teleport'
+  | 'interact';
 
 export interface InputSource {
   // Actions currently held.
@@ -31,6 +32,7 @@ const keyBindings: Record<string, Action> = {
   KeyA: 'moveLeft',
   KeyD: 'moveRight',
   Space: 'dash',
+  KeyF: 'interact',
 };
 
 const mouseBindings: Record<number, Action> = {
