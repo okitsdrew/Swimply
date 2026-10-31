@@ -41,7 +41,7 @@ Three classes (for reference):
 The Mindscape is all basics (Shades), plus the empowered elite mini-boss (the werewolf, `werewolf_10`-`14` attack frames), meant to arrive about 45 seconds into a run.
 
 - **Shade:** a basic, easy fodder to learn on. 10 health at the start of a run (the bow does 5 a shot, so two shots), more as the run goes on (`run.hpPerMinute`). Walks at the player.
-- **Mini-boss, the werewolf:** 1000 health, arrives 45 seconds into a run (`werewolf` in the dev menu). He walks at the player; when the player is within 200, he winds up (`werewolf_10`, then holds `werewolf_12`) while a rectangle 250 long grows along the ground toward where the player was then. He dashes to its far end at about 75% of the player's dash speed (still in the windup pose), then slams (`werewolf_13`, `werewolf_14`) with shake and dust, killing anything inside the rectangle. Touching him also kills. Killing him gives 50 shards; with the full tree it clears the Mindscape (save flag `mindscapeCleared`).
+- **Mini-boss, the werewolf:** 1000 health, arrives 45 seconds into a run (`bosses → werewolf_miniboss` in the dev menu). He walks at the player; when the player is within 200, he winds up (`werewolf_10`, then holds `werewolf_11`) while a rectangle 250 long grows along the ground toward where the player was then. He dashes to its far end at about 75% of the player's dash speed (still in the windup pose), then slams (`werewolf_12`, `werewolf_13`) with shake and dust, killing anything inside the rectangle. Touching him also kills. Killing him gives 50 shards; with the full tree it clears the Mindscape (save flag `mindscapeCleared`).
 
 ## Out of scope for now (do not plan or build)
 

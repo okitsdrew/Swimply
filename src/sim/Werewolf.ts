@@ -1,6 +1,6 @@
 import { feel } from '../config/feel';
 import { render } from '../config/render';
-import { werewolf as cfg } from '../config/werewolf';
+import { WolfConfig } from '../config/werewolf';
 import { toScreen, Vec2 } from '../core/iso';
 import { Navigator } from './Nav';
 import { Target } from './targets';
@@ -20,7 +20,7 @@ export class Werewolf implements Target {
   readonly id = -1;
   x = 0;
   y = 0;
-  radius = cfg.radius;
+  radius: number;
   alive = false;
   hp = 0;
   state: WolfState = 'gone';
@@ -41,6 +41,11 @@ export class Werewolf implements Target {
   // Which way he faces on screen, -1 or 1.
   facing = 1;
 
+  // Which config section drives him (the mini-boss now; plain elites later).
+  constructor(readonly cfg: WolfConfig) {
+    this.radius = cfg.radius;
+  }
+
   onRisen: () => void = () => {};
   onSlam: () => void = () => {};
   onKilled: (x: number, y: number) => void = () => {};
@@ -52,7 +57,7 @@ export class Werewolf implements Target {
   spawn(x: number, y: number): void {
     this.x = x;
     this.y = y;
-    this.hp = cfg.hp;
+    this.hp = this.cfg.hp;
     this.alive = false;
     this.vx = 0;
     this.vy = 0;
@@ -79,7 +84,7 @@ export class Werewolf implements Target {
   // True if he is walking into the circle (the player's hit circle).
   touching(x: number, y: number, r: number): boolean {
     if (!this.alive) return false;
-    const min = r + this.radius * cfg.contactScale;
+    const min = r + this.radius * this.cfg.contactScale;
     return (this.x - x) ** 2 + (this.y - y) ** 2 < min * min;
   }
 
@@ -89,18 +94,18 @@ export class Werewolf implements Target {
     const py = y - this.ay;
     const along = px * this.dirX + py * this.dirY;
     const side = Math.abs(px * this.dirY - py * this.dirX);
-    return along >= -r && along <= this.reach + r && side <= cfg.attackWidth / 2 + r;
+    return along >= -r && along <= this.reach + r && side <= this.cfg.attackWidth / 2 + r;
   }
 
   update(dt: number, world: CollisionWorld, nav: Navigator, target: Vec2): void {
     if (this.state === 'gone') return;
-    this.radius = cfg.radius;
+    this.radius = this.cfg.radius;
     this.time += dt;
     this.flash -= dt;
     this.cooldown -= dt;
     switch (this.state) {
       case 'rising':
-        if (this.time >= cfg.spawnTell) {
+        if (this.time >= this.cfg.spawnTell) {
           this.alive = true;
           this.enter('walk');
           this.onRisen();
@@ -108,12 +113,12 @@ export class Werewolf implements Target {
         break;
       case 'walk':
         this.walk(dt, world, nav, target);
-        if (this.cooldown <= 0 && Math.hypot(target.x - this.x, target.y - this.y) <= cfg.triggerRange) this.startWindup(target);
+        if (this.cooldown <= 0 && Math.hypot(target.x - this.x, target.y - this.y) <= this.cfg.triggerRange) this.startWindup(target);
         break;
       case 'windup': {
         // Grows fast at first and settles into its full length, so the far end is clear well before the dash.
-        const k = Math.min(1, this.time / Math.max(cfg.windupTime, 1e-3));
-        this.reach = cfg.attackRange * (1 - (1 - k) ** 2);
+        const k = Math.min(1, this.time / Math.max(this.cfg.windupTime, 1e-3));
+        this.reach = this.cfg.attackRange * (1 - (1 - k) ** 2);
         if (k >= 1) {
           this.dashed = 0;
           this.enter('dash');
@@ -121,7 +126,7 @@ export class Werewolf implements Target {
         break;
       }
       case 'dash': {
-        const step = Math.min(cfg.dashSpeed * dt, cfg.attackRange - this.dashed);
+        const step = Math.min(this.cfg.dashSpeed * dt, this.cfg.attackRange - this.dashed);
         const bx = this.x;
         const by = this.y;
         this.x += this.dirX * step;
@@ -131,18 +136,18 @@ export class Werewolf implements Target {
         this.dashed += step;
         // Stopped short by a wall: the slam lands where he stands, and the rectangle shrinks to match.
         if (moved < step * 0.5) this.reach = Math.min(this.reach, Math.hypot(this.x - this.ax, this.y - this.ay));
-        if (this.dashed >= cfg.attackRange - 1e-6 || moved < step * 0.5) {
+        if (this.dashed >= this.cfg.attackRange - 1e-6 || moved < step * 0.5) {
           this.enter('slam');
           this.onSlam();
         }
         break;
       }
       case 'slam':
-        if (this.time >= cfg.slamTime) this.enter('recover');
+        if (this.time >= this.cfg.slamTime) this.enter('recover');
         break;
       case 'recover':
-        if (this.time >= cfg.recoverTime) {
-          this.cooldown = cfg.attackCooldown;
+        if (this.time >= this.cfg.recoverTime) {
+          this.cooldown = this.cfg.attackCooldown;
           this.enter('walk');
         }
         break;
@@ -171,12 +176,12 @@ export class Werewolf implements Target {
 
   private walk(dt: number, world: CollisionWorld, nav: Navigator, target: Vec2): void {
     nav.direction(this.x, this.y, this.radius, way);
-    let speed = cfg.speed;
-    if (cfg.uniformScreenSpeed) {
+    let speed = this.cfg.speed;
+    if (this.cfg.uniformScreenSpeed) {
       toScreen(way.x, way.y, off);
       speed *= (render.isoScale * Math.SQRT2) / (Math.hypot(off.x, off.y) || 1);
     }
-    const turn = 1 - Math.exp(-cfg.turnRate * dt);
+    const turn = 1 - Math.exp(-this.cfg.turnRate * dt);
     this.vx += (way.x * speed - this.vx) * turn;
     this.vy += (way.y * speed - this.vy) * turn;
     this.x += this.vx * dt;

@@ -1,11 +1,12 @@
 import { defineConfig } from './store';
 
-// The werewolf: the Mindscape's mini-boss, an empowered elite. He walks at the player and, once close, winds up a
+// The Mindscape's werewolf mini-boss, an empowered elite. He walks at the player and, once close, winds up a
 // dash attack: a rectangle grows out along the ground toward where the player was, then he dashes to its far end
-// and slams, hurting everything inside it.
-export const werewolf = defineConfig(
-  'werewolf',
-  'enemies',
+// and slams, hurting everything inside it. The plain werewolf (a recurring elite) will get its own section with
+// the same fields when it is built; sim/Werewolf.ts takes whichever section it is given.
+export const werewolfMiniboss = defineConfig(
+  'werewolf_miniboss',
+  'bosses',
   {
     hp: 1000,
     // Seconds into a run when he arrives.
@@ -68,3 +69,5 @@ export const werewolf = defineConfig(
     deathSmoke: { min: 0, max: 150, step: 1 },
   },
 );
+
+export type WolfConfig = typeof werewolfMiniboss;

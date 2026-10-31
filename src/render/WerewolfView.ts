@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { render } from '../config/render';
-import { werewolf as cfg } from '../config/werewolf';
 import { ellipseHalfSize, toScreen } from '../core/iso';
 import { Werewolf } from '../sim/Werewolf';
 import { Tex, wolfAttackFrames, wolfWalkFrames } from './art';
@@ -12,7 +11,7 @@ const corner = { x: 0, y: 0 };
 const SLAM_FADE = 0.35;
 
 // Draws the werewolf, his attack rectangle on the ground, the slam, and his health bar.
-//   walk: werewolf_0-3   windup: werewolf_10 then 12 (held)   dash: 12   slam: 13 then 14 (held)   recover: 14
+//   walk: werewolf_0-3   windup: werewolf_10 then 11 (held)   dash: 11   slam: 12 then 13 (held)   recover: 13
 export class WerewolfView {
   private sprite: Phaser.GameObjects.Image;
   private shadow: Phaser.GameObjects.Image;
@@ -44,22 +43,22 @@ export class WerewolfView {
     const px = render.pixelScale;
     this.sinceSlam = 0;
     this.slamAt = { x: w.x, y: w.y };
-    this.fx.addShake(cfg.slamShake);
+    this.fx.addShake(this.wolf.cfg.slamShake);
     toScreen(w.x, w.y, screen);
-    this.fx.smoke(screen.x, screen.y, cfg.slamSmoke, 14 * px);
+    this.fx.smoke(screen.x, screen.y, this.wolf.cfg.slamSmoke, 14 * px);
     this.fx.particle({ x: screen.x, y: screen.y - 4 * px, life: 0.18, from: 2.5, to: 0, tint: 0xffd0a0, depth: screen.y + 2 });
     // Dust kicked up along the path he dashed.
     for (let i = 1; i <= 3; i++) {
       const k = i / 4;
       toScreen(w.ax + w.dirX * w.reach * k, w.ay + w.dirY * w.reach * k, screen);
-      this.fx.smoke(screen.x, screen.y, Math.round(cfg.slamSmoke / 4), 6 * px);
+      this.fx.smoke(screen.x, screen.y, Math.round(this.wolf.cfg.slamSmoke / 4), 6 * px);
     }
   }
 
   onKilled(x: number, y: number): void {
     const px = render.pixelScale;
     toScreen(x, y, screen);
-    this.fx.smoke(screen.x, screen.y - 12 * px, cfg.deathSmoke, 14 * px);
+    this.fx.smoke(screen.x, screen.y - 12 * px, this.wolf.cfg.deathSmoke, 14 * px);
     this.fx.particle({ x: screen.x, y: screen.y - 12 * px, life: 0.3, from: 4, to: 0, tint: 0xffe0b0, depth: screen.y + 2 });
     this.fx.addShake(14);
   }
@@ -77,7 +76,7 @@ export class WerewolfView {
     toScreen(w.x, w.y, screen);
 
     if (w.state === 'rising') {
-      const k = Math.min(1, w.time / Math.max(cfg.spawnTell, 1e-4));
+      const k = Math.min(1, w.time / Math.max(this.wolf.cfg.spawnTell, 1e-4));
       const half = ellipseHalfSize(w.radius * (3 - 2 * k));
       const core = ellipseHalfSize(w.radius * k * 1.2);
       g.lineStyle(3, 0x8a2030, 0.4 + 0.6 * k).strokeEllipse(screen.x, screen.y, half.x * 2, half.y * 2);
@@ -89,23 +88,23 @@ export class WerewolfView {
       // The danger zone: dim while it grows, bright once he is coming.
       const dashing = w.state === 'dash';
       this.rect(g, w.reach);
-      g.fillStyle(0xff3040, dashing ? 0.45 : 0.12 + 0.18 * Math.min(1, w.time / cfg.windupTime)).fillPath();
+      g.fillStyle(0xff3040, dashing ? 0.45 : 0.12 + 0.18 * Math.min(1, w.time / this.wolf.cfg.windupTime)).fillPath();
       this.rect(g, w.reach);
       g.lineStyle(2, 0xff6070, dashing ? 1 : 0.7).strokePath();
       // The full length as a faint outline, so the player sees at once how far it will reach.
       if (!dashing) {
-        this.rect(g, cfg.attackRange);
+        this.rect(g, this.wolf.cfg.attackRange);
         g.lineStyle(1, 0xff6070, 0.25).strokePath();
       }
     }
 
-    const scale = render.pixelScale * cfg.scale;
+    const scale = render.pixelScale * this.wolf.cfg.scale;
     let frame = wolfWalkFrames[0];
     if (w.state === 'walk') {
       this.walkTime += dt;
-      frame = wolfWalkFrames[Math.floor(this.walkTime * cfg.walkFps) % wolfWalkFrames.length];
+      frame = wolfWalkFrames[Math.floor(this.walkTime * this.wolf.cfg.walkFps) % wolfWalkFrames.length];
     } else if (w.state === 'windup') {
-      frame = w.time < cfg.windupTime * 0.3 ? wolfAttackFrames[0] : wolfAttackFrames[1];
+      frame = w.time < this.wolf.cfg.windupTime * 0.3 ? wolfAttackFrames[0] : wolfAttackFrames[1];
     } else if (w.state === 'dash') {
       frame = wolfAttackFrames[1];
     } else if (w.state === 'slam') {
@@ -129,7 +128,7 @@ export class WerewolfView {
   // The attack rectangle, `reach` long, as a path on the ground.
   private rect(g: Phaser.GameObjects.Graphics, reach: number): void {
     const w = this.wolf;
-    const hw = cfg.attackWidth / 2;
+    const hw = this.wolf.cfg.attackWidth / 2;
     const nx = -w.dirY * hw;
     const ny = w.dirX * hw;
     const pts = [
@@ -154,7 +153,7 @@ export class WerewolfView {
     this.rect(g, this.wolf.reach);
     g.fillStyle(0xffe0c0, 0.6 * (1 - k)).fillPath();
     toScreen(this.slamAt.x, this.slamAt.y, screen);
-    const half = ellipseHalfSize(cfg.attackWidth * (0.5 + 1.5 * k));
+    const half = ellipseHalfSize(this.wolf.cfg.attackWidth * (0.5 + 1.5 * k));
     g.lineStyle(4 * (1 - k) + 1, 0xffd0a0, 1 - k).strokeEllipse(screen.x, screen.y, half.x * 2, half.y * 2);
   }
 
@@ -169,6 +168,6 @@ export class WerewolfView {
     const y = 52;
     this.name.setPosition(width / 2, y - 4);
     g.fillStyle(0x1a1020, 0.9).fillRect(x - 3, y - 3, bw + 6, 16);
-    g.fillStyle(0x8a2030, 1).fillRect(x, y, bw * Math.max(0, w.hp / cfg.hp), 10);
+    g.fillStyle(0x8a2030, 1).fillRect(x, y, bw * Math.max(0, w.hp / this.wolf.cfg.hp), 10);
   }
 }

@@ -6,7 +6,7 @@ import { run } from '../config/run';
 import { shade } from '../config/shade';
 import { sim } from '../config/sim';
 import { tree } from '../config/tree';
-import { werewolf } from '../config/werewolf';
+import { werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { AreaMap, findMarker, maps } from '../data/maps';
@@ -114,7 +114,7 @@ export class ArenaScene extends Phaser.Scene {
     this.arrowsView = new ArrowsView(this, this.arrows, this.fx);
     this.shades = new Shades();
     this.shadesView = new ShadesView(this, this.shades, this.fx);
-    this.wolf = new Werewolf();
+    this.wolf = new Werewolf(werewolf);
     this.wolfView = new WerewolfView(this, this.wolf, this.fx);
     this.run = new Run(this.shades);
     this.run.holdSpawns = params.has('calm');

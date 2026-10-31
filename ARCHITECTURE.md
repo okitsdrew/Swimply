@@ -54,7 +54,7 @@ Do it deliberately: change this file and `scripts/check-layers.mjs` together, an
 ## Debt list
 
 - **No render interpolation.** Drawing shows the latest fixed step. If the step rate is not a multiple of the screen's refresh rate, motion can judder slightly; raise `sim.stepRate` or add interpolation if it shows.
-- **Damage piercing invulnerability is one switch, not a general flag.** Only the werewolf's slam can pierce (`werewolf.slamPiercesInvuln`, off). Make it a flag on damage when a second attack needs it.
+- **Damage piercing invulnerability is one switch, not a general flag.** Only the werewolf's slam can pierce (`werewolf_miniboss.slamPiercesInvuln`, off). Make it a flag on damage when a second attack needs it.
 - **Spawn zones are only places, not encounters.** Each Shade picks a random `shadeSpawn` zone. Saying which zone spawns what and when (authored encounters, plan section 11) comes later.
 - **Assets have no rotation, flip, light, twin or walkable height yet**, and floors have no edge or fleck style. The map and asset formats only hold what the game uses today; new optional fields are added when a feature needs them, which never breaks a saved file.
 - **Pathfinding is built once per map.** Shades and the werewolf follow a flow field on a half-tile grid (`sim/Nav.ts`) that closes every cell blocking floor or a solid circle touches, so they route round walls. Nothing in the world moves, so it is never rebuilt; a moving obstacle would need that.
