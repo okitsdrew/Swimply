@@ -13,11 +13,14 @@ export const sim = defineConfig(
     timeScale: 1,
     // Nothing can kill the player.
     godMode: false,
+    // Teleport works before it has been unlocked in the story.
+    allowTeleport: false,
   },
   {
     stepRate: { min: 30, max: 480, step: 30 },
     maxStepsPerFrame: { min: 1, max: 30, step: 1 },
     timeScale: { min: 0.05, max: 2, step: 0.05 },
     godMode: 'bool',
+    allowTeleport: 'bool',
   },
 );

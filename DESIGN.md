@@ -8,7 +8,10 @@ All numbers in config are test values and will change.
 The whole early game is the **Mindscape** plus a **single hub room**. Nothing else is planned or built until this feels really good.
 
 - **Start:** the character wakes weakened in the hub, limps to his bow, and is pulled into the Mindscape to find his strength in his memories. (The wake-up cutscene comes last.)
-- **Mindscape:** played in **runs** (die, restart, keep progress), **no time limit**. Endless waves of **Shades**, an **upgrade tree** (stats only, no skills), and a **mini-boss**. It works like Heaven's core loop. Expect roughly 15 minutes.
+- **Mindscape:** played in **runs** (die, restart, keep progress), **no time limit**. Endless **Shades**, an **upgrade tree** (stats only, no skills), and a **mini-boss**. It works like Heaven's core loop. Expect roughly 15 minutes.
+- **A run:** no waves. Shades keep appearing, faster and with more health as the run's clock goes up (`run` in the dev menu), until a player who is not strong enough is overwhelmed.
+- **The loop (first draft):** each Shade kill gives memory shards (`tree.shardsPerKill`), banked in the save at once. Death opens the tree screen; spend shards, then start the next run. Unspent shards and bought nodes carry over. Today's tuned stats are the weakened start; the tree goes beyond them.
+- **The tree:** `src/data/tree.json`. Ten nodes, each bought once or twice, in two tiers. Tier 1 (about a quarter of the power): pierce at the root, then fire rate, damage and an extra arrow around it, and double shards. Tier 2: move speed (after double shards), more fire rate, two more pierce (after damage), a third arrow, and more damage at the top (after either fire rate or pierce). A hidden extra, Time Warp (100 shards: runs start 35 seconds in), appears once the rest of the tree is bought and the werewolf has been met. Fully upgraded: move speed 250, 2.5 shots a second, 40 damage, 3 pierce, 3 arrows a shot. Nothing in it changes the dash or teleport. Stats only. Costs scale with `tree.costScale`; the whole tree is meant to take about 15 minutes.
 - **Leaving:** when the tree is complete and the mini-boss is cleared, he leaves the Mindscape at full strength and returns to the hub.
 - **Permanent baseline:** what the tree grants becomes his lasting base stats for the rest of the game. This tutorial tree is **never shown again**; a different tree comes later in the game.
 - **Later:** the Mindscape also serves as a training ground where skills are equipped and tested. Skills do not exist yet.
@@ -25,13 +28,20 @@ The whole early game is the **Mindscape** plus a **single hub room**. Nothing el
 
 - One-hit death, with a small forgiving hitbox.
 - Moves with WASD (screen directions), aims with the mouse.
-- **Bow** (primary), **dash**, **teleport**. Heaven's stats are the starting point; values live in config.
+- **Bow** (primary), **dash** (stops at walls and props), **teleport**. Teleport is locked at the start and unlocked shortly after winning the Mindscape (save flag `teleport`; `testing → allowTeleport` in the dev menu bypasses it). Heaven's stats are the starting point; values live in config.
 - Dash and teleport grant invulnerability. Some enemy damage can pierce it (damage carries a flag).
 
 ## Enemies
 
-- **Shade:** easy fodder to learn on. 10 health (the bow does 5 a shot, so two shots). Walks at the player.
-- **Mini-boss (built late):** dash and melee. 300 health. A visible windup, then a dash at about 75% of the player's dash speed, locked on to where the player was when the windup began, then a strike. After a miss it turns toward the player. Collision is checked along the whole dash path.
+Three classes (for reference):
+- **Basics:** die in 1 to 2 hits. Their only attack is touching the player, so they are easy to read and can come in numbers.
+- **Elites:** die in about 10 to 20 hits. Their spawns are what needs balancing. The Mindscape's mini-boss is an empowered elite.
+- **Bosses:** 50 to 100 hits.
+
+The Mindscape is all basics (Shades), plus the empowered elite mini-boss (the werewolf, `werewolf_10`-`14` attack frames), meant to arrive about 45 seconds into a run.
+
+- **Shade:** a basic, easy fodder to learn on. 10 health at the start of a run (the bow does 5 a shot, so two shots), more as the run goes on (`run.hpPerMinute`). Walks at the player.
+- **Mini-boss, the werewolf:** 3000 health, arrives 45 seconds into a run (`bosses → werewolf_miniboss` in the dev menu). He walks at the player; when the player is within 300, he winds up (`werewolf_10`, then holds `werewolf_11`) while a rectangle 400 long and 125 wide grows along the ground toward where the player was then. He dashes to its far end (still in the windup pose), killing anyone his path passes (the danger travels with him, so the stretch behind him is safe), then slams (`werewolf_12`, `werewolf_13`) with shake and dust, killing anyone at the far end of the rectangle. His second attack is a jump, triggered from up to 1000 away. Its chance is 25% (50% right after a dash the player survived) when the player is within 350, rising to certain at 700; if he picks the dash he walks in for it, but switches to the jump if the player gets 700 away. The jump: he crouches for 0.75 seconds (`werewolf_14`), leaps at where the player was over anything in the way (`werewolf_12` at takeoff, then `werewolf_15`, a second in the air, untouchable), while a circle on the ground marks the landing and fills as he comes down; landing (`werewolf_13`) kills anyone inside it. Between attacks he has a quick dash (75 long, 0.1 seconds, every 3 seconds, with afterimages) toward the player whenever they are over 100 away; straight after it, if his attacks are ready, he starts the dash attack if the player is within its range, or rolls for the jump, either with half the usual windup. His body circle grows with his scale. Touching him also kills. Killing him gives 50 shards; with the full tree it clears the Mindscape (save flag `mindscapeCleared`).
 
 ## Out of scope for now (do not plan or build)
 
