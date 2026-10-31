@@ -18,13 +18,16 @@ import { DevMenu } from '../dev/DevMenu';
 import { ArrowsView } from '../render/ArrowsView';
 import { makeArt } from '../render/art';
 import { DialogueBox } from '../render/DialogueBox';
+import { Eyelids } from '../render/Eyelids';
 import { Fx } from '../render/Fx';
 import { GhostText } from '../render/GhostText';
+import { HeroPose } from '../render/HeroPose';
 import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
 import { PlayerView } from '../render/PlayerView';
 import { clock, RunHud } from '../render/RunHud';
 import { ShadesView } from '../render/ShadesView';
+import { TimoView } from '../render/TimoView';
 import { WerewolfView } from '../render/WerewolfView';
 import { Arrows } from '../sim/Arrows';
 import { Player } from '../sim/Player';
@@ -75,6 +78,13 @@ export class ArenaScene extends Phaser.Scene {
   private box!: DialogueBox;
   private ghost!: GhostText;
   private story!: StoryRunner;
+  private timo!: TimoView;
+  private lids!: Eyelids;
+  private pose!: HeroPose;
+  // Whether the hero's own look was hidden for a pose last frame.
+  private posed = false;
+  // A script can take control away (the hero lying down, a scene playing out).
+  private control = true;
   private world!: MapWorld;
   private nav!: FlowField;
   private mapView!: MapView;
@@ -163,7 +173,20 @@ export class ArenaScene extends Phaser.Scene {
     this.hint = new InteractHint(this);
     this.box = new DialogueBox(this);
     this.ghost = new GhostText(this);
-    this.story = new StoryRunner(this.box, this.ghost);
+    this.timo = new TimoView(this);
+    this.timo.setVisible(this.calm);
+    this.lids = new Eyelids(this);
+    this.pose = new HeroPose(this);
+    this.posed = false;
+    this.control = true;
+    this.story = new StoryRunner(this.box, this.ghost, {
+      onLine: (speaker, face) => this.timo.setFace(speaker === 'timo' ? face : ''),
+      setControl: (on) => (this.control = on),
+      eyes: (open, seconds) => (open ? this.lids.wakeUp(seconds) : this.lids.close()),
+      pose: (pose, seconds) => (pose === 'asleep' ? this.pose.asleep() : this.pose.standUp(seconds)),
+      moveTimo: (target) => this.moveTimo(target),
+      shake: (amount) => this.fx.addShake(amount),
+    });
 
     this.player.onFire = (_x, _y, dx, dy) => {
       const m = this.view.muzzle();
@@ -283,6 +306,13 @@ export class ArenaScene extends Phaser.Scene {
       }
     }
     if (this.near && this.input2.justPressed('interact')) this.travel(this.near.to);
+  }
+
+  private moveTimo(target: string): void {
+    if (target === 'hero') return this.timo.followHero();
+    const o = this.map.objects.find((p) => p.asset.id === target);
+    if (o) this.timo.goTo(o.x, o.y);
+    else console.warn(`[story] Timo is sent to ${JSON.stringify(target)}, which is not placed in ${this.mapId}`);
   }
 
   // Dev aids for the story: back to waking up, or straight to after the Mindscape.
@@ -493,9 +523,15 @@ export class ArenaScene extends Phaser.Scene {
     this.arrowsView.render();
     this.shadesView.render(this.player.x, this.player.y);
     this.wolfView.render(frameDt, cam.width);
+    // A story pose (lying, getting up) stands in for his normal look.
+    this.pose.update(frameDt, this.player.x, this.player.y);
+    if (this.pose.active !== this.posed && this.run.state === 'fighting') this.view.setVisible(!this.pose.active);
+    this.posed = this.pose.active;
+    this.timo.update(frameDt, this.player.x, this.player.y);
+    this.lids.update(frameDt, cam.width, cam.height);
     this.box.update(frameDt, cam.width, this.player.x, this.player.y);
     this.ghost.update(frameDt, cam.width, cam.height);
-    this.hint.update(frameDt, this.player.x, this.player.y, !!this.near && !this.leaving && this.run.state === 'fighting');
+    this.hint.update(frameDt, this.player.x, this.player.y, !!this.near && !this.leaving && this.control && this.run.state === 'fighting');
     const notes = [this.showHitboxes && this.wolf.present && `WEREWOLF ${this.wolf.state.toUpperCase()}`, this.paused && 'PAUSED', this.run.holdSpawns && !this.calm && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
     this.drawDebug();
@@ -519,8 +555,9 @@ export class ArenaScene extends Phaser.Scene {
       this.input2.consume('fire');
     }
     this.player.fireBlocked = this.story.talking || (this.player.fireBlocked && this.input2.isDown('fire'));
-    if (r.state === 'fighting' && !this.leaving) {
+    if (r.state === 'fighting' && !this.leaving && this.control) {
       this.player.update(dt, this.input2, this.aim);
+      if (Math.hypot(this.input2.move.x, this.input2.move.y) > 0.1) this.story.notify('move');
       this.checkLinks();
     }
     r.update(dt);
