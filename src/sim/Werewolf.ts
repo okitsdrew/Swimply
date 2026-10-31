@@ -53,6 +53,8 @@ export class Werewolf implements Target {
   // Set by the scene when an attack would have caught the player, so a dash the player survived counts as a miss.
   struck = false;
   private dashMissed = false;
+  // He chose the dash and is walking in until the player is close enough for it.
+  private dashPlanned = false;
   private cooldown = 0;
   // Which way he faces on screen, -1 or 1.
   facing = 1;
@@ -91,6 +93,7 @@ export class Werewolf implements Target {
     this.reach = 0;
     this.cooldown = 0;
     this.dashMissed = false;
+    this.dashPlanned = false;
     this.enter('rising');
   }
 
@@ -160,11 +163,7 @@ export class Werewolf implements Target {
         break;
       case 'walk':
         this.walk(dt, world, nav, target);
-        if (this.cooldown <= 0 && Math.hypot(target.x - this.x, target.y - this.y) <= this.cfg.triggerRange) {
-          const chance = this.dashMissed ? this.cfg.jumpChanceAfterMiss : this.cfg.jumpChance;
-          if (Math.random() < chance) this.startCrouch(target);
-          else this.startWindup(target);
-        }
+        this.chooseAttack(target);
         break;
       case 'windup': {
         // Grows fast at first and settles into its full length, so the far end is clear well before the dash.
@@ -233,11 +232,28 @@ export class Werewolf implements Target {
     this.time = 0;
   }
 
+  private chooseAttack(target: Vec2): void {
+    if (this.cooldown > 0) return;
+    const c = this.cfg;
+    const d = Math.hypot(target.x - this.x, target.y - this.y);
+    if (!this.dashPlanned) {
+      if (d > c.jumpTriggerRange) return;
+      // The jump grows likelier with distance: its base chance up close, certain from jumpRampEnd.
+      const base = this.dashMissed ? c.jumpChanceAfterMiss : c.jumpChance;
+      const k = Math.min(1, Math.max(0, (d - c.jumpRampStart) / Math.max(c.jumpRampEnd - c.jumpRampStart, 1)));
+      if (Math.random() < base + (1 - base) * k) return this.startCrouch(target);
+      this.dashPlanned = true;
+    }
+    if (d <= c.triggerRange) this.startWindup(target);
+    else if (d >= c.jumpRampEnd) this.startCrouch(target);
+  }
+
   private face(target: Vec2): void {
     this.facing = toScreen(target.x - this.x, target.y - this.y, off).x < 0 ? -1 : 1;
   }
 
   private startCrouch(target: Vec2): void {
+    this.dashPlanned = false;
     this.vx = 0;
     this.vy = 0;
     this.dashMissed = false;
@@ -259,6 +275,7 @@ export class Werewolf implements Target {
   }
 
   private startWindup(target: Vec2): void {
+    this.dashPlanned = false;
     this.struck = false;
     const dx = target.x - this.x;
     const dy = target.y - this.y;

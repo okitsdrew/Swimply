@@ -22,7 +22,7 @@ export const werewolfMiniboss = defineConfig(
     // Seconds his spawn mark shows before he rises.
     spawnTell: 1.5,
     walkFps: 8,
-    // He starts an attack when the player is this close.
+    // He dashes when the player is this close.
     triggerRange: 300,
     // The attack rectangle's length (how far he dashes) and width. During the dash, the stretch he passes
     // through hurts (it travels with him); the slam then hurts the last attackWidth of the rectangle.
@@ -37,14 +37,20 @@ export const werewolfMiniboss = defineConfig(
     recoverTime: 0.2,
     // Seconds after an attack before he can start the next one.
     attackCooldown: 1,
-    // Chance that an attack is the jump instead of the dash, and the chance right after a dash the player survived.
+    // Once he can attack and the player is within jumpTriggerRange, he picks an attack. The chance of the jump is
+    // jumpChance (jumpChanceAfterMiss right after a dash the player survived) up to jumpRampStart away, rising to
+    // certain at jumpRampEnd. If he picks the dash, he walks in until the player is within triggerRange, but
+    // switches to the jump if the player gets jumpRampEnd away.
+    jumpTriggerRange: 1000,
     jumpChance: 0.25,
     jumpChanceAfterMiss: 0.5,
+    jumpRampStart: 350,
+    jumpRampEnd: 700,
     // The jump: he crouches, then leaps at where the player was (no further than jumpRange), over anything in the
     // way. A circle on the ground marks where he will land and fills as he comes down; landing hurts inside it.
     jumpWindup: 0.75,
     jumpAirTime: 1,
-    jumpRange: 500,
+    jumpRange: 1000,
     jumpRadius: 110,
     // Height of the arc at its top, in screen pixels.
     jumpHeight: 140,
@@ -79,11 +85,14 @@ export const werewolfMiniboss = defineConfig(
     slamTime: { min: 0, max: 2, step: 0.05 },
     recoverTime: { min: 0, max: 3, step: 0.05 },
     attackCooldown: { min: 0, max: 10, step: 0.1 },
+    jumpTriggerRange: { min: 0, max: 2000, step: 10 },
     jumpChance: { min: 0, max: 1, step: 0.05 },
     jumpChanceAfterMiss: { min: 0, max: 1, step: 0.05 },
+    jumpRampStart: { min: 0, max: 2000, step: 10 },
+    jumpRampEnd: { min: 0, max: 2000, step: 10 },
     jumpWindup: { min: 0.05, max: 3, step: 0.05 },
     jumpAirTime: { min: 0.1, max: 3, step: 0.05 },
-    jumpRange: { min: 50, max: 1500, step: 10 },
+    jumpRange: { min: 50, max: 2000, step: 10 },
     jumpRadius: { min: 10, max: 400, step: 5 },
     jumpHeight: { min: 0, max: 400, step: 10 },
     jumpTakeoff: { min: 0, max: 1, step: 0.02 },
