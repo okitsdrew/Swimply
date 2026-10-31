@@ -18,6 +18,54 @@
       "name": "Shade spawn zone",
       "category": "markers",
       "marker": "shadeSpawn"
+    },
+    {
+      "id": "throne",
+      "name": "Throne",
+      "category": "props",
+      "parts": [{ "texture": "throne", "originY": 0.93 }],
+      "collision": [{ "radius": 20 }]
+    },
+    {
+      "id": "lamp",
+      "name": "Lamp",
+      "category": "props",
+      "parts": [{ "texture": "lamp" }]
+    },
+    {
+      "id": "standing-lamp",
+      "name": "Standing lamp",
+      "category": "props",
+      "parts": [{ "texture": "standing_lamp", "originY": 0.97 }],
+      "collision": [{ "radius": 6 }]
+    },
+    {
+      "id": "fire",
+      "name": "Fire",
+      "category": "props",
+      "parts": [{ "texture": "fire", "originY": 0.86 }],
+      "collision": [{ "radius": 12 }]
+    },
+    {
+      "id": "column",
+      "name": "Column",
+      "category": "props",
+      "parts": [{ "texture": "column", "originY": 0.95 }],
+      "collision": [{ "radius": 16 }]
+    },
+    {
+      "id": "broken-column",
+      "name": "Broken column",
+      "category": "props",
+      "parts": [{ "texture": "broken_column", "originX": 0.42, "originY": 0.92 }],
+      "collision": [{ "radius": 16 }]
+    },
+    {
+      "id": "weapon-rack",
+      "name": "Weapon rack",
+      "category": "props",
+      "parts": [{ "texture": "weapon_rack", "originY": 0.91 }],
+      "collision": [{ "x": -12, "y": 12, "radius": 9 }, { "x": 12, "y": -12, "radius": 9 }]
     }
   ]
 }

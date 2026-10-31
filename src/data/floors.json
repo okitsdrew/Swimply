@@ -10,6 +10,16 @@
       "name": "Still water",
       "colors": ["#0f2430", "#112835", "#10262f", "#0e2129"],
       "blocks": true
+    },
+    {
+      "id": "brick",
+      "name": "brick",
+      "colors": ["#271c1c", "#1e1515", "#141010", "#1f1414"]
+    },
+    {
+      "id": "granite",
+      "name": "granite",
+      "colors": ["#0d0d0d", "#080808", "#050505"]
     }
   ]
 }
