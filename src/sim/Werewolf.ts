@@ -37,6 +37,10 @@ export class Werewolf implements Target {
   reach = 0;
   // How far the dash has gone.
   private dashed = 0;
+  // The stretch of the rectangle (distances along it) he passed through in this step's dash, or null.
+  sweep: { from: number; to: number } | null = null;
+  // True for the one step in which he slams.
+  slammed = false;
   private cooldown = 0;
   // Which way he faces on screen, -1 or 1.
   facing = 1;
@@ -88,13 +92,23 @@ export class Werewolf implements Target {
     return (this.x - x) ** 2 + (this.y - y) ** 2 < min * min;
   }
 
-  // True if the circle is inside the attack rectangle as it is now.
-  inAttack(x: number, y: number, r: number): boolean {
+  // True if the circle is inside the attack rectangle between `from` and `to` (distances along it).
+  inAttack(x: number, y: number, r: number, from = 0, to = this.reach): boolean {
     const px = x - this.ax;
     const py = y - this.ay;
     const along = px * this.dirX + py * this.dirY;
     const side = Math.abs(px * this.dirY - py * this.dirX);
-    return along >= -r && along <= this.reach + r && side <= this.cfg.attackWidth / 2 + r;
+    return along >= from - r && along <= to + r && side <= this.cfg.attackWidth / 2 + r;
+  }
+
+  // True if the circle was in his path during this step's dash: the danger travels with him.
+  inDash(x: number, y: number, r: number): boolean {
+    return !!this.sweep && this.inAttack(x, y, r, this.sweep.from - this.cfg.attackWidth / 2, this.sweep.to + this.cfg.attackWidth / 2);
+  }
+
+  // True if the circle is where the slam lands: the far end of the rectangle.
+  inSlam(x: number, y: number, r: number): boolean {
+    return this.inAttack(x, y, r, this.reach - this.cfg.attackWidth, this.reach);
   }
 
   update(dt: number, world: CollisionWorld, nav: Navigator, target: Vec2): void {
@@ -102,6 +116,8 @@ export class Werewolf implements Target {
     this.radius = this.cfg.radius;
     this.time += dt;
     this.flash -= dt;
+    this.sweep = null;
+    this.slammed = false;
     this.cooldown -= dt;
     switch (this.state) {
       case 'rising':
@@ -133,11 +149,13 @@ export class Werewolf implements Target {
         this.y += this.dirY * step;
         world.resolve(this);
         const moved = Math.hypot(this.x - bx, this.y - by);
+        this.sweep = { from: this.dashed, to: this.dashed + moved };
         this.dashed += step;
         // Stopped short by a wall: the slam lands where he stands, and the rectangle shrinks to match.
         if (moved < step * 0.5) this.reach = Math.min(this.reach, Math.hypot(this.x - this.ax, this.y - this.ay));
         if (this.dashed >= this.cfg.attackRange - 1e-6 || moved < step * 0.5) {
           this.enter('slam');
+          this.slammed = true;
           this.onSlam();
         }
         break;

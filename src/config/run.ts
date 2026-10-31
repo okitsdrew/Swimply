@@ -9,12 +9,12 @@ export const run = defineConfig(
     // Seconds of calm at the start of a run before the first Shade.
     startDelay: 1.5,
     // Shades per second at the start of a run.
-    spawnRate: 0.5,
+    spawnRate: 1,
     // The spawn rate rises by this much (Shades per second) each minute.
-    spawnRatePerMinute: 1.2,
+    spawnRatePerMinute: 2,
     maxSpawnRate: 6,
     // No new Shades while this many are already out.
-    maxAlive: 60,
+    maxAlive: 80,
     // Each minute of the run adds this much health to newly spawned Shades.
     hpPerMinute: 20,
     // Shades never appear closer to the player than this.
@@ -27,7 +27,7 @@ export const run = defineConfig(
     deathShake: 10,
     deathSmoke: 30,
     // A kill freezes the sim for this long, so each one lands.
-    killHitStop: 0.04,
+    killHitStop: 0,
     // After a hit-stop, kills within this many seconds do not freeze again, so a piercing arrow that kills
     // several Shades one after another gives one freeze, not a stutter.
     hitStopGap: 0.25,

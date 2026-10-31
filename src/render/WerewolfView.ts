@@ -125,17 +125,17 @@ export class WerewolfView {
     this.sinceSlam = SLAM_FADE;
   }
 
-  // The attack rectangle, `reach` long, as a path on the ground.
-  private rect(g: Phaser.GameObjects.Graphics, reach: number): void {
+  // The attack rectangle from `from` to `reach` along it, as a path on the ground.
+  private rect(g: Phaser.GameObjects.Graphics, reach: number, from = 0): void {
     const w = this.wolf;
     const hw = this.wolf.cfg.attackWidth / 2;
     const nx = -w.dirY * hw;
     const ny = w.dirX * hw;
     const pts = [
-      [w.ax + nx, w.ay + ny],
+      [w.ax + w.dirX * from + nx, w.ay + w.dirY * from + ny],
       [w.ax + w.dirX * reach + nx, w.ay + w.dirY * reach + ny],
       [w.ax + w.dirX * reach - nx, w.ay + w.dirY * reach - ny],
-      [w.ax - nx, w.ay - ny],
+      [w.ax + w.dirX * from - nx, w.ay + w.dirY * from - ny],
     ];
     g.beginPath();
     pts.forEach(([x, y], i) => {
@@ -146,11 +146,12 @@ export class WerewolfView {
     g.closePath();
   }
 
-  // The slam: the rectangle flashes and fades, and a ring spreads from where he landed.
+  // The slam: the far end of the rectangle (where it hurts) flashes and fades, and a ring spreads from where he
+  // landed.
   private drawSlamFlash(g: Phaser.GameObjects.Graphics): void {
     if (this.sinceSlam >= SLAM_FADE) return;
     const k = this.sinceSlam / SLAM_FADE;
-    this.rect(g, this.wolf.reach);
+    this.rect(g, this.wolf.reach, Math.max(0, this.wolf.reach - this.wolf.cfg.attackWidth));
     g.fillStyle(0xffe0c0, 0.6 * (1 - k)).fillPath();
     toScreen(this.slamAt.x, this.slamAt.y, screen);
     const half = ellipseHalfSize(this.wolf.cfg.attackWidth * (0.5 + 1.5 * k));

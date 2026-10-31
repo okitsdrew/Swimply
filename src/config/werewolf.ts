@@ -8,31 +8,32 @@ export const werewolfMiniboss = defineConfig(
   'werewolf_miniboss',
   'bosses',
   {
-    hp: 1000,
+    hp: 3000,
     // Seconds into a run when he arrives.
     arriveTime: 45,
-    speed: 130,
+    speed: 400,
     uniformScreenSpeed: true,
     radius: 26,
-    scale: 1,
+    scale: 3,
     // The player dies when his hit circle meets this fraction of the werewolf's radius.
-    contactScale: 0.6,
+    contactScale: 1,
     turnRate: 5,
     // Seconds his spawn mark shows before he rises.
     spawnTell: 1.5,
     walkFps: 8,
     // He starts an attack when the player is this close.
-    triggerRange: 200,
-    // The attack rectangle's length (how far he dashes) and width.
-    attackRange: 250,
-    attackWidth: 70,
+    triggerRange: 300,
+    // The attack rectangle's length (how far he dashes) and width. During the dash, the stretch he passes
+    // through hurts (it travels with him); the slam then hurts the last attackWidth of the rectangle.
+    attackRange: 400,
+    attackWidth: 125,
     // The rectangle grows to full length over the windup; its direction is locked when the windup starts.
-    windupTime: 0.8,
+    windupTime: 0.4,
     // Dash speed. The player's dash is about 2000, so 1500 is about 75% of it.
     dashSpeed: 1500,
     // How long the slam pose holds, then how long he stands before walking again.
     slamTime: 0.3,
-    recoverTime: 0.5,
+    recoverTime: 0.2,
     // Seconds after an attack before he can start the next one.
     attackCooldown: 1,
     // The slam hurts the player even mid-dash or mid-teleport.

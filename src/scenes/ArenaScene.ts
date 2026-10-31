@@ -222,12 +222,17 @@ export class ArenaScene extends Phaser.Scene {
     this.hud.announce('THE WEREWOLF COMES');
   }
 
-  // The slam hurts whoever is inside the attack rectangle when he lands.
   private onSlam(): void {
     this.wolfView.onSlam();
+  }
+
+  // The werewolf's attack hurts the player along his dash as he passes, then at the far end where he slams.
+  private checkWolfAttack(): void {
     const p = this.player;
+    const w = this.wolf;
     if (this.run.state !== 'fighting' || sim.godMode || (p.safe && !werewolf.slamPiercesInvuln)) return;
-    if (this.wolf.inAttack(p.x, p.y, cfgPlayer.hitRadius)) this.die();
+    const r = cfgPlayer.hitRadius;
+    if (w.inDash(p.x, p.y, r) || (w.slammed && w.inSlam(p.x, p.y, r))) this.die();
   }
 
   // Freezes the sim briefly so a kill lands. Kills in quick succession share one freeze unless `force`.
@@ -374,6 +379,7 @@ export class ArenaScene extends Phaser.Scene {
     this.nav.setGoal(this.player.x, this.player.y);
     this.shades.update(dt, this.world, this.nav);
     this.wolf.update(dt, this.world, this.nav, this.player);
+    this.checkWolfAttack();
     this.targets.length = 0;
     this.targets.push(...this.shades.list);
     if (this.wolf.alive) this.targets.push(this.wolf);
