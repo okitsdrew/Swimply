@@ -2,7 +2,7 @@ import { Asset, assets } from '../data/assets';
 import { Floor, floors } from '../data/floors';
 import { maps } from '../data/maps';
 import { Sprite, sprites } from '../data/sprites';
-import { assetsText, floorsText, saveFile, spritesText } from './files';
+import { assetsText, floorsText, idsInMap, readFile, readMapFiles, saveFile, spritesText } from './files';
 
 export type FileKind = 'sprites' | 'assets' | 'floors';
 
@@ -37,6 +37,10 @@ export class Workspace {
   private savedSprites = new WeakMap<Sprite, Sprite>();
   private listeners = new Set<() => void>();
   private base: Record<FileKind, string>;
+  // Each file's text on disk as last read or written, so a save is refused if another tool changed it meanwhile.
+  private disk: Partial<Record<FileKind, string | null>> = {};
+  // The ids each map file uses, kept up to date when the level editor saves a map.
+  private mapIds = new Map(maps.list().map((m) => [m.id, { assets: new Set(m.objects.map((o) => o.asset.id)), floors: new Set(m.tiles.map((t) => t.id)) }]));
   private draftTimer = 0;
   // What happened to last time's unsaved work, for the save bar.
   draftNote = '';
@@ -45,6 +49,21 @@ export class Workspace {
     this.rememberSavedSprites();
     this.base = { sprites: this.text('sprites'), assets: this.text('assets'), floors: this.text('floors') };
     this.restoreDraft();
+    for (const kind of Object.keys(PATHS) as FileKind[]) void readFile(PATHS[kind]).then((t) => (this.disk[kind] = t));
+    void this.readMaps();
+    import.meta.hot?.on('swimply:data', (d: { file: string }) => {
+      if (/[\\/]maps[\\/]/.test(d.file)) void this.readMaps();
+    });
+  }
+
+  private async readMaps(): Promise<void> {
+    try {
+      const files = await readMapFiles();
+      this.mapIds = new Map(Object.entries(files).map(([id, text]) => [id, idsInMap(text)]));
+      this.listeners.forEach((l) => l());
+    } catch {
+      // Not under the dev server: nothing can be saved anyway.
+    }
   }
 
   private text(kind: FileKind): string {
@@ -120,8 +139,9 @@ export class Workspace {
   async save(): Promise<void> {
     for (const kind of [...this.dirty]) {
       const text = this.text(kind);
-      await saveFile(PATHS[kind], text);
+      await saveFile(PATHS[kind], text, this.disk[kind]);
       this.base[kind] = text;
+      this.disk[kind] = text;
       this.dirty.delete(kind);
       if (kind === 'sprites') this.rememberSavedSprites();
     }
@@ -138,13 +158,13 @@ export class Workspace {
   }
 
   // Maps point at assets and floors by id, so an id a map uses cannot be renamed or deleted from here: the map
-  // would stop loading that thing. Reads the map files as they were when the tool opened.
+  // would stop loading that thing. The level editor can rename or replace them across every map.
   mapsUsingAsset(id: string): string[] {
-    return maps.list().filter((m) => m.objects.some((o) => o.asset.id === id)).map((m) => m.id);
+    return [...this.mapIds].filter(([, ids]) => ids.assets.has(id)).map(([m]) => m);
   }
 
   mapsUsingFloor(id: string): string[] {
-    return maps.list().filter((m) => m.tiles.some((t) => t.id === id)).map((m) => m.id);
+    return [...this.mapIds].filter(([, ids]) => ids.floors.has(id)).map(([m]) => m);
   }
 
   sprite(id: string): Sprite | undefined {

@@ -4,51 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Swimply asset maker</title>
-    <style>
-      html, body { margin: 0; height: 100%; background: #0b0a10; color: #d9d2e9; font: 13px/1.4 monospace; }
-      body { display: flex; flex-direction: column; }
-      header { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-bottom: 1px solid #3a3350; }
-      header h1 { font-size: 14px; margin: 0 12px 0 0; color: #f2d7a6; }
-      header a { margin-left: auto; color: #c9b6ff; }
-      nav { display: flex; gap: 2px; }
-      h2 { font-size: 13px; margin: 0 0 8px; color: #f2d7a6; text-transform: uppercase; letter-spacing: 1px; }
-      h3 { font-size: 12px; margin: 12px 0 4px; color: #c9b6ff; font-weight: normal; border-top: 1px solid #2a2538; padding-top: 6px; }
-      .layout { flex: 1; display: grid; grid-template-columns: 230px 1fr 330px; min-height: 0; }
-      .list, .props { overflow-y: auto; padding: 10px 12px 40px; background: #0e0c14; }
-      .list { border-right: 1px solid #2a2538; }
-      .props { border-left: 1px solid #2a2538; }
-      .center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-width: 0; min-height: 0; padding: 8px; }
-      .canvas-wrap { flex: 1; width: 100%; overflow: auto; display: flex; align-items: center; justify-content: center; min-height: 0; }
-      .canvas-wrap canvas { margin: auto; cursor: crosshair; image-rendering: pixelated; box-shadow: 0 0 0 1px #3a3350; }
-      .preview canvas { display: block; box-shadow: 0 0 0 1px #3a3350; }
-      button { background: #2a2538; color: #e9e3f5; border: 1px solid #443c5c; font: inherit; padding: 3px 8px; cursor: pointer; }
-      button:hover:not(:disabled) { background: #3a3350; }
-      button:disabled { opacity: 0.4; cursor: default; }
-      button.on { background: #5a3f99; border-color: #9a7ae0; }
-      button.item { display: block; width: 100%; text-align: left; margin: 1px 0; background: none; border-color: transparent; }
-      button.item.on { background: #2a2538; border-color: #5a3f99; }
-      input, select { background: #1d1929; color: #e9e3f5; border: 1px solid #3a3350; font: inherit; padding: 2px 4px; min-width: 0; }
-      input[type=number] { width: 70px; }
-      input[type=color] { padding: 0; width: 34px; height: 24px; }
-      .row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
-      .row label { width: 96px; flex-shrink: 0; color: #a99fc4; }
-      .row input[type=text], .row .grow, .row .grow input, .row select { flex: 1; }
-      .bar { display: flex; flex-wrap: wrap; gap: 3px; margin: 6px 0; align-items: center; }
-      .box { border: 1px solid #2a2538; padding: 4px 6px; margin: 4px 0; }
-      .hint { color: #8a83a0; font-size: 12px; margin: 4px 0; }
-      .warn { color: #f2d7a6; }
-      .status { color: #8a83a0; }
-      .status.warn { color: #f2d7a6; }
-      .status.error { color: #ff7a8a; }
-      .swatches { display: flex; flex-wrap: wrap; gap: 3px; }
-      .swatch { width: 26px; height: 26px; padding: 0; font-size: 10px; color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000; }
-      .swatch.on { outline: 2px solid #f2d7a6; outline-offset: 1px; }
-      .chips { display: flex; flex-wrap: wrap; gap: 4px; }
-      .chip { display: inline-flex; align-items: center; gap: 2px; }
-      .chip button { padding: 0 5px; }
-      .smalls { display: flex; align-items: flex-end; gap: 10px; background: #17151d; padding: 8px; }
-      .smalls canvas { image-rendering: pixelated; }
-    </style>
   </head>
   <body>
     <script type="module" src="/src/tools/assetMaker.ts"></script>
