@@ -12,7 +12,7 @@ const SLAM_FADE = 0.35;
 
 // Draws the werewolf, his attack markings on the ground, the slam and landing, and his health bar.
 //   walk: werewolf_0-3   windup: werewolf_10 then 11 (held)   dash: 11   slam: 12 then 13 (held)   recover: 13
-//   crouch: werewolf_14   jump: werewolf_15   land: werewolf_13
+//   crouch: werewolf_14   jump: werewolf_12 (takeoff) then 15   land: werewolf_13
 export class WerewolfView {
   private sprite: Phaser.GameObjects.Image;
   private shadow: Phaser.GameObjects.Image;
@@ -138,9 +138,9 @@ export class WerewolfView {
     } else if (w.state === 'crouch') {
       frame = wolfJumpFrames[0];
     } else if (w.state === 'jump') {
-      frame = wolfJumpFrames[1];
+      frame = w.time < w.cfg.jumpTakeoff ? wolfJumpFrames[1] : wolfJumpFrames[2];
     } else if (w.state === 'land') {
-      frame = wolfJumpFrames[2];
+      frame = wolfJumpFrames[3];
     } else if (w.state === 'recover') {
       frame = wolfAttackFrames[3];
     }

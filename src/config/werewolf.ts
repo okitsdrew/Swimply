@@ -48,6 +48,8 @@ export const werewolfMiniboss = defineConfig(
     jumpRadius: 110,
     // Height of the arc at its top, in screen pixels.
     jumpHeight: 140,
+    // Seconds at the start of the jump shown in the in-between pose (werewolf_12) before the air pose.
+    jumpTakeoff: 0.12,
     // How long the landing pose holds before he recovers.
     jumpLandTime: 0.35,
     // The slam hurts the player even mid-dash or mid-teleport.
@@ -84,6 +86,7 @@ export const werewolfMiniboss = defineConfig(
     jumpRange: { min: 50, max: 1500, step: 10 },
     jumpRadius: { min: 10, max: 400, step: 5 },
     jumpHeight: { min: 0, max: 400, step: 10 },
+    jumpTakeoff: { min: 0, max: 1, step: 0.02 },
     jumpLandTime: { min: 0, max: 2, step: 0.05 },
     slamPiercesInvuln: 'bool',
     slamShake: { min: 0, max: 40, step: 1 },
