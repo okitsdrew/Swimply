@@ -47,7 +47,8 @@ export interface Asset {
   category: string;
   parts: AssetPart[];
   collision: CollisionCircle[];
-  // Markers are invisible in play and tell the game where things go: "playerStart" (where a run starts) and "shadeSpawn" (a zone Shades appear in).
+  // Markers are invisible in play and tell the game where things go: "playerStart" (where a map starts), "shadeSpawn"
+  // (a zone Shades appear in) and "door" (walking into it goes to the map in its `to`).
   marker: string;
   light: Light | null;
 }

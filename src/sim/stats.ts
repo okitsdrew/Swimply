@@ -1,5 +1,6 @@
 import { bow, player } from '../config/character';
 import { sim } from '../config/sim';
+import { story } from '../config/story';
 import { save } from '../core/save';
 
 // The permanent baseline from the upgrade tree, by stat id (see data/tree.ts for which stats add and which multiply).
@@ -9,7 +10,11 @@ const pct = (id: string): number => Math.max(0.05, 1 + (save.baseline[id] ?? 0))
 // The character's effective stats: config plus the baseline. Systems read these, never the raw config, so the
 // baseline is added in exactly one place: here.
 export const stats = {
-  moveSpeed: (): number => player.moveSpeed + add('moveSpeed'),
+  // Freshly woken: slow, no bow, no dash, until he first enters the Mindscape (save flag enteredMindscape).
+  weak: (): boolean => !save.flags.enteredMindscape,
+  moveSpeed: (): number => (player.moveSpeed + add('moveSpeed')) * (stats.weak() ? story.weakSpeedMult : 1),
+  canFire: (): boolean => !stats.weak(),
+  canDash: (): boolean => !stats.weak(),
   fireRate: (): number => bow.fireRate + add('fireRate'),
   arrows: (): number => Math.round(bow.arrowsPerShot + add('arrows')),
   pierce: (): number => Math.round(bow.pierce + add('pierce')),

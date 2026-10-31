@@ -5,17 +5,19 @@ import { render } from '../config/render';
 import { run } from '../config/run';
 import { shade } from '../config/shade';
 import { sim } from '../config/sim';
+import { story } from '../config/story';
 import { tree } from '../config/tree';
 import { werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
-import { AreaMap, findMarker, maps } from '../data/maps';
-import { addShards, maxTree, resetTree, treeComplete } from '../data/tree';
+import { AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
+import { addShards, maxTree, resetTree } from '../data/tree';
 import { save, writeSave } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
 import { ArrowsView } from '../render/ArrowsView';
 import { makeArt } from '../render/art';
 import { Fx } from '../render/Fx';
+import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
 import { PlayerView } from '../render/PlayerView';
 import { clock, RunHud } from '../render/RunHud';
@@ -32,7 +34,7 @@ import { FlowField } from '../sim/Nav';
 import { MapWorld } from '../sim/World';
 import { TreeSceneData } from './TreeScene';
 
-const DEFAULT_MAP = 'mindscape';
+const DEFAULT_MAP = 'spawn';
 
 // The page address can pick what to play, which is how the level editor's "play here" opens the game:
 //   ?map=spawn        play that map
@@ -41,12 +43,31 @@ const DEFAULT_MAP = 'mindscape';
 // The map is kept in the address, so the reload after a tool saves comes back to the same map.
 const params = new URLSearchParams(location.search);
 
-// The arena: a map from src/data/maps, Shades that keep coming, death, the upgrade tree, and the next run. The sim runs on a fixed time
-// step here; drawing runs once per screen frame. Switching map restarts the scene with the new map's id.
+// Where the player was standing when he last left each map, by map id, so coming back puts him there (back at the
+// bow's pedestal after the Mindscape). Kept while the page is open, not saved.
+const leftFrom = new Map<string, Vec2>();
+// The map he came from, so the Mindscape knows where to send him back.
+let cameFrom = '';
+
+// The arena: a map from src/data/maps, played one of two ways. A map with Shade spawn zones is a run (the
+// Mindscape): Shades that keep coming, death, the upgrade tree, and the next run. Any other map is calm: no Shades,
+// no run clock, and a death puts him back where he came in. Doors and things with a `to` lead to other maps. The sim
+// runs on a fixed time step here; drawing runs once per screen frame. Switching map restarts the scene with the new
+// map's id.
 export class ArenaScene extends Phaser.Scene {
   private input2!: Input;
   private mapId = params.get('map') ?? DEFAULT_MAP;
+  // The map as the save's flags show it (see withFlags).
   private map!: AreaMap;
+  // No spawn zones: no Shades, no run, no tree.
+  private calm = false;
+  // Where he comes in, when another map sent him here.
+  private arriveAt: Vec2 | null = null;
+  // Fading out to another map; input is ignored meanwhile.
+  private leaving = false;
+  // The thing next to him that interact would use.
+  private near: Placed | null = null;
+  private hint!: InteractHint;
   private world!: MapWorld;
   private nav!: FlowField;
   private mapView!: MapView;
@@ -81,23 +102,32 @@ export class ArenaScene extends Phaser.Scene {
     super('arena');
   }
 
-  init(data: { map?: string }): void {
+  init(data: { map?: string; at?: Vec2 }): void {
     if (data.map) this.mapId = data.map;
+    this.arriveAt = data.at ?? null;
   }
 
   create(): void {
     // A missing map (renamed or deleted file) falls back to any map rather than a blank screen.
     const map = maps.get(this.mapId) ?? maps.get(DEFAULT_MAP) ?? maps.list()[0];
     if (!map) throw new Error('No maps in src/data/maps');
-    this.map = map;
+    this.map = withFlags(map, save.flags);
     this.mapId = map.id;
+    this.calm = !this.map.objects.some((o) => o.asset.marker === 'shadeSpawn');
+    // Being in the Mindscape (any map that spawns) is what brings back his strength.
+    if (!this.calm && !save.flags.enteredMindscape) {
+      save.flags.enteredMindscape = true;
+      writeSave();
+    }
     if (params.get('map') !== map.id) {
       params.set('map', map.id);
       params.delete('at');
       history.replaceState(null, '', `?${params}`);
     }
-    this.world = new MapWorld(map);
-    this.nav = new FlowField(map, this.world);
+    this.world = new MapWorld(this.map);
+    this.nav = new FlowField(this.map, this.world);
+    this.leaving = false;
+    this.near = null;
     this.acc = 0;
     this.paused = false;
     this.stepsQueued = 0;
@@ -105,9 +135,10 @@ export class ArenaScene extends Phaser.Scene {
 
     makeArt(this);
     this.cameras.main.setBackgroundColor(0x000000);
+    this.cameras.main.fadeIn(story.fadeTime * 1000);
     this.input2 = new Input([new KeyboardMouseSource(this.game.canvas)]);
     this.fx = new Fx(this);
-    this.mapView = new MapView(this, map, false);
+    this.mapView = new MapView(this, this.map, false);
     this.debug = this.add.graphics().setDepth(1e7);
 
     this.player = new Player(this.world);
@@ -119,8 +150,10 @@ export class ArenaScene extends Phaser.Scene {
     this.wolf = new Werewolf(werewolf);
     this.wolfView = new WerewolfView(this, this.wolf, this.fx);
     this.run = new Run(this.shades);
-    this.run.holdSpawns = params.has('calm');
+    this.run.holdSpawns = this.calm || params.has('calm');
     this.hud = new RunHud(this, this.run);
+    this.hud.showRun = !this.calm;
+    this.hint = new InteractHint(this);
 
     this.player.onFire = (_x, _y, dx, dy) => {
       const m = this.view.muzzle();
@@ -173,6 +206,8 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Max tree', run: () => maxTree() },
       { label: 'Toggle hitboxes', run: () => (this.showHitboxes = !this.showHitboxes) },
       { label: `Next map (${map.name})`, run: () => this.nextMap() },
+      { label: 'Story: fresh start', run: () => this.storyFresh() },
+      { label: 'Story: Mindscape won', run: () => this.storyWon() },
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
       { label: 'Level editor', run: () => window.open(`level-editor.html?map=${this.mapId}`, 'swimply-level-editor') },
     ]);
@@ -184,8 +219,74 @@ export class ArenaScene extends Phaser.Scene {
 
   private nextMap(): void {
     const all = maps.list();
-    const next = all[(all.indexOf(this.map) + 1) % all.length];
+    const next = all[(all.findIndex((m) => m.id === this.mapId) + 1) % all.length];
     this.scene.restart({ map: next.id });
+  }
+
+  // Fades out and goes to another map, remembering where he stood here so coming back puts him there again.
+  private travel(to: string): void {
+    if (this.leaving) return;
+    const next = maps.get(to);
+    if (!next) {
+      console.warn(`[maps] ${this.mapId}: a link goes to unknown map ${JSON.stringify(to)}`);
+      return;
+    }
+    this.leaving = true;
+    leftFrom.set(this.mapId, { x: this.player.x, y: this.player.y });
+    cameFrom = this.mapId;
+    const cam = this.cameras.main;
+    cam.fadeOut(story.fadeTime * 1000);
+    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.restart({ map: next.id, at: leftFrom.get(next.id) }));
+  }
+
+  // Where to leave to after the Mindscape: the map he came from, else any map with a link here.
+  private wayBack(): string {
+    if (cameFrom && cameFrom !== this.mapId) return cameFrom;
+    return maps.list().find((m) => m.objects.some((o) => o.to === this.mapId))?.id ?? DEFAULT_MAP;
+  }
+
+  // Doors take him as soon as he walks in. Anything else with a link waits for interact while he is next to it.
+  private checkLinks(): void {
+    const p = this.player;
+    this.near = null;
+    let best = Infinity;
+    for (const o of this.map.objects) {
+      if (!o.to) continue;
+      const d = Math.hypot(o.x - p.x, o.y - p.y);
+      if (o.asset.marker === 'door') {
+        if (d < story.doorRadius * o.size) return this.travel(o.to);
+        continue;
+      }
+      const reach = Math.max(0, ...o.asset.collision.map((c) => Math.hypot(c.x, c.y) + c.radius)) * o.size + story.interactRange;
+      if (d < reach && d < best) {
+        best = d;
+        this.near = o;
+      }
+    }
+    if (this.near && this.input2.justPressed('interact')) this.travel(this.near.to);
+  }
+
+  // Dev aids for the story: back to waking up, or straight to after the Mindscape.
+  private storyFresh(): void {
+    for (const f of ['enteredMindscape', 'mindscapeCleared', 'teleport']) delete save.flags[f];
+    resetTree(false);
+    save.shards = 0;
+    addShards(0);
+    leftFrom.clear();
+    cameFrom = '';
+    this.scene.restart({ map: DEFAULT_MAP });
+  }
+
+  private storyWon(): void {
+    this.winMindscape();
+    this.scene.restart({ map: DEFAULT_MAP });
+  }
+
+  // The full tree whatever was bought, teleport, and his strength for good.
+  private winMindscape(): void {
+    Object.assign(save.flags, { enteredMindscape: true, mindscapeCleared: true, teleport: true });
+    maxTree();
+    addShards(0);
   }
 
   // The tree screen. After a death, closing it starts the next run; opened mid-run from the dev menu, the run is
@@ -194,8 +295,8 @@ export class ArenaScene extends Phaser.Scene {
     if (this.treeOpen) return;
     this.treeOpen = true;
     this.hud.treeOpen = true;
-    const dead = this.run.state === 'dead';
     const r = this.run;
+    const dead = r.state === 'dead' && !this.calm;
     if (!dead) this.paused = true;
     const data: TreeSceneData = {
       summary: dead ? `YOU DIED   ${clock(r.time)}, ${r.kills} kills, +${r.shards} shards` : 'MEMORIES',
@@ -213,7 +314,7 @@ export class ArenaScene extends Phaser.Scene {
     // Clicks on the tree screen also reached the game's input; drop them so they don't fire an arrow.
     this.input2.endFrame();
     if (this.run.state === 'dead') this.startRun();
-    else this.paused = false;
+    this.paused = false;
   }
 
   private spawnWolf(): void {
@@ -264,14 +365,12 @@ export class ArenaScene extends Phaser.Scene {
     if (this.run.state !== 'fighting') return;
     this.earn(werewolf.shards);
     this.freeze(0.15, true);
-    // Winning the Mindscape needs the full tree too. What happens next (the hub, teleport) comes later.
-    if (treeComplete()) {
-      save.flags.mindscapeCleared = true;
-      addShards(0);
-      this.hud.announce('THE MINDSCAPE IS CLEARED');
-    } else {
-      this.hud.announce('THE WEREWOLF FALLS');
-    }
+    // Beating him wins the Mindscape, full tree or not: the Shades fade, then he wakes back where he touched the bow.
+    this.winMindscape();
+    this.run.holdSpawns = true;
+    [...this.shades.list].forEach((s) => this.shades.kill(s));
+    this.hud.announce('MEMORIES RESTORED', story.clearedDelay);
+    this.time.delayedCall(story.clearedDelay * 1000, () => this.travel(this.wayBack()));
   }
 
   private startRun(): void {
@@ -283,8 +382,8 @@ export class ArenaScene extends Phaser.Scene {
     this.arrows.clear();
     // Where the address says, else the map's player start marker, else the middle of the map.
     const at = params.get('at')?.split(',').map(Number);
-    const start = at?.length === 2 && at.every(Number.isFinite) ? { x: at[0], y: at[1] }
-      : findMarker(this.map, 'playerStart') ?? { x: this.world.width / 2, y: this.world.height / 2 };
+    const start = this.arriveAt ?? (at?.length === 2 && at.every(Number.isFinite) ? { x: at[0], y: at[1] }
+      : findMarker(this.map, 'playerStart') ?? { x: this.world.width / 2, y: this.world.height / 2 });
     this.player.reset(start.x, start.y);
     this.view.setVisible(true);
     this.run.reset();
@@ -374,7 +473,8 @@ export class ArenaScene extends Phaser.Scene {
     this.arrowsView.render();
     this.shadesView.render(this.player.x, this.player.y);
     this.wolfView.render(frameDt, cam.width);
-    const notes = [this.showHitboxes && this.wolf.present && `WEREWOLF ${this.wolf.state.toUpperCase()}`, this.paused && 'PAUSED', this.run.holdSpawns && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
+    this.hint.update(frameDt, this.player.x, this.player.y, !!this.near && !this.leaving && this.run.state === 'fighting');
+    const notes = [this.showHitboxes && this.wolf.present && `WEREWOLF ${this.wolf.state.toUpperCase()}`, this.paused && 'PAUSED', this.run.holdSpawns && !this.calm && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
     this.drawDebug();
   }
@@ -382,8 +482,16 @@ export class ArenaScene extends Phaser.Scene {
   // One fixed step of the whole simulation, in the order things happen.
   private step(dt: number): void {
     const r = this.run;
-    if (!this.treeOpen && r.state === 'dead' && r.canRestart) this.openTree();
-    if (r.state === 'fighting') this.player.update(dt, this.input2, this.aim);
+    // A death in a calm map just puts him back where he came in.
+    if (this.calm && r.state === 'dead' && r.deadTime >= story.respawnDelay) {
+      this.startRun();
+      this.cameras.main.fadeIn(story.fadeTime * 1000);
+    }
+    if (!this.calm && !this.treeOpen && r.state === 'dead' && r.canRestart) this.openTree();
+    if (r.state === 'fighting' && !this.leaving) {
+      this.player.update(dt, this.input2, this.aim);
+      this.checkLinks();
+    }
     r.update(dt);
     if (r.state === 'fighting' && !this.wolfCame && !r.holdSpawns && r.time >= werewolf.arriveTime) this.spawnWolf();
     this.nav.setGoal(this.player.x, this.player.y);

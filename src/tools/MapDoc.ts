@@ -13,6 +13,10 @@ export interface EditObject {
   x: number;
   y: number;
   size: number;
+  // Save flags and a map link, as in data/maps.ts's Placed. Empty for none.
+  if: string;
+  unless: string;
+  to: string;
 }
 
 export interface EditMap extends MapFile {
@@ -31,7 +35,7 @@ export function fromAreaMap(m: AreaMap): EditMap {
     legend: { ...m.legend },
     darkness: m.darkness,
     tiles: m.tiles.map((t) => t.id),
-    objects: m.objects.map((o) => ({ asset: o.asset.id, x: o.x, y: o.y, size: o.size })),
+    objects: m.objects.map((o) => ({ asset: o.asset.id, x: o.x, y: o.y, size: o.size, if: o.if, unless: o.unless, to: o.to })),
   };
 }
 
@@ -62,7 +66,7 @@ export class MapDoc {
     const objects: Placed[] = [];
     for (const o of m.objects) {
       const asset = assets.get(o.asset);
-      if (asset) objects.push({ asset, x: o.x, y: o.y, size: o.size });
+      if (asset) objects.push({ asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '' });
     }
     return { id: this.id, name: m.name, tileSize: m.tileSize, cols: m.cols, rows: m.rows, legend: m.legend, tiles: m.tiles.map((id) => floors.get(id) ?? fallback), objects, darkness: m.darkness ?? 0 };
   }

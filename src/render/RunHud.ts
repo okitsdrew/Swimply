@@ -22,6 +22,8 @@ export class RunHud {
   private bannerTime = 0;
   // The tree screen shows its own death summary, so this one steps aside.
   treeOpen = false;
+  // Off in a calm map, which has no run: no clock, kills or shards.
+  showRun = true;
 
   constructor(scene: Phaser.Scene, private run: Run) {
     const fixed = (t: Phaser.GameObjects.Text) => t.setScrollFactor(0).setDepth(2e7);
@@ -30,19 +32,20 @@ export class RunHud {
     this.death = fixed(scene.add.text(0, 0, '', { ...style, fontSize: '22px', align: 'center' }).setOrigin(0.5));
   }
 
-  announce(text: string): void {
+  announce(text: string, seconds = 1.6): void {
     this.banner.setText(text);
-    this.bannerTime = 1.6;
+    this.bannerTime = seconds;
   }
 
   // `note` shows dev states such as a pause, so a frozen game is never mistaken for a bug.
   update(dt: number, width: number, height: number, note = ''): void {
     const r = this.run;
-    this.counts.setText(`${clock(r.time)}   KILLS ${r.kills}   SHARDS ${save.shards}${note ? `   ${note}` : ''}`);
+    const counts = this.showRun ? `${clock(r.time)}   KILLS ${r.kills}   SHARDS ${save.shards}` : '';
+    this.counts.setText([counts, note].filter(Boolean).join('   '));
     this.bannerTime = Math.max(0, this.bannerTime - dt);
     this.banner.setPosition(width / 2, height * 0.22).setAlpha(Math.min(1, this.bannerTime * 2));
     const dead = r.state === 'dead' && !this.treeOpen;
     this.death.setVisible(dead).setPosition(width / 2, height * 0.3);
-    if (dead) this.death.setText(`YOU DIED\n${clock(r.time)}, ${r.kills} kills`);
+    if (dead) this.death.setText(this.showRun ? `YOU DIED\n${clock(r.time)}, ${r.kills} kills` : 'YOU DIED');
   }
 }
