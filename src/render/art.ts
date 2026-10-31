@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { rgba, Sprite, sprites } from '../data/sprites';
 
 // Code-drawn placeholder art. Gameplay only refers to these texture keys, so real sprite sheets
 // can be loaded under the same keys later without touching the sim.
@@ -87,11 +88,36 @@ function pillar(scene: Phaser.Scene): void {
   g.destroy();
 }
 
+// Turns a pixel-art sprite from the asset maker into a texture under its id, replacing any texture already there
+// (such as the code-drawn art of the same name). Images already showing the old texture must be re-made after.
+export function applySprite(scene: Phaser.Scene, sprite: Sprite): void {
+  const canvas = document.createElement('canvas');
+  canvas.width = sprite.width;
+  canvas.height = sprite.height;
+  const ctx = canvas.getContext('2d')!;
+  const img = ctx.createImageData(sprite.width, sprite.height);
+  const colors = sprite.palette.map((c) => rgba(c.hex));
+  sprite.pixels.forEach((j, i) => {
+    if (j < 0) return;
+    img.data.set(colors[j], i * 4);
+  });
+  ctx.putImageData(img, 0, 0);
+  if (scene.textures.exists(sprite.id)) scene.textures.remove(sprite.id);
+  scene.textures.addCanvas(sprite.id, canvas);
+}
+
 let made = false;
 
+// All the game's art: the code-drawn placeholders, then the drawn sprites on top.
 export function makeArt(scene: Phaser.Scene): void {
   if (made) return;
   made = true;
+  makeCodeArt(scene);
+  // Drawn art wins over code art of the same name.
+  for (const s of sprites.list()) applySprite(scene, s);
+}
+
+export function makeCodeArt(scene: Phaser.Scene): void {
 
   // Four walk frames share one torso; only the legs change.
   const legs = [

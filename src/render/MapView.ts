@@ -27,6 +27,17 @@ export class MapView {
     this.placeSprites();
   }
 
+  // Draws again on the next render(), for when the map or the art under it changed (the asset maker's preview).
+  redraw(): void {
+    this.key = '';
+  }
+
+  destroy(): void {
+    this.floor.destroy();
+    this.sprites.forEach((s) => s.destroy());
+    this.sprites.length = 0;
+  }
+
   private drawFloor(): void {
     const m = this.map;
     const t = m.tileSize;

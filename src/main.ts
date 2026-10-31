@@ -17,3 +17,6 @@ const game = new Phaser.Game({
 
 // Handy for poking at scenes from the browser console while tuning.
 (window as unknown as { swimply: Phaser.Game }).swimply = game;
+
+// The asset maker saved a data file (see scripts/data-api.ts): reload so the game shows the new art and assets.
+import.meta.hot?.on('swimply:data', () => location.reload());

@@ -29,16 +29,19 @@ Drew is new to making games and to programming. Teach as you go: explain what yo
 - `npm run check`: layer check plus type check.
 - `npm run build`: check, then build to `dist/` (what CI runs).
 - `npm run preview`: serve the built `dist/`.
+- Asset maker: `localhost:5173/asset-maker.html` while `npm run dev` runs.
 
 ## Code map
 
 - `src/config/store.ts`: `defineConfig` and the tweaks store. `src/config/render.ts`: the render section.
 - `src/core/iso.ts`: world to screen projection and back. `src/core/save.ts`: versioned save.
 - `src/dev/DevMenu.ts`: the dev menu, built from the config registry. ` (backtick) toggles it.
-- `src/config/character.ts` (player, bow, dash, teleport), `feel.ts` (arms, bow, cloak, camera), `render.ts`, `sim.ts` (fixed step, slow motion, god mode), `shade.ts`, `run.ts` (waves, death, hit-stop): tunables, each with its dev menu range.
+- `src/config/character.ts` (player, bow, dash, teleport), `feel.ts` (arms, hero look colours, bow, cloak, camera), `render.ts`, `sim.ts` (fixed step, slow motion, god mode), `shade.ts`, `run.ts` (waves, death, hit-stop): tunables, each with its dev menu range.
 - `src/core/input.ts`: action-based input. `core/geometry.ts`: circle maths. `core/pool.ts`: object pool.
 - `src/data/`: `registry.ts` (the `Registry` class and JSON readers), `floors.ts`/`floors.json`, `assets.ts`/`assets.json`, `maps.ts` (map format, loader, `maps` registry) and `maps/*.json`. See "Data files" in `ARCHITECTURE.md`.
 - `src/sim/`: `World.ts` (the `CollisionWorld` interface and `MapWorld`, built from a map: asset circles, blocking floor boxes, the map's edge), `Nav.ts` (the `Navigator` interface and `FlowField`, which routes walkers round blocking floor), `Player` (movement, dash, teleport, firing), `Arrows`, `Shades`, `Run` (waves and run state), `stats.ts` (effective stats; the upgrade baseline is added here later).
 - `src/render/`: `MapView` (floor and placed assets), `PlayerView`, `BowView`, `ArrowsView`, `ShadesView`, `RunHud`, `Fx`, `art.ts` (code-drawn textures under the keys in `Tex`; asset parts name these keys).
 - `src/scenes/ArenaScene.ts`: the arena, loaded from a map file (`arena` by default). Runs the sim on a fixed time step (`step()`), draws once per frame. Dev menu buttons: restart, next wave, spawn, kill all, hold waves, pause, step, hitboxes (also shows blocking floor and markers), next map.
-- `scripts/check-layers.mjs`: the layer guard.
+- `src/tools/`: the asset maker (`asset-maker.html`, dev server only; also the "Asset maker" dev menu button). `assetMaker.ts` (the page and tabs), `Workspace.ts` (working copies and save), `files.ts` (writes the JSON in the hand-written style), `SpriteTab.ts` (pixel editor), `AssetTab.ts`, `FloorTab.ts`, `Preview.ts` (a small Phaser view using the game's own `MapView`).
+- `src/data/sprites.ts`/`sprites.json`: drawn pixel art; `render/art.ts` turns each sprite into a texture over any code art of the same name.
+- `scripts/check-layers.mjs`: the layer guard. `scripts/data-api.ts`: the dev-server save API the tools use.

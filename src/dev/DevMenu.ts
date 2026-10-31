@@ -157,6 +157,12 @@ export class DevMenu {
       box.addEventListener('change', () => setValue(s.name, key, box.checked));
       row.append(box, document.createElement('span'), reset);
       sync = () => (box.checked = s.values[key] as boolean);
+    } else if (meta === 'color') {
+      const pick = document.createElement('input');
+      pick.type = 'color';
+      pick.addEventListener('input', () => setValue(s.name, key, parseInt(pick.value.slice(1), 16)));
+      row.append(pick, document.createElement('span'), reset);
+      sync = () => (pick.value = '#' + (s.values[key] as number).toString(16).padStart(6, '0'));
     } else {
       const slider = document.createElement('input');
       slider.type = 'range';

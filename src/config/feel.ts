@@ -57,6 +57,38 @@ export const feel = defineConfig(
   },
 );
 
+// The hero's code-drawn parts: arms (two-part lines bent at the elbow), gloves, and the glows on hands and eyes.
+// Colours and sizes here, so they can be matched to his sprite without touching code. Sizes are in art pixels.
+export const heroLook = defineConfig(
+  'hero look',
+  'look and feel',
+  {
+    sleeveColor: 0x7a46c8,
+    sleeveEdgeColor: 0x1a0c30,
+    gloveColor: 0x17121f,
+    sleeveWidth: 1.75,
+    sleeveEdge: 0,
+    gloveSize: 1.2,
+    handGlowColor: 0xa060ff,
+    eyeGlowColor: 0xa060ff,
+    // Where the eye glows sit, from the bottom middle of his sprite.
+    eyeSpread: 2.5,
+    eyeHeight: 15,
+  },
+  {
+    sleeveColor: 'color',
+    sleeveEdgeColor: 'color',
+    gloveColor: 'color',
+    sleeveWidth: { min: 0.25, max: 6, step: 0.25 },
+    sleeveEdge: { min: 0, max: 3, step: 0.25 },
+    gloveSize: { min: 0, max: 4, step: 0.1 },
+    handGlowColor: 'color',
+    eyeGlowColor: 'color',
+    eyeSpread: { min: 0, max: 8, step: 0.5 },
+    eyeHeight: { min: 0, max: 30, step: 0.5 },
+  },
+);
+
 export const cloak = defineConfig(
   'cloak',
   'look and feel',
