@@ -9,7 +9,8 @@ export const feel = defineConfig(
     hitFlashTime: 0.06,
     bowKickTime: 0.5,
     strideLength: 140,
-    walkBob: 1.5,
+    // Lifts the whole hero while walking, feet too. The walk frames already dip the body on each step, so it is off.
+    walkBob: 0,
     armReadyTime: 0.6,
     shootPoseTime: 0.08,
     shootArmSpread: 7,
