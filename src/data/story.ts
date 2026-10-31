@@ -20,27 +20,40 @@ export interface Speaker {
 //   { "say": "timo", "text": "...", "face": "timo_happy" }  a line; the script waits until it has been read
 //   { "wait": 1 }                                            a pause, in seconds
 //   { "tutorial": "Space to dodge." }                        ghostly words that blow away; the script carries on
-//   { "waitFor": "teleport" }                                waits until the player does it: teleport, dash, fire
+//   { "waitFor": "teleport" }                                waits until the player does it: move, teleport, dash, fire
 //   { "flag": "teleportTaught" }                             sets a save flag
+//   { "eyes": "closed" }                                     a black screen (his eyes shut)
+//   { "eyes": "open", "time": 3 }                            opens them with a few heavy blinks; the script waits
+//   { "control": false }                                     the player cannot move (true gives it back)
+//   { "pose": "asleep" }                                     the hero lies on the ground
+//   { "pose": "stand", "time": 3 }                           he gets up; the script carries on meanwhile
+//   { "timo": "bow_pedestal" }                               Timo floats over beside the first placed thing of
+//                                                            that asset id; "hero" to follow the hero again
+//   { "shake": 6 }                                           shakes the screen (an explosion nearby)
 export type Step =
   | { kind: 'say'; speaker: Speaker; text: string; face: string }
   | { kind: 'wait'; seconds: number }
   | { kind: 'tutorial'; text: string }
   | { kind: 'waitFor'; event: string }
-  | { kind: 'flag'; flag: string };
+  | { kind: 'flag'; flag: string }
+  | { kind: 'eyes'; open: boolean; seconds: number }
+  | { kind: 'control'; on: boolean }
+  | { kind: 'pose'; pose: 'asleep' | 'stand'; seconds: number }
+  | { kind: 'timo'; target: string }
+  | { kind: 'shake'; amount: number };
 
 export interface Script {
   id: string;
   // Plays when this map starts...
   map: string;
-  // ...while this save flag is on (empty for always)...
-  if: string;
-  // ...and this one is off (empty for always).
-  unless: string;
+  // ...while these save flags are all on...
+  if: string[];
+  // ...and these are all off. In the file, one flag or a list.
+  unless: string[];
   steps: Step[];
 }
 
-export const WAIT_EVENTS = ['teleport', 'dash', 'fire'];
+export const WAIT_EVENTS = ['move', 'teleport', 'dash', 'fire'];
 
 function parseSpeakers(data: unknown, problems: Problems): Speaker[] {
   return list(obj(data).speakers, 'story.json speakers', problems).flatMap((entry, i) => {
@@ -71,7 +84,20 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
     return { kind: 'waitFor', event };
   }
   if (e.flag !== undefined) return { kind: 'flag', flag: str(e.flag, '', `${where}.flag`, problems) };
-  problems.push(`${where}: not a say, wait, tutorial, waitFor or flag step, skipped`);
+  if (e.eyes !== undefined) {
+    const eyes = str(e.eyes, '', `${where}.eyes`, problems);
+    if (eyes !== 'open' && eyes !== 'closed') return problems.push(`${where}: eyes must be "open" or "closed", skipped`), null;
+    return { kind: 'eyes', open: eyes === 'open', seconds: num(e.time, 3, `${where}.time`, problems) };
+  }
+  if (e.control !== undefined) return { kind: 'control', on: bool(e.control, true, `${where}.control`, problems) };
+  if (e.pose !== undefined) {
+    const pose = str(e.pose, '', `${where}.pose`, problems);
+    if (pose !== 'asleep' && pose !== 'stand') return problems.push(`${where}: pose must be "asleep" or "stand", skipped`), null;
+    return { kind: 'pose', pose, seconds: num(e.time, 3, `${where}.time`, problems) };
+  }
+  if (e.timo !== undefined) return { kind: 'timo', target: str(e.timo, 'hero', `${where}.timo`, problems) };
+  if (e.shake !== undefined) return { kind: 'shake', amount: num(e.shake, 6, `${where}.shake`, problems) };
+  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake), skipped`);
   return null;
 }
 
@@ -83,7 +109,8 @@ function parseStory(data: unknown): { speakers: Registry<Speaker>; scripts: Scri
     const id = str(e.id, '', `story.json script ${i}`, problems);
     if (!id) return problems.push(`story.json script ${i}: has no id, skipped`), [];
     const steps = list(e.steps, `${id}.steps`, problems).map((s, j) => parseStep(s, `${id} step ${j}`, speakers, problems)).filter((s): s is Step => !!s);
-    return [{ id, map: str(e.map, '', `${id}.map`, problems), if: str(e.if, '', `${id}.if`, problems), unless: str(e.unless, '', `${id}.unless`, problems), steps }];
+    const flags = (v: unknown, w: string): string[] => (Array.isArray(v) ? v : v === undefined ? [] : [v]).map((f) => str(f, '', w, problems)).filter(Boolean);
+    return [{ id, map: str(e.map, '', `${id}.map`, problems), if: flags(e.if, `${id}.if`), unless: flags(e.unless, `${id}.unless`), steps }];
   });
   report('story', problems);
   return { speakers, scripts };
@@ -95,14 +122,14 @@ export const scripts = new Registry<Script>('scripts', parsed.scripts);
 
 // The script that should play as this map starts, if any.
 export function scriptFor(mapId: string, flags: Record<string, boolean>): Script | undefined {
-  return scripts.list().find((s) => s.map === mapId && (!s.if || flags[s.if]) && (!s.unless || !flags[s.unless]));
+  return scripts.list().find((s) => s.map === mapId && s.if.every((f) => flags[f]) && !s.unless.some((f) => flags[f]));
 }
 
 // Every flag the story sets or reads, so the dev menu can rewind it.
 export function storyFlags(): string[] {
   const out = new Set(['enteredMindscape', 'mindscapeCleared', 'teleport']);
   for (const s of scripts.list()) {
-    for (const f of [s.if, s.unless]) if (f) out.add(f);
+    for (const f of [...s.if, ...s.unless]) out.add(f);
     for (const step of s.steps) if (step.kind === 'flag') out.add(step.flag);
   }
   return [...out];

@@ -52,3 +52,31 @@ export const dialogue = defineConfig(
     wind: { min: 0, max: 4000, step: 50 },
   },
 );
+
+// Timo, the phantasm who floats beside the hero.
+export const timo = defineConfig(
+  'timo',
+  'story',
+  {
+    // Where he floats relative to the hero (world units).
+    followX: -36,
+    followY: 36,
+    // Where he floats beside a thing the story sends him to.
+    besideX: 32,
+    besideY: -32,
+    // How quickly he drifts to where he is going (higher is snappier).
+    moveRate: 2.5,
+    // His bob up and down: art pixels, and how fast.
+    bob: 2,
+    bobRate: 2.5,
+  },
+  {
+    followX: { min: -150, max: 150, step: 2 },
+    followY: { min: -150, max: 150, step: 2 },
+    besideX: { min: -150, max: 150, step: 2 },
+    besideY: { min: -150, max: 150, step: 2 },
+    moveRate: { min: 0.2, max: 20, step: 0.1 },
+    bob: { min: 0, max: 10, step: 0.5 },
+    bobRate: { min: 0, max: 10, step: 0.1 },
+  },
+);

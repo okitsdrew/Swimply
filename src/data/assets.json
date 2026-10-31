@@ -204,7 +204,7 @@
       "id": "pedestal",
       "name": "Pedestal",
       "category": "props",
-      "parts": [{ "texture": "pedestal", "originY": 0.9 }, { "texture": "arrow" }],
+      "parts": [{ "texture": "pedestal", "originY": 0.9 }],
       "collision": [{ "radius": 12 }]
     },
     {
@@ -275,21 +275,21 @@
             "timo_idle_0",
             "timo_idle_0",
             "timo_idle_0",
-            "timo_idle_1",
-            "timo_idle_1",
-            "timo_idle_1",
             "timo_idle_0",
             "timo_idle_0",
             "timo_idle_0",
-            "timo_idle_1",
-            "timo_idle_1",
-            "timo_idle_1",
+            "timo_idle_0",
+            "timo_idle_0",
+            "timo_idle_0",
+            "timo_idle_0",
+            "timo_idle_0",
+            "timo_idle_0",
             "timo_idle_2",
             "timo_idle_0",
             "timo_idle_0",
-            "timo_idle_1",
-            "timo_idle_1",
-            "timo_idle_1"
+            "timo_idle_0",
+            "timo_idle_0",
+            "timo_idle_0"
           ],
           "fps": 6
         }
