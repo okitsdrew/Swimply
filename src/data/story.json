@@ -1,0 +1,33 @@
+{
+  "speakers": [
+    { "id": "timo", "name": "Timo", "color": "#c58cff", "face": "timo" },
+    { "id": "swimply", "name": "Swimply", "color": "#f2d7a6", "face": "hero", "bubble": true }
+  ],
+  "scripts": [
+    {
+      "id": "mindscape-tutorial",
+      "map": "mindscape",
+      "unless": "dodgeTaught",
+      "steps": [
+        { "wait": 0.6 },
+        { "tutorial": "Space to dodge. Click to shoot." },
+        { "flag": "dodgeTaught" }
+      ]
+    },
+    {
+      "id": "back-from-mindscape",
+      "map": "spawn",
+      "if": "mindscapeCleared",
+      "unless": "teleportTaught",
+      "steps": [
+        { "wait": 0.8 },
+        { "say": "timo", "face": "timo_happy", "text": "those juices flowing yet?" },
+        { "tutorial": "Right click to teleport" },
+        { "waitFor": "teleport" },
+        { "say": "timo", "face": "timo_laugh", "text": "oh heck yeah, now lets get out of this burning wing!" },
+        { "say": "timo", "text": "you should be able to teleport through the lava if you're quick enough" },
+        { "flag": "teleportTaught" }
+      ]
+    }
+  ]
+}

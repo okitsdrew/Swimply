@@ -28,3 +28,32 @@ export const story = defineConfig(
     clearedDelay: { min: 0, max: 10, step: 0.1 },
   },
 );
+
+// The dialogue box, the speech bubble and the ghostly tutorial words.
+export const dialogue = defineConfig(
+  'dialogue',
+  'story',
+  {
+    // Letters a second as a line types out.
+    typeSpeed: 40,
+    // A typed line stays this long, plus readPerChar a letter, before the next one. F skips ahead.
+    readTime: 1.2,
+    readPerChar: 0.04,
+    // Seconds tutorial words stay before the wind takes them.
+    tutorialTime: 3,
+    // Seconds each letter takes to blow away, and the delay from one letter to the next.
+    blowTime: 1.4,
+    blowStagger: 0.035,
+    // How hard the wind pushes the letters (pixels a second, squared).
+    wind: 900,
+  },
+  {
+    typeSpeed: { min: 5, max: 200, step: 5 },
+    readTime: { min: 0, max: 5, step: 0.1 },
+    readPerChar: { min: 0, max: 0.2, step: 0.005 },
+    tutorialTime: { min: 0.5, max: 10, step: 0.5 },
+    blowTime: { min: 0.2, max: 5, step: 0.1 },
+    blowStagger: { min: 0, max: 0.2, step: 0.005 },
+    wind: { min: 0, max: 4000, step: 50 },
+  },
+);

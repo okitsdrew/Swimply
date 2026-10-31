@@ -11,12 +11,15 @@ import { werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
+import { scriptFor, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
 import { save, writeSave } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
 import { ArrowsView } from '../render/ArrowsView';
 import { makeArt } from '../render/art';
+import { DialogueBox } from '../render/DialogueBox';
 import { Fx } from '../render/Fx';
+import { GhostText } from '../render/GhostText';
 import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
 import { PlayerView } from '../render/PlayerView';
@@ -32,6 +35,7 @@ import { Target } from '../sim/targets';
 import { Werewolf } from '../sim/Werewolf';
 import { FlowField } from '../sim/Nav';
 import { MapWorld } from '../sim/World';
+import { StoryRunner } from './StoryRunner';
 import { TreeSceneData } from './TreeScene';
 
 const DEFAULT_MAP = 'spawn';
@@ -68,6 +72,9 @@ export class ArenaScene extends Phaser.Scene {
   // The thing next to him that interact would use.
   private near: Placed | null = null;
   private hint!: InteractHint;
+  private box!: DialogueBox;
+  private ghost!: GhostText;
+  private story!: StoryRunner;
   private world!: MapWorld;
   private nav!: FlowField;
   private mapView!: MapView;
@@ -154,14 +161,24 @@ export class ArenaScene extends Phaser.Scene {
     this.hud = new RunHud(this, this.run);
     this.hud.showRun = !this.calm;
     this.hint = new InteractHint(this);
+    this.box = new DialogueBox(this);
+    this.ghost = new GhostText(this);
+    this.story = new StoryRunner(this.box, this.ghost);
 
     this.player.onFire = (_x, _y, dx, dy) => {
       const m = this.view.muzzle();
       this.arrows.fire(m.x, m.y, dx, dy);
       this.view.onFire();
+      this.story.notify('fire');
     };
-    this.player.onDashStart = () => this.view.onDashStart();
-    this.player.onTeleport = (x0, y0, x1, y1, t) => this.view.onTeleport(x0, y0, x1, y1, t);
+    this.player.onDashStart = () => {
+      this.view.onDashStart();
+      this.story.notify('dash');
+    };
+    this.player.onTeleport = (x0, y0, x1, y1, t) => {
+      this.view.onTeleport(x0, y0, x1, y1, t);
+      this.story.notify('teleport');
+    };
     this.player.onTeleportArrive = (x, y) => this.view.onTeleportArrive(x, y);
     this.arrows.onHit = (target, damage, ax, ay, dx, dy) => {
       // Knockback pushes away from a point just behind the hit, so along the arrow's flight.
@@ -188,6 +205,8 @@ export class ArenaScene extends Phaser.Scene {
     this.run.spawnPoint = () => this.spawnPoint();
 
     this.startRun();
+    const script = scriptFor(this.mapId, save.flags);
+    if (script) this.story.play(script);
 
     DevMenu.get().setActions([
       { label: 'Restart run', run: () => this.startRun() },
@@ -268,7 +287,7 @@ export class ArenaScene extends Phaser.Scene {
 
   // Dev aids for the story: back to waking up, or straight to after the Mindscape.
   private storyFresh(): void {
-    for (const f of ['enteredMindscape', 'mindscapeCleared', 'teleport']) delete save.flags[f];
+    for (const f of storyFlags()) delete save.flags[f];
     resetTree(false);
     save.shards = 0;
     addShards(0);
@@ -278,6 +297,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private storyWon(): void {
+    for (const f of storyFlags()) delete save.flags[f];
     this.winMindscape();
     this.scene.restart({ map: DEFAULT_MAP });
   }
@@ -369,7 +389,7 @@ export class ArenaScene extends Phaser.Scene {
     this.winMindscape();
     this.run.holdSpawns = true;
     [...this.shades.list].forEach((s) => this.shades.kill(s));
-    this.hud.announce('MEMORIES RESTORED', story.clearedDelay);
+    this.ghost.show('Memories restored', Math.max(0.5, story.clearedDelay - 1));
     this.time.delayedCall(story.clearedDelay * 1000, () => this.travel(this.wayBack()));
   }
 
@@ -473,6 +493,8 @@ export class ArenaScene extends Phaser.Scene {
     this.arrowsView.render();
     this.shadesView.render(this.player.x, this.player.y);
     this.wolfView.render(frameDt, cam.width);
+    this.box.update(frameDt, cam.width, this.player.x, this.player.y);
+    this.ghost.update(frameDt, cam.width, cam.height);
     this.hint.update(frameDt, this.player.x, this.player.y, !!this.near && !this.leaving && this.run.state === 'fighting');
     const notes = [this.showHitboxes && this.wolf.present && `WEREWOLF ${this.wolf.state.toUpperCase()}`, this.paused && 'PAUSED', this.run.holdSpawns && !this.calm && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
@@ -488,6 +510,11 @@ export class ArenaScene extends Phaser.Scene {
       this.cameras.main.fadeIn(story.fadeTime * 1000);
     }
     if (!this.calm && !this.treeOpen && r.state === 'dead' && r.canRestart) this.openTree();
+    this.story.update(dt);
+    if (this.story.talking && this.input2.justPressed('interact')) {
+      this.story.skip();
+      this.input2.consume('interact');
+    }
     if (r.state === 'fighting' && !this.leaving) {
       this.player.update(dt, this.input2, this.aim);
       this.checkLinks();
