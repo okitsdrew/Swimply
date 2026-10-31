@@ -1,13 +1,20 @@
-import { bow, player } from '../config/character';
+import { bow, dash, player, teleport } from '../config/character';
+import { save } from '../core/save';
 
-// The character's effective stats. Systems read these, never the raw config, so the permanent baseline from the
-// upgrade tree (a later phase) is added in exactly one place: here.
+// The permanent baseline from the upgrade tree, by stat id (see data/tree.ts for which stats add and which multiply).
+const add = (id: string): number => save.baseline[id] ?? 0;
+const pct = (id: string): number => Math.max(0.05, 1 + (save.baseline[id] ?? 0));
+
+// The character's effective stats: config plus the baseline. Systems read these, never the raw config, so the
+// baseline is added in exactly one place: here.
 export const stats = {
-  moveSpeed: (): number => player.moveSpeed,
-  fireRate: (): number => bow.fireRate,
-  arrows: (): number => Math.round(bow.arrowsPerShot),
-  pierce: (): number => Math.round(bow.pierce),
-  range: (): number => bow.arrowRange,
-  damage: (): number => bow.damage,
+  moveSpeed: (): number => player.moveSpeed * pct('moveSpeed'),
+  fireRate: (): number => bow.fireRate * pct('fireRate'),
+  arrows: (): number => Math.round(bow.arrowsPerShot + add('arrows')),
+  pierce: (): number => Math.round(bow.pierce + add('pierce')),
+  range: (): number => bow.arrowRange * pct('range'),
+  damage: (): number => bow.damage + add('damage'),
   arrowSize: (): number => 1,
+  dashCooldown: (): number => dash.cooldown * pct('dashCooldown'),
+  teleportDistance: (): number => teleport.distance * pct('teleportDistance'),
 };

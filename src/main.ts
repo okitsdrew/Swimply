@@ -1,8 +1,12 @@
 import Phaser from 'phaser';
 import { loadSave } from './core/save';
+import { refreshBaseline } from './data/tree';
 import { ArenaScene } from './scenes/ArenaScene';
+import { TreeScene } from './scenes/TreeScene';
 
 loadSave();
+// Tree numbers may have changed since the save was written.
+refreshBaseline();
 
 const game = new Phaser.Game({
   // ?canvas forces the 2D renderer, for machines where WebGL is flaky.
@@ -12,7 +16,7 @@ const game = new Phaser.Game({
   pixelArt: true,
   roundPixels: true,
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: 1280, height: 800 },
-  scene: [ArenaScene],
+  scene: [ArenaScene, TreeScene],
 });
 
 // Handy for poking at scenes from the browser console while tuning.
