@@ -9,8 +9,6 @@
     { "id": "quick-fingers", "name": "Quick Fingers", "stat": "fireRate", "per": 0.15, "costs": [5, 8, 12], "parents": ["steady-draw"], "x": 0, "y": 10 },
     { "id": "far-sight", "name": "Far Sight", "stat": "range", "per": 0.2, "costs": [8, 12], "parents": ["quick-fingers"], "x": 0, "y": -150 },
 
-    { "id": "light-feet", "name": "Light Feet", "stat": "moveSpeed", "per": 0.06, "costs": [4, 7, 10], "parents": ["steady-draw"], "x": 260, "y": 40 },
-    { "id": "quick-step", "name": "Quick Step", "stat": "dashCooldown", "per": -0.15, "costs": [8, 12], "parents": ["light-feet"], "x": 370, "y": -85 },
-    { "id": "long-step", "name": "Long Step", "stat": "teleportDistance", "per": 0.15, "costs": [10, 14], "parents": ["quick-step"], "x": 430, "y": -210 }
+    { "id": "light-feet", "name": "Light Feet", "stat": "moveSpeed", "per": 0.06, "costs": [4, 7, 10], "parents": ["steady-draw"], "x": 260, "y": 40 }
   ]
 }

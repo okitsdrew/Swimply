@@ -140,7 +140,7 @@ export class Player {
     this.graceTime = Math.max(0, this.graceTime - dt);
 
     this.teleportCooldown = Math.max(0, this.teleportCooldown - dt);
-    if (input.justPressed('teleport') && this.teleportCooldown <= 0) {
+    if (input.justPressed('teleport') && this.teleportCooldown <= 0 && stats.hasTeleport()) {
       this.teleport();
     }
 
@@ -207,7 +207,7 @@ export class Player {
     const l = Math.hypot(to.x - from.x, to.y - from.y) || 1;
     const dx = (to.x - from.x) / l;
     const dy = (to.y - from.y) / l;
-    screenToWorldVel(dx, dy, stats.teleportDistance(), tmp);
+    screenToWorldVel(dx, dy, teleport.distance, tmp);
     let jumpX = tmp.x;
     let jumpY = tmp.y;
     // A cursor inside the range is landed on exactly; outside it, he goes the full distance toward it.
@@ -315,8 +315,8 @@ export class Player {
     if (this.dashTime <= 0) {
       this.dashTime = 0;
       this.graceTime = cfgPlayer.invulnAfter;
-      this.dashCooldown = stats.dashCooldown();
-      this.dashCooldownMax = stats.dashCooldown();
+      this.dashCooldown = dash.cooldown;
+      this.dashCooldownMax = dash.cooldown;
       this.vx = this.dashEndVx;
       this.vy = this.dashEndVy;
       this.startLock(dash.lockTime, this.dashEndVx, this.dashEndVy, dash.slideStartMult, dash.slideEndMult);

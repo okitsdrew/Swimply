@@ -1,4 +1,5 @@
-import { bow, dash, player, teleport } from '../config/character';
+import { bow, player } from '../config/character';
+import { sim } from '../config/sim';
 import { save } from '../core/save';
 
 // The permanent baseline from the upgrade tree, by stat id (see data/tree.ts for which stats add and which multiply).
@@ -15,6 +16,6 @@ export const stats = {
   range: (): number => bow.arrowRange * pct('range'),
   damage: (): number => bow.damage + add('damage'),
   arrowSize: (): number => 1,
-  dashCooldown: (): number => dash.cooldown * pct('dashCooldown'),
-  teleportDistance: (): number => teleport.distance * pct('teleportDistance'),
+  // Teleport is locked until it is unlocked after the Mindscape (a save flag), or by the dev menu.
+  hasTeleport: (): boolean => !!save.flags.teleport || sim.allowTeleport,
 };

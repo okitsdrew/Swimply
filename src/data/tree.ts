@@ -12,8 +12,6 @@ export const STATS = {
   fireRate: { kind: 'pct', label: 'fire rate' },
   range: { kind: 'pct', label: 'arrow range' },
   moveSpeed: { kind: 'pct', label: 'move speed' },
-  dashCooldown: { kind: 'pct', label: 'dash cooldown' },
-  teleportDistance: { kind: 'pct', label: 'teleport distance' },
 } as const;
 
 export type StatId = keyof typeof STATS;
