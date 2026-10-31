@@ -20,6 +20,9 @@ export class TimoView {
   private face = '';
   private age = Math.random() * 10;
   private shown = true;
+  // The idle art's origin, in pixels from its top-left, so a face of another height lines up with it.
+  private ox = 0;
+  private oy = 0;
 
   constructor(private scene: Phaser.Scene) {
     const parts = assets.get('timo')?.parts ?? [];
@@ -30,6 +33,8 @@ export class TimoView {
     if (shadow && scene.textures.exists(shadow.texture)) {
       this.shadow = scene.add.image(0, 0, shadow.texture).setOrigin(shadow.originX, shadow.originY).setScale(px * shadow.scale).setAlpha(0.6);
     }
+    this.ox = this.sprite.displayOriginX;
+    this.oy = this.sprite.displayOriginY;
     const frames = (body?.frames ?? []).filter((f) => scene.textures.exists(f));
     if (frames.length) {
       this.anim = `timo:${frames.join('+')}@${body?.fps ?? 8}`;
@@ -55,8 +60,8 @@ export class TimoView {
     const want = face && this.scene.textures.exists(face) ? face : '';
     if (want === this.face) return;
     this.face = want;
-    if (want) this.sprite.stop().setTexture(want);
-    else if (this.anim) this.sprite.play(this.anim);
+    if (want) this.sprite.stop().setTexture(want).setDisplayOrigin(this.ox, this.oy);
+    else if (this.anim) this.sprite.play(this.anim).setDisplayOrigin(this.ox, this.oy);
   }
 
   setVisible(visible: boolean): void {

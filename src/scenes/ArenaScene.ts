@@ -180,7 +180,8 @@ export class ArenaScene extends Phaser.Scene {
     this.posed = false;
     this.control = true;
     this.story = new StoryRunner(this.box, this.ghost, {
-      onLine: (speaker, face) => this.timo.setFace(speaker === 'timo' ? face : ''),
+      // Timo keeps his face while someone else speaks, and goes back to idling when the talking stops.
+      onLine: (speaker, face) => (speaker === 'timo' ? this.timo.setFace(face) : speaker === null && this.timo.setFace('')),
       setControl: (on) => (this.control = on),
       eyes: (open, seconds) => (open ? this.lids.wakeUp(seconds) : this.lids.close()),
       pose: (pose, seconds) => (pose === 'asleep' ? this.pose.asleep() : this.pose.standUp(seconds)),
