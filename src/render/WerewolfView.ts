@@ -12,7 +12,7 @@ const SLAM_FADE = 0.35;
 
 // Draws the werewolf, his attack markings on the ground, the slam and landing, and his health bar.
 //   walk: werewolf_0-3   windup: werewolf_10 then 11 (held)   dash: 11   slam: 12 then 13 (held)   recover: 13
-//   crouch: werewolf_14   jump: werewolf_12 (takeoff) then 15   land: werewolf_13
+//   crouch: werewolf_14   jump: werewolf_12 (takeoff) then 15   land: werewolf_13   quick dash: walk frames, afterimages
 export class WerewolfView {
   private sprite: Phaser.GameObjects.Image;
   private shadow: Phaser.GameObjects.Image;
@@ -20,6 +20,7 @@ export class WerewolfView {
   private bar: Phaser.GameObjects.Graphics;
   private name: Phaser.GameObjects.Text;
   private walkTime = 0;
+  private afterimageTimer = 0;
   // Seconds since the last slam, for its fading flash.
   private sinceSlam = SLAM_FADE;
   private slamAt = { x: 0, y: 0 };
@@ -104,7 +105,7 @@ export class WerewolfView {
       // The danger zone: dim while it grows, bright once he is coming.
       const dashing = w.state === 'dash';
       this.rect(g, w.reach);
-      g.fillStyle(0xff3040, dashing ? 0.45 : 0.12 + 0.18 * Math.min(1, w.time / this.wolf.cfg.windupTime)).fillPath();
+      g.fillStyle(0xff3040, dashing ? 0.45 : 0.12 + 0.18 * Math.min(1, w.time / w.windupTime)).fillPath();
       this.rect(g, w.reach);
       g.lineStyle(2, 0xff6070, dashing ? 1 : 0.7).strokePath();
       // The full length as a faint outline, so the player sees at once how far it will reach.
@@ -126,11 +127,11 @@ export class WerewolfView {
 
     const scale = render.pixelScale * this.wolf.cfg.scale;
     let frame = wolfWalkFrames[0];
-    if (w.state === 'walk') {
+    if (w.state === 'walk' || w.state === 'quickDash') {
       this.walkTime += dt;
       frame = wolfWalkFrames[Math.floor(this.walkTime * this.wolf.cfg.walkFps) % wolfWalkFrames.length];
     } else if (w.state === 'windup') {
-      frame = w.time < this.wolf.cfg.windupTime * 0.3 ? wolfAttackFrames[0] : wolfAttackFrames[1];
+      frame = w.time < w.windupTime * 0.3 ? wolfAttackFrames[0] : wolfAttackFrames[1];
     } else if (w.state === 'dash') {
       frame = wolfAttackFrames[1];
     } else if (w.state === 'slam') {
@@ -149,6 +150,15 @@ export class WerewolfView {
     this.sprite.setTexture(frame).setPosition(screen.x, screen.y - lift).setScale(scale).setFlipX(w.facing < 0).setDepth(screen.y);
     if (w.flash > 0) this.sprite.setTintFill(0xffffff);
     else this.sprite.clearTint();
+    // The quick dash leaves afterimages, like the player's dash.
+    if (w.state === 'quickDash' && w.cfg.quickDashAfterimages > 0) {
+      if (w.time <= dt) this.afterimageTimer = 0;
+      this.afterimageTimer -= dt;
+      if (this.afterimageTimer <= 0) {
+        this.fx.afterimage(frame, screen.x, screen.y, w.facing < 0, scale, screen.y, 0xc4a08f);
+        this.afterimageTimer += w.cfg.quickDashDuration / w.cfg.quickDashAfterimages;
+      }
+    }
     const shrink = 1 - 0.5 * (lift / Math.max(w.cfg.jumpHeight, 1));
     this.shadow.setPosition(screen.x, screen.y).setScale(scale * 1.4 * shrink, scale * 0.5 * shrink).setDepth(screen.y - 1000);
   }

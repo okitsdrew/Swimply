@@ -49,7 +49,7 @@ export const werewolfMiniboss = defineConfig(
     // The jump: he crouches, then leaps at where the player was (no further than jumpRange), over anything in the
     // way. A circle on the ground marks where he will land and fills as he comes down; landing hurts inside it.
     jumpWindup: 0.75,
-    jumpAirTime: 1,
+    jumpAirTime: 0.75,
     jumpRange: 1000,
     jumpRadius: 110,
     // Height of the arc at its top, in screen pixels.
@@ -58,6 +58,16 @@ export const werewolfMiniboss = defineConfig(
     jumpTakeoff: 0.12,
     // How long the landing pose holds before he recovers.
     jumpLandTime: 0.35,
+    // His quick dash (movement, not an attack): whenever it is ready and the player is further than
+    // quickDashMinRange, he dashes toward them, leaving afterimages like the player's dash. Right after it, if his
+    // attacks are ready, he starts the dash attack at once if the player is within triggerRange, or else rolls for
+    // the jump; either starts with its windup cut to quickDashWindupScale.
+    quickDashDistance: 75,
+    quickDashDuration: 0.1,
+    quickDashCooldown: 3,
+    quickDashMinRange: 100,
+    quickDashAfterimages: 2,
+    quickDashWindupScale: 0.5,
     // The slam hurts the player even mid-dash or mid-teleport.
     slamPiercesInvuln: false,
     slamShake: 9,
@@ -97,6 +107,12 @@ export const werewolfMiniboss = defineConfig(
     jumpHeight: { min: 0, max: 400, step: 10 },
     jumpTakeoff: { min: 0, max: 1, step: 0.02 },
     jumpLandTime: { min: 0, max: 2, step: 0.05 },
+    quickDashDistance: { min: 0, max: 600, step: 5 },
+    quickDashDuration: { min: 0.02, max: 1, step: 0.01 },
+    quickDashCooldown: { min: 0, max: 20, step: 0.1 },
+    quickDashMinRange: { min: 0, max: 1000, step: 10 },
+    quickDashAfterimages: { min: 0, max: 20, step: 1 },
+    quickDashWindupScale: { min: 0.05, max: 1, step: 0.05 },
     slamPiercesInvuln: 'bool',
     slamShake: { min: 0, max: 40, step: 1 },
     slamSmoke: { min: 0, max: 100, step: 1 },

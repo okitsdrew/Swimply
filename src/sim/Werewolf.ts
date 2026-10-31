@@ -6,7 +6,7 @@ import { Navigator } from './Nav';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
-export type WolfState = 'gone' | 'rising' | 'walk' | 'windup' | 'dash' | 'slam' | 'crouch' | 'jump' | 'land' | 'recover';
+export type WolfState = 'gone' | 'rising' | 'walk' | 'quickDash' | 'windup' | 'dash' | 'slam' | 'crouch' | 'jump' | 'land' | 'recover';
 
 const off = { x: 0, y: 0 };
 const way = { x: 0, y: 0 };
@@ -17,6 +17,8 @@ const way = { x: 0, y: 0 };
 //         hurting what it passes) -> slam (hurts the far end) -> recover
 //   jump: crouch -> jump (in the air, over anything, toward where the player was) -> land (hurts the landing
 //         circle) -> recover
+// Between attacks he walks at the player, with a quick dash toward them when it is ready; straight after a quick
+// dash, an attack that is ready starts with a shorter windup.
 // No drawing: render/WerewolfView reads the state.
 export class Werewolf implements Target {
   // Arrows remember what they have hit by id; this one never matches a Shade's.
@@ -55,6 +57,11 @@ export class Werewolf implements Target {
   private dashMissed = false;
   // He chose the dash and is walking in until the player is close enough for it.
   private dashPlanned = false;
+  private quickDashCooldown = 0;
+  // The quick dash's direction, and its windup cut for the attack that follows it (1 when there is none).
+  private qdx = 0;
+  private qdy = 0;
+  private windupScale = 1;
   private cooldown = 0;
   // Which way he faces on screen, -1 or 1.
   facing = 1;
@@ -67,6 +74,15 @@ export class Werewolf implements Target {
   // In the air: arrows and touch pass under him.
   get airborne(): boolean {
     return this.state === 'jump';
+  }
+
+  // This attack's windup, shortened right after a quick dash.
+  get windupTime(): number {
+    return this.cfg.windupTime * this.windupScale;
+  }
+
+  get crouchTime(): number {
+    return this.cfg.jumpWindup * this.windupScale;
   }
 
   // How far through the jump he is, 0 to 1.
@@ -94,6 +110,8 @@ export class Werewolf implements Target {
     this.cooldown = 0;
     this.dashMissed = false;
     this.dashPlanned = false;
+    this.quickDashCooldown = 0;
+    this.windupScale = 1;
     this.enter('rising');
   }
 
@@ -153,6 +171,7 @@ export class Werewolf implements Target {
     this.sweep = null;
     this.slammed = false;
     this.cooldown -= dt;
+    this.quickDashCooldown -= dt;
     switch (this.state) {
       case 'rising':
         if (this.time >= this.cfg.spawnTell) {
@@ -163,11 +182,16 @@ export class Werewolf implements Target {
         break;
       case 'walk':
         this.walk(dt, world, nav, target);
-        this.chooseAttack(target);
+        // The quick dash comes first whenever it is ready; the attack follows straight out of it.
+        if (this.quickDashCooldown <= 0 && Math.hypot(target.x - this.x, target.y - this.y) > this.cfg.quickDashMinRange) {
+          this.startQuickDash(target);
+        } else {
+          this.chooseAttack(target);
+        }
         break;
       case 'windup': {
         // Grows fast at first and settles into its full length, so the far end is clear well before the dash.
-        const k = Math.min(1, this.time / Math.max(this.cfg.windupTime, 1e-3));
+        const k = Math.min(1, this.time / Math.max(this.windupTime, 1e-3));
         this.reach = this.cfg.attackRange * (1 - (1 - k) ** 2);
         if (k >= 1) {
           this.dashed = 0;
@@ -195,9 +219,20 @@ export class Werewolf implements Target {
         }
         break;
       }
+      case 'quickDash': {
+        const speed = this.cfg.quickDashDistance / Math.max(this.cfg.quickDashDuration, 1e-3);
+        const left = Math.max(0, this.cfg.quickDashDuration - (this.time - dt));
+        const step = speed * Math.min(dt, left);
+        const f = world.sweep(this.x, this.y, this.qdx * step, this.qdy * step, this.radius);
+        this.x += this.qdx * step * f;
+        this.y += this.qdy * step * f;
+        world.resolve(this);
+        if (this.time >= this.cfg.quickDashDuration || f < 1) this.afterQuickDash(target);
+        break;
+      }
       case 'crouch':
         this.face(target);
-        if (this.time >= this.cfg.jumpWindup) this.startJump(target);
+        if (this.time >= this.crouchTime) this.startJump(target);
         break;
       case 'jump': {
         // Straight over everything: no collision until he lands.
@@ -221,6 +256,7 @@ export class Werewolf implements Target {
       case 'recover':
         if (this.time >= this.cfg.recoverTime) {
           this.cooldown = this.cfg.attackCooldown;
+          this.windupScale = 1;
           this.enter('walk');
         }
         break;
@@ -232,20 +268,53 @@ export class Werewolf implements Target {
     this.time = 0;
   }
 
+  // The chance that an attack picked now is the jump: its base chance up close, certain from jumpRampEnd.
+  private jumpOdds(d: number): number {
+    const c = this.cfg;
+    const base = this.dashMissed ? c.jumpChanceAfterMiss : c.jumpChance;
+    const k = Math.min(1, Math.max(0, (d - c.jumpRampStart) / Math.max(c.jumpRampEnd - c.jumpRampStart, 1)));
+    return base + (1 - base) * k;
+  }
+
   private chooseAttack(target: Vec2): void {
     if (this.cooldown > 0) return;
     const c = this.cfg;
     const d = Math.hypot(target.x - this.x, target.y - this.y);
     if (!this.dashPlanned) {
       if (d > c.jumpTriggerRange) return;
-      // The jump grows likelier with distance: its base chance up close, certain from jumpRampEnd.
-      const base = this.dashMissed ? c.jumpChanceAfterMiss : c.jumpChance;
-      const k = Math.min(1, Math.max(0, (d - c.jumpRampStart) / Math.max(c.jumpRampEnd - c.jumpRampStart, 1)));
-      if (Math.random() < base + (1 - base) * k) return this.startCrouch(target);
+      if (Math.random() < this.jumpOdds(d)) return this.startCrouch(target);
       this.dashPlanned = true;
     }
     if (d <= c.triggerRange) this.startWindup(target);
     else if (d >= c.jumpRampEnd) this.startCrouch(target);
+  }
+
+  private startQuickDash(target: Vec2): void {
+    const dx = target.x - this.x;
+    const dy = target.y - this.y;
+    const d = Math.hypot(dx, dy) || 1;
+    this.qdx = dx / d;
+    this.qdy = dy / d;
+    this.quickDashCooldown = this.cfg.quickDashCooldown;
+    this.face(target);
+    this.enter('quickDash');
+  }
+
+  // Straight out of a quick dash: the dash attack if the player is in its range, else a roll for the jump, each
+  // with a shorter windup; otherwise back to walking.
+  private afterQuickDash(target: Vec2): void {
+    const d = Math.hypot(target.x - this.x, target.y - this.y);
+    this.dashPlanned = false;
+    this.enter('walk');
+    if (this.cooldown > 0) return;
+    this.windupScale = this.cfg.quickDashWindupScale;
+    if (d <= this.cfg.triggerRange) this.startWindup(target);
+    else if (d <= this.cfg.jumpTriggerRange && Math.random() < this.jumpOdds(d)) this.startCrouch(target);
+    else {
+      // The roll went to the dash: walk in for it, as when he picks it normally.
+      this.windupScale = 1;
+      this.dashPlanned = d <= this.cfg.jumpTriggerRange;
+    }
   }
 
   private face(target: Vec2): void {
