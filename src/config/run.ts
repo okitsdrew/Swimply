@@ -28,6 +28,9 @@ export const run = defineConfig(
     deathSmoke: 30,
     // A kill freezes the sim for this long, so each one lands.
     killHitStop: 0.04,
+    // After a hit-stop, kills within this many seconds do not freeze again, so a piercing arrow that kills
+    // several Shades one after another gives one freeze, not a stutter.
+    hitStopGap: 0.25,
     killShake: 2,
   },
   {
@@ -43,6 +46,7 @@ export const run = defineConfig(
     deathShake: { min: 0, max: 40, step: 1 },
     deathSmoke: { min: 0, max: 100, step: 1 },
     killHitStop: { min: 0, max: 0.3, step: 0.01 },
+    hitStopGap: { min: 0, max: 2, step: 0.05 },
     killShake: { min: 0, max: 20, step: 0.5 },
   },
 );

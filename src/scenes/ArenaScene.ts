@@ -70,6 +70,8 @@ export class ArenaScene extends Phaser.Scene {
   // Sim time owed to the fixed step, carried between frames.
   private acc = 0;
   private hitStop = 0;
+  // Seconds since the last hit-stop began, for run.hitStopGap.
+  private sinceHitStop = Infinity;
   private paused = false;
   private stepsQueued = 0;
   private aim: Vec2 | null = null;
@@ -144,7 +146,7 @@ export class ArenaScene extends Phaser.Scene {
       }
       this.shadesView.onKilled(x, y);
       this.fx.addShake(run.killShake);
-      this.hitStop = Math.max(this.hitStop, run.killHitStop);
+      this.freeze(run.killHitStop);
     };
     this.wolf.onRisen = () => this.wolfView.onRisen();
     this.wolf.onSlam = () => this.onSlam();
@@ -228,6 +230,13 @@ export class ArenaScene extends Phaser.Scene {
     if (this.wolf.inAttack(p.x, p.y, cfgPlayer.hitRadius)) this.die();
   }
 
+  // Freezes the sim briefly so a kill lands. Kills in quick succession share one freeze unless `force`.
+  private freeze(seconds: number, force = false): void {
+    if (seconds <= 0 || (!force && this.hitStop <= 0 && this.sinceHitStop < run.hitStopGap)) return;
+    if (this.hitStop <= 0) this.sinceHitStop = 0;
+    this.hitStop = Math.max(this.hitStop, seconds);
+  }
+
   // Banks shards for a kill, after the tree's shard bonus.
   private earn(base: number): void {
     const n = Math.round(base * stats.shardGain());
@@ -239,7 +248,7 @@ export class ArenaScene extends Phaser.Scene {
     this.wolfView.onKilled(x, y);
     if (this.run.state !== 'fighting') return;
     this.earn(werewolf.shards);
-    this.hitStop = Math.max(this.hitStop, 0.15);
+    this.freeze(0.15, true);
     // Winning the Mindscape needs the full tree too. What happens next (the hub, teleport) comes later.
     if (treeComplete()) {
       save.flags.mindscapeCleared = true;
@@ -317,6 +326,7 @@ export class ArenaScene extends Phaser.Scene {
     // Fixed time step: real time is banked, then spent in equal steps. A kill's hit-stop and the dev pause
     // simply stop banking, so the sim freezes while drawing carries on.
     const step = 1 / Math.max(sim.stepRate, 1);
+    this.sinceHitStop += frameDt;
     if (this.hitStop > 0) this.hitStop -= frameDt;
     else if (!this.paused) this.acc += frameDt * sim.timeScale;
     if (this.paused && this.stepsQueued > 0) {
