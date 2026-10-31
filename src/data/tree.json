@@ -1,11 +1,11 @@
 {
   "nodes": [
-    { "id": "bone-tip", "name": "Bone Tip", "stat": "pierce", "per": 1, "costs": [5], "parents": [], "x": 0, "y": 190 },
+    { "id": "bone-tip", "name": "Bone Tip", "stat": "pierce", "per": 1, "costs": [1], "parents": [], "x": 0, "y": 190 },
 
-    { "id": "light-feet", "name": "Light Feet", "stat": "moveSpeed", "per": 50, "costs": [8, 14], "parents": ["bone-tip"], "x": -200, "y": 160 },
+    { "id": "light-feet", "name": "Light Feet", "stat": "moveSpeed", "per": 50, "costs": [5, 10], "parents": ["bone-tip"], "x": -200, "y": 160 },
     { "id": "memory-echo", "name": "Memory Echo", "stat": "shardGain", "per": 1, "costs": [30], "parents": ["light-feet"], "x": -400, "y": 150 },
 
-    { "id": "quick-fingers", "name": "Quick Fingers", "stat": "fireRate", "per": 0.5, "costs": [10], "parents": ["bone-tip"], "x": -120, "y": 50 },
+    { "id": "quick-fingers", "name": "Quick Fingers", "stat": "fireRate", "per": 0.5, "costs": [5], "parents": ["bone-tip"], "x": -120, "y": 50 },
     { "id": "flurry", "name": "Flurry", "stat": "fireRate", "per": 0.5, "costs": [35, 50], "parents": ["quick-fingers"], "x": -200, "y": -80 },
 
     { "id": "heavy-head", "name": "Heavy Head", "stat": "damage", "per": 5, "costs": [8, 14], "parents": ["bone-tip"], "x": 120, "y": 50 },
