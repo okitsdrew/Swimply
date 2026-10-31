@@ -204,7 +204,7 @@
       "id": "pedestal",
       "name": "Pedestal",
       "category": "props",
-      "parts": [{ "texture": "pedestal", "originY": 0.9 }, { "texture": "arrow" }],
+      "parts": [{ "texture": "pedestal", "originY": 0.9 }],
       "collision": [{ "radius": 12 }]
     },
     {
