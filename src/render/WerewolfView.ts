@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { render } from '../config/render';
 import { ellipseHalfSize, toScreen } from '../core/iso';
 import { Werewolf } from '../sim/Werewolf';
-import { Tex, wolfAttackFrames, wolfWalkFrames } from './art';
+import { Tex, wolfAttackFrames, wolfJumpFrames, wolfWalkFrames } from './art';
 import { Fx } from './Fx';
 
 const screen = { x: 0, y: 0 };
@@ -10,8 +10,9 @@ const corner = { x: 0, y: 0 };
 // How long the slam's ground flash and ring last.
 const SLAM_FADE = 0.35;
 
-// Draws the werewolf, his attack rectangle on the ground, the slam, and his health bar.
+// Draws the werewolf, his attack markings on the ground, the slam and landing, and his health bar.
 //   walk: werewolf_0-3   windup: werewolf_10 then 11 (held)   dash: 11   slam: 12 then 13 (held)   recover: 13
+//   crouch: werewolf_14   jump: werewolf_15   land: werewolf_13
 export class WerewolfView {
   private sprite: Phaser.GameObjects.Image;
   private shadow: Phaser.GameObjects.Image;
@@ -22,6 +23,8 @@ export class WerewolfView {
   // Seconds since the last slam, for its fading flash.
   private sinceSlam = SLAM_FADE;
   private slamAt = { x: 0, y: 0 };
+  // Which attack the fading flash belongs to.
+  private flashShape: 'slam' | 'land' = 'slam';
 
   constructor(scene: Phaser.Scene, private wolf: Werewolf, private fx: Fx) {
     this.sprite = scene.add.image(0, 0, wolfWalkFrames[0]).setOrigin(0.5, 1).setVisible(false);
@@ -42,6 +45,7 @@ export class WerewolfView {
     const w = this.wolf;
     const px = render.pixelScale;
     this.sinceSlam = 0;
+    this.flashShape = 'slam';
     this.slamAt = { x: w.x, y: w.y };
     this.fx.addShake(this.wolf.cfg.slamShake);
     toScreen(w.x, w.y, screen);
@@ -53,6 +57,18 @@ export class WerewolfView {
       toScreen(w.ax + w.dirX * w.reach * k, w.ay + w.dirY * w.reach * k, screen);
       this.fx.smoke(screen.x, screen.y, Math.round(this.wolf.cfg.slamSmoke / 4), 6 * px);
     }
+  }
+
+  onLand(): void {
+    const w = this.wolf;
+    const px = render.pixelScale;
+    this.sinceSlam = 0;
+    this.flashShape = 'land';
+    this.slamAt = { x: w.jx, y: w.jy };
+    this.fx.addShake(w.cfg.slamShake * 1.3);
+    toScreen(w.jx, w.jy, screen);
+    this.fx.smoke(screen.x, screen.y, Math.round(w.cfg.slamSmoke * 1.5), w.cfg.jumpRadius * 0.6);
+    this.fx.particle({ x: screen.x, y: screen.y - 4 * px, life: 0.22, from: 3.5, to: 0, tint: 0xffd0a0, depth: screen.y + 2 });
   }
 
   onKilled(x: number, y: number): void {
@@ -98,6 +114,16 @@ export class WerewolfView {
       }
     }
 
+    if (w.state === 'jump') {
+      // Where he will land: the outline from the moment he leaves the ground, filling as he comes down.
+      const k = w.jumpProgress;
+      toScreen(w.jx, w.jy, corner);
+      const full = ellipseHalfSize(w.cfg.jumpRadius);
+      const fill = ellipseHalfSize(w.cfg.jumpRadius * k);
+      g.fillStyle(0xff3040, 0.12 + 0.3 * k).fillEllipse(corner.x, corner.y, fill.x * 2, fill.y * 2);
+      g.lineStyle(2, 0xff6070, 0.6 + 0.4 * k).strokeEllipse(corner.x, corner.y, full.x * 2, full.y * 2);
+    }
+
     const scale = render.pixelScale * this.wolf.cfg.scale;
     let frame = wolfWalkFrames[0];
     if (w.state === 'walk') {
@@ -109,13 +135,22 @@ export class WerewolfView {
       frame = wolfAttackFrames[1];
     } else if (w.state === 'slam') {
       frame = w.time < 0.06 ? wolfAttackFrames[2] : wolfAttackFrames[3];
+    } else if (w.state === 'crouch') {
+      frame = wolfJumpFrames[0];
+    } else if (w.state === 'jump') {
+      frame = wolfJumpFrames[1];
+    } else if (w.state === 'land') {
+      frame = wolfJumpFrames[2];
     } else if (w.state === 'recover') {
       frame = wolfAttackFrames[3];
     }
-    this.sprite.setTexture(frame).setPosition(screen.x, screen.y).setScale(scale).setFlipX(w.facing < 0).setDepth(screen.y);
+    // In the air he rises along an arc; his shadow stays on the ground and shrinks.
+    const lift = Math.sin(Math.PI * w.jumpProgress) * w.cfg.jumpHeight;
+    this.sprite.setTexture(frame).setPosition(screen.x, screen.y - lift).setScale(scale).setFlipX(w.facing < 0).setDepth(screen.y);
     if (w.flash > 0) this.sprite.setTintFill(0xffffff);
     else this.sprite.clearTint();
-    this.shadow.setPosition(screen.x, screen.y).setScale(scale * 1.4, scale * 0.5).setDepth(screen.y - 1000);
+    const shrink = 1 - 0.5 * (lift / Math.max(w.cfg.jumpHeight, 1));
+    this.shadow.setPosition(screen.x, screen.y).setScale(scale * 1.4 * shrink, scale * 0.5 * shrink).setDepth(screen.y - 1000);
   }
 
   clear(): void {
@@ -146,15 +181,23 @@ export class WerewolfView {
     g.closePath();
   }
 
-  // The slam: the far end of the rectangle (where it hurts) flashes and fades, and a ring spreads from where he
-  // landed.
+  // The hit: the part that hurt (the far end of the rectangle, or the landing circle) flashes and fades, and a ring
+  // spreads from where he came down.
   private drawSlamFlash(g: Phaser.GameObjects.Graphics): void {
     if (this.sinceSlam >= SLAM_FADE) return;
     const k = this.sinceSlam / SLAM_FADE;
-    this.rect(g, this.wolf.reach, Math.max(0, this.wolf.reach - this.wolf.cfg.attackWidth));
-    g.fillStyle(0xffe0c0, 0.6 * (1 - k)).fillPath();
+    const w = this.wolf;
     toScreen(this.slamAt.x, this.slamAt.y, screen);
-    const half = ellipseHalfSize(this.wolf.cfg.attackWidth * (0.5 + 1.5 * k));
+    let size = w.cfg.attackWidth;
+    if (this.flashShape === 'land') {
+      const area = ellipseHalfSize(w.cfg.jumpRadius);
+      g.fillStyle(0xffe0c0, 0.6 * (1 - k)).fillEllipse(screen.x, screen.y, area.x * 2, area.y * 2);
+      size = w.cfg.jumpRadius * 1.4;
+    } else {
+      this.rect(g, w.reach, Math.max(0, w.reach - w.cfg.attackWidth));
+      g.fillStyle(0xffe0c0, 0.6 * (1 - k)).fillPath();
+    }
+    const half = ellipseHalfSize(size * (0.5 + 1.5 * k));
     g.lineStyle(4 * (1 - k) + 1, 0xffd0a0, 1 - k).strokeEllipse(screen.x, screen.y, half.x * 2, half.y * 2);
   }
 

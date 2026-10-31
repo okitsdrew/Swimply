@@ -150,6 +150,7 @@ export class ArenaScene extends Phaser.Scene {
     };
     this.wolf.onRisen = () => this.wolfView.onRisen();
     this.wolf.onSlam = () => this.onSlam();
+    this.wolf.onLand = () => this.wolfView.onLand();
     this.wolf.onKilled = (x, y) => this.onWolfKilled(x, y);
     this.run.spawnPoint = () => this.spawnPoint();
 
@@ -226,13 +227,17 @@ export class ArenaScene extends Phaser.Scene {
     this.wolfView.onSlam();
   }
 
-  // The werewolf's attack hurts the player along his dash as he passes, then at the far end where he slams.
+  // The werewolf's attacks: the dash hurts along his path as he passes and at the far end where he slams; the
+  // jump hurts the landing circle.
   private checkWolfAttack(): void {
     const p = this.player;
     const w = this.wolf;
-    if (this.run.state !== 'fighting' || sim.godMode || (p.safe && !werewolf.slamPiercesInvuln)) return;
     const r = cfgPlayer.hitRadius;
-    if (w.inDash(p.x, p.y, r) || (w.slammed && w.inSlam(p.x, p.y, r))) this.die();
+    const hit = w.inDash(p.x, p.y, r) || (w.slammed && w.inSlam(p.x, p.y, r)) || (w.landed && w.inLanding(p.x, p.y, r));
+    if (!hit || this.run.state !== 'fighting' || (p.safe && !werewolf.slamPiercesInvuln)) return;
+    // Counted even in god mode, so his attack choice can be tested.
+    w.struck = true;
+    if (!sim.godMode) this.die();
   }
 
   // Freezes the sim briefly so a kill lands. Kills in quick succession share one freeze unless `force`.
@@ -382,7 +387,7 @@ export class ArenaScene extends Phaser.Scene {
     this.checkWolfAttack();
     this.targets.length = 0;
     this.targets.push(...this.shades.list);
-    if (this.wolf.alive) this.targets.push(this.wolf);
+    if (this.wolf.alive && !this.wolf.airborne) this.targets.push(this.wolf);
     this.arrows.update(dt, this.targets, this.world);
     if (r.state === 'fighting' && !this.player.safe && !sim.godMode) {
       const { x, y } = this.player;

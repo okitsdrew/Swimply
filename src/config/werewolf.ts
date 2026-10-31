@@ -13,7 +13,8 @@ export const werewolfMiniboss = defineConfig(
     arriveTime: 45,
     speed: 400,
     uniformScreenSpeed: true,
-    radius: 26,
+    // Body circle at scale 1; it grows with scale, so the hitbox always matches the picture.
+    radius: 15,
     scale: 3,
     // The player dies when his hit circle meets this fraction of the werewolf's radius.
     contactScale: 1,
@@ -36,6 +37,19 @@ export const werewolfMiniboss = defineConfig(
     recoverTime: 0.2,
     // Seconds after an attack before he can start the next one.
     attackCooldown: 1,
+    // Chance that an attack is the jump instead of the dash, and the chance right after a dash the player survived.
+    jumpChance: 0.25,
+    jumpChanceAfterMiss: 0.5,
+    // The jump: he crouches, then leaps at where the player was (no further than jumpRange), over anything in the
+    // way. A circle on the ground marks where he will land and fills as he comes down; landing hurts inside it.
+    jumpWindup: 0.75,
+    jumpAirTime: 1,
+    jumpRange: 500,
+    jumpRadius: 110,
+    // Height of the arc at its top, in screen pixels.
+    jumpHeight: 140,
+    // How long the landing pose holds before he recovers.
+    jumpLandTime: 0.35,
     // The slam hurts the player even mid-dash or mid-teleport.
     slamPiercesInvuln: false,
     slamShake: 9,
@@ -49,7 +63,7 @@ export const werewolfMiniboss = defineConfig(
     arriveTime: { min: 0, max: 600, step: 1 },
     speed: { min: 10, max: 800, step: 5 },
     uniformScreenSpeed: 'bool',
-    radius: { min: 4, max: 100, step: 1 },
+    radius: { min: 2, max: 100, step: 1 },
     scale: { min: 0.3, max: 4, step: 0.05 },
     contactScale: { min: 0, max: 2, step: 0.05 },
     turnRate: { min: 0.5, max: 40, step: 0.5 },
@@ -63,6 +77,14 @@ export const werewolfMiniboss = defineConfig(
     slamTime: { min: 0, max: 2, step: 0.05 },
     recoverTime: { min: 0, max: 3, step: 0.05 },
     attackCooldown: { min: 0, max: 10, step: 0.1 },
+    jumpChance: { min: 0, max: 1, step: 0.05 },
+    jumpChanceAfterMiss: { min: 0, max: 1, step: 0.05 },
+    jumpWindup: { min: 0.05, max: 3, step: 0.05 },
+    jumpAirTime: { min: 0.1, max: 3, step: 0.05 },
+    jumpRange: { min: 50, max: 1500, step: 10 },
+    jumpRadius: { min: 10, max: 400, step: 5 },
+    jumpHeight: { min: 0, max: 400, step: 10 },
+    jumpLandTime: { min: 0, max: 2, step: 0.05 },
     slamPiercesInvuln: 'bool',
     slamShake: { min: 0, max: 40, step: 1 },
     slamSmoke: { min: 0, max: 100, step: 1 },
