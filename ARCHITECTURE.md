@@ -54,13 +54,13 @@ Do it deliberately: change this file and `scripts/check-layers.mjs` together, an
 ## Debt list
 
 - **No render interpolation.** Drawing shows the latest fixed step. If the step rate is not a multiple of the screen's refresh rate, motion can judder slightly; raise `sim.stepRate` or add interpolation if it shows.
-- **Damage has no pierce flag yet.** Shade contact never goes through dash or teleport invulnerability. The flag arrives with the mini-boss, the first thing that needs it.
+- **Damage piercing invulnerability is one switch, not a general flag.** Only the werewolf's slam can pierce (`werewolf.slamPiercesInvuln`, off). Make it a flag on damage when a second attack needs it.
 - **Spawn zones are only places, not encounters.** Each Shade picks a random `shadeSpawn` zone. Saying which zone spawns what and when (authored encounters, plan section 11) comes later.
 - **Assets have no rotation, flip, light, twin or walkable height yet**, and floors have no edge or fleck style. The map and asset formats only hold what the game uses today; new optional fields are added when a feature needs them, which never breaks a saved file.
 - **Pathfinding only knows about floor tiles.** Shades follow a flow field round blocking floor (`sim/Nav.ts`) and steer round pillars as they meet them. A big solid asset (a wall piece) would need to mark its tiles in the flow field too; add that when such assets exist.
 - **Saving in a tool reloads the game tab**, so a run in progress restarts on the same map (the map is kept in the address). Keeping the player's spot as well was not needed for "play here", which starts where you point.
 - **Ids used in maps cannot be renamed in the asset maker**, because the maps would lose the thing. The level editor's "In every map" panel renames, swaps or removes them across every map.
 - **The level editor has no rotation, flip, multi-select or copy and paste between maps.** Assets cannot store rotation or flip yet (see above); add them together when a wall piece needs them.
-- **The tree is never retired yet.** The design retires it after the mini-boss, which does not exist yet. A full tree only says so on the tree screen.
+- **The tree is never retired yet,** and clearing the Mindscape only sets the `mindscapeCleared` flag and shows a banner. Leaving for the hub and unlocking teleport come with the hub.
 - **No sound yet.** `PlayerView.onStep` and the fire, dash and teleport callbacks are the hooks for it.
 - **Deploy workflow not added yet.** Pushing a workflow file needs the GitHub login to have the `workflow` permission, and GitHub Pages on a private repo needs a paid GitHub plan. Until both are sorted, play with `npm run dev` (or `npm run preview`) on the Deck. The ready-made workflow is Heaven's `deploy.yml`.

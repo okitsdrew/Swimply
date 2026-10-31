@@ -6,10 +6,11 @@ import { run } from '../config/run';
 import { shade } from '../config/shade';
 import { sim } from '../config/sim';
 import { tree } from '../config/tree';
+import { werewolf } from '../config/werewolf';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { AreaMap, findMarker, maps } from '../data/maps';
-import { addShards, maxTree, resetTree } from '../data/tree';
+import { addShards, maxTree, resetTree, treeComplete } from '../data/tree';
 import { save } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
 import { ArrowsView } from '../render/ArrowsView';
@@ -19,10 +20,13 @@ import { MapView } from '../render/MapView';
 import { PlayerView } from '../render/PlayerView';
 import { clock, RunHud } from '../render/RunHud';
 import { ShadesView } from '../render/ShadesView';
+import { WerewolfView } from '../render/WerewolfView';
 import { Arrows } from '../sim/Arrows';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
 import { Shades } from '../sim/Shades';
+import { Target } from '../sim/targets';
+import { Werewolf } from '../sim/Werewolf';
 import { FlowField } from '../sim/Nav';
 import { MapWorld } from '../sim/World';
 import { TreeSceneData } from './TreeScene';
@@ -52,6 +56,11 @@ export class ArenaScene extends Phaser.Scene {
   private arrowsView!: ArrowsView;
   private shades!: Shades;
   private shadesView!: ShadesView;
+  private wolf!: Werewolf;
+  private wolfView!: WerewolfView;
+  // Whether this run's werewolf has arrived yet.
+  private wolfCame = false;
+  private targets: Target[] = [];
   private run!: Run;
   private hud!: RunHud;
   private debug!: Phaser.GameObjects.Graphics;
@@ -104,6 +113,8 @@ export class ArenaScene extends Phaser.Scene {
     this.arrowsView = new ArrowsView(this, this.arrows, this.fx);
     this.shades = new Shades();
     this.shadesView = new ShadesView(this, this.shades, this.fx);
+    this.wolf = new Werewolf();
+    this.wolfView = new WerewolfView(this, this.wolf, this.fx);
     this.run = new Run(this.shades);
     this.run.holdSpawns = params.has('calm');
     this.hud = new RunHud(this, this.run);
@@ -118,7 +129,8 @@ export class ArenaScene extends Phaser.Scene {
     this.player.onTeleportArrive = (x, y) => this.view.onTeleportArrive(x, y);
     this.arrows.onHit = (target, damage, ax, ay, dx, dy) => {
       // Knockback pushes away from a point just behind the hit, so along the arrow's flight.
-      this.shades.damage(target, damage, ax - dx, ay - dy);
+      if (target === this.wolf) this.wolf.damage(damage);
+      else this.shades.damage(target, damage, ax - dx, ay - dy);
       const s = toScreen(ax, ay);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
       this.fx.addShake(camera.shakeOnHit);
@@ -134,6 +146,9 @@ export class ArenaScene extends Phaser.Scene {
       this.fx.addShake(run.killShake);
       this.hitStop = Math.max(this.hitStop, run.killHitStop);
     };
+    this.wolf.onRisen = () => this.wolfView.onRisen();
+    this.wolf.onSlam = () => this.onSlam();
+    this.wolf.onKilled = (x, y) => this.onWolfKilled(x, y);
     this.run.spawnPoint = () => this.spawnPoint();
 
     this.startRun();
@@ -142,6 +157,8 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Restart run', run: () => this.startRun() },
       { label: 'Spawn a Shade', run: () => this.run.spawn() },
       { label: 'Skip 15s', run: () => (this.run.time += 15) },
+      { label: 'Spawn werewolf', run: () => this.spawnWolf() },
+      { label: 'Kill werewolf', run: () => this.wolf.damage(this.wolf.hp) },
       { label: 'Kill all Shades', run: () => [...this.shades.list].forEach((s) => this.shades.kill(s)) },
       { label: 'Hold spawns', run: () => (this.run.holdSpawns = !this.run.holdSpawns) },
       { label: 'Pause', run: () => (this.paused = !this.paused) },
@@ -196,9 +213,43 @@ export class ArenaScene extends Phaser.Scene {
     else this.paused = false;
   }
 
+  private spawnWolf(): void {
+    this.wolfCame = true;
+    const p = this.spawnPoint();
+    this.wolf.spawn(p.x, p.y);
+    this.hud.announce('THE WEREWOLF COMES');
+  }
+
+  // The slam hurts whoever is inside the attack rectangle when he lands.
+  private onSlam(): void {
+    this.wolfView.onSlam();
+    const p = this.player;
+    if (this.run.state !== 'fighting' || sim.godMode || (p.safe && !werewolf.slamPiercesInvuln)) return;
+    if (this.wolf.inAttack(p.x, p.y, cfgPlayer.hitRadius)) this.die();
+  }
+
+  private onWolfKilled(x: number, y: number): void {
+    this.wolfView.onKilled(x, y);
+    if (this.run.state !== 'fighting') return;
+    this.run.shards += werewolf.shards;
+    addShards(werewolf.shards);
+    this.hitStop = Math.max(this.hitStop, 0.15);
+    // Winning the Mindscape needs the full tree too. What happens next (the hub, teleport) comes later.
+    if (treeComplete()) {
+      save.flags.mindscapeCleared = true;
+      addShards(0);
+      this.hud.announce('THE MINDSCAPE IS CLEARED');
+    } else {
+      this.hud.announce('THE WEREWOLF FALLS');
+    }
+  }
+
   private startRun(): void {
     this.shades.clear();
     this.shadesView.clear();
+    this.wolf.clear();
+    this.wolfView.clear();
+    this.wolfCame = false;
     this.arrows.clear();
     // Where the address says, else the map's player start marker, else the middle of the map.
     const at = params.get('at')?.split(',').map(Number);
@@ -291,7 +342,8 @@ export class ArenaScene extends Phaser.Scene {
 
     this.arrowsView.render();
     this.shadesView.render(this.player.x, this.player.y);
-    const notes = [this.paused && 'PAUSED', this.run.holdSpawns && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
+    this.wolfView.render(frameDt, cam.width);
+    const notes = [this.showHitboxes && this.wolf.present && `WEREWOLF ${this.wolf.state.toUpperCase()}`, this.paused && 'PAUSED', this.run.holdSpawns && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
     this.drawDebug();
   }
@@ -302,11 +354,17 @@ export class ArenaScene extends Phaser.Scene {
     if (!this.treeOpen && r.state === 'dead' && r.canRestart) this.openTree();
     if (r.state === 'fighting') this.player.update(dt, this.input2, this.aim);
     r.update(dt);
+    if (r.state === 'fighting' && !this.wolfCame && !r.holdSpawns && r.time >= werewolf.arriveTime) this.spawnWolf();
     this.nav.setGoal(this.player.x, this.player.y);
     this.shades.update(dt, this.world, this.nav);
-    this.arrows.update(dt, this.shades.list, this.world);
+    this.wolf.update(dt, this.world, this.nav, this.player);
+    this.targets.length = 0;
+    this.targets.push(...this.shades.list);
+    if (this.wolf.alive) this.targets.push(this.wolf);
+    this.arrows.update(dt, this.targets, this.world);
     if (r.state === 'fighting' && !this.player.safe && !sim.godMode) {
-      if (this.shades.touching(this.player.x, this.player.y, cfgPlayer.hitRadius)) this.die();
+      const { x, y } = this.player;
+      if (this.shades.touching(x, y, cfgPlayer.hitRadius) || this.wolf.touching(x, y, cfgPlayer.hitRadius)) this.die();
     }
   }
 
@@ -340,6 +398,10 @@ export class ArenaScene extends Phaser.Scene {
       const a = toScreen(s.x, s.y);
       const b = toScreen(s.x + s.vx * 0.25, s.y + s.vy * 0.25);
       g.lineStyle(1, 0xffcc44, 1).lineBetween(a.x, a.y, b.x, b.y);
+    }
+    if (this.wolf.alive) {
+      ring(this.wolf.x, this.wolf.y, this.wolf.radius, 0xffcc44);
+      ring(this.wolf.x, this.wolf.y, this.wolf.radius * werewolf.contactScale, 0xff4466);
     }
     for (const c of this.world.circles) ring(c.x, c.y, c.radius, 0x66ffaa);
     for (const b of this.world.floorBoxes) {
