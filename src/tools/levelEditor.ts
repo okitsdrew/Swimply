@@ -9,7 +9,7 @@ import { parseMap } from '../data/maps';
 import { Problems, report } from '../data/registry';
 import { deleteFile, hex, readFile, readMapFiles, renameInDataFile, saveFile } from './files';
 import { MapCanvas } from './MapCanvas';
-import { EditMap, fromAreaMap, MapDoc, MAX_TILES, Side } from './MapDoc';
+import { EditMap, EditObject, fromAreaMap, MapDoc, MAX_TILES, Side } from './MapDoc';
 import { button, el, ID_PATTERN, numberInput, round, row, select, textInput, uniqueId } from './ui';
 
 // The level editor page (level-editor.html, dev server only). Paints floors and places assets and markers in the
@@ -20,7 +20,7 @@ type Tool = 'select' | 'place' | 'paint' | 'fill' | 'rect';
 const TOOL_KEYS: Record<string, Tool> = { v: 'select', a: 'place', b: 'paint', g: 'fill', r: 'rect' };
 const TOOL_NAMES: Record<Tool, string> = { select: 'Select (V)', place: 'Place (A)', paint: 'Brush (B)', fill: 'Fill (G)', rect: 'Box (R)' };
 const TOOL_HINTS: Record<Tool, string> = {
-  select: 'Click a thing to select it, drag to move it. Delete removes it, [ and ] resize it, arrows nudge it, Ctrl+D copies it.',
+  select: 'Click a thing to select it, or drag a box round several. Shift adds to the selection. Drag to move, Alt+drag to move a copy. Delete removes, [ and ] resize, arrows nudge, Ctrl+C / Ctrl+V copy and paste at the cursor, Ctrl+D copies in place, Ctrl+A selects all.',
   place: 'Click to place the chosen asset. Right-click a thing to place more of that. Hold Shift to place off the grid.',
   paint: 'Drag to paint the chosen floor. [ and ] change the brush size. Right-click picks up the floor under the cursor.',
   fill: 'Click to fill the patch of the same floor under the cursor. Right-click picks up a floor.',
@@ -42,7 +42,11 @@ interface Draft {
 type Drag =
   | { kind: 'paint'; col: number; row: number }
   | { kind: 'rect'; c0: number; r0: number; c1: number; r1: number }
-  | { kind: 'move'; index: number; dx: number; dy: number };
+  // Moves every selected thing by the same amount. `from` is where each one started; `anchor` is the one under the
+  // cursor, which snaps to the grid, and the others keep their places relative to it.
+  | { kind: 'move'; from: Vec2[]; anchor: number; dx: number; dy: number }
+  // A box dragged on the screen (screen units), selecting every thing whose ground point is inside it.
+  | { kind: 'box'; x0: number; y0: number; x1: number; y1: number; add: boolean };
 
 class LevelEditor {
   private docs: MapDoc[] = [];
@@ -54,7 +58,10 @@ class LevelEditor {
   private snap = 32;
   private grid = true;
   private collision = true;
-  private selected: number | null = null;
+  // Indexes into the map's objects, in the order they were picked.
+  private selection: number[] = [];
+  // Things copied with Ctrl+C, relative to the first one, so they can be pasted into any map.
+  private clipboard: EditObject[] = [];
   private drag: Drag | null = null;
   private shift = false;
   private note = '';
@@ -190,7 +197,7 @@ class LevelEditor {
       // Undoing back to the saved version counts as saved again.
       this.doc.dirty = this.doc.disk === null || this.doc.text() !== this.doc.disk;
     }
-    if (this.selected !== null && (!this.doc || this.selected >= this.doc.map.objects.length)) this.selected = null;
+    this.selection = this.selection.filter((i) => this.doc && i < this.doc.map.objects.length);
     clearTimeout(this.draftTimer);
     this.draftTimer = window.setTimeout(() => this.writeDraft(), 300);
     this.updateStatus();
@@ -265,7 +272,7 @@ class LevelEditor {
 
   private open(d: MapDoc): void {
     this.doc = d;
-    this.selected = null;
+    this.selection = [];
     this.drag = null;
     try {
       localStorage.setItem(LAST_KEY, d.id);
@@ -318,7 +325,7 @@ class LevelEditor {
     const t = 64;
     const start = assets.list().find((a) => a.marker === 'playerStart');
     const map: EditMap = {
-      name: id, tileSize: t, cols: n, rows: n, legend: {},
+      name: id, tileSize: t, cols: n, rows: n, legend: {}, darkness: 0,
       tiles: Array.from({ length: n * n }, () => this.floor),
       objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1 }] : [],
     };
@@ -396,8 +403,13 @@ class LevelEditor {
     return { x: Phaser.Math.Clamp(x, 0, m.cols * m.tileSize), y: Phaser.Math.Clamp(y, 0, m.rows * m.tileSize) };
   }
 
+  // The one selected thing, or null when none or several are.
+  private get single(): number | null {
+    return this.selection.length === 1 ? this.selection[0] : null;
+  }
+
   private selectedPos(): Vec2 | null {
-    const o = this.selected !== null ? this.doc?.map.objects[this.selected] : undefined;
+    const o = this.selection.length ? this.doc?.map.objects[this.selection[0]] : undefined;
     return o ? { x: o.x, y: o.y } : null;
   }
 
@@ -408,11 +420,30 @@ class LevelEditor {
     const [col, row] = this.tileOf(p);
     switch (this.tool) {
       case 'select': {
-        this.selected = this.pick(p);
-        if (this.selected !== null) {
-          const o = d.map.objects[this.selected];
+        let i = this.pick(p);
+        if (i === null) {
+          // Empty ground: start a selection box.
+          const s = toScreen(p.x, p.y);
+          if (!this.shift) this.selection = [];
+          this.drag = { kind: 'box', x0: s.x, y0: s.y, x1: s.x, y1: s.y, add: this.shift };
+        } else if (this.shift) {
+          // Shift-click adds a thing to the selection, or takes it out.
+          this.selection = this.selection.includes(i) ? this.selection.filter((j) => j !== i) : [...this.selection, i];
+        } else {
+          if (!this.selection.includes(i)) this.selection = [i];
           d.beginDrag();
-          this.drag = { kind: 'move', index: this.selected, dx: o.x - p.x, dy: o.y - p.y };
+          // Alt+drag leaves the originals where they are and moves copies of them.
+          if (alt) {
+            const copies = this.selection.map((j) => ({ ...d.map.objects[j] }));
+            const first = d.map.objects.length;
+            const anchorAt = this.selection.indexOf(i);
+            d.change((m) => m.objects.push(...copies));
+            this.selection = copies.map((_, k) => first + k);
+            this.changed(false);
+            i = this.selection[anchorAt];
+          }
+          const o = d.map.objects[i];
+          this.drag = { kind: 'move', from: this.selection.map((j) => ({ x: d.map.objects[j].x, y: d.map.objects[j].y })), anchor: this.selection.indexOf(i), dx: o.x - p.x, dy: o.y - p.y };
         }
         this.buildProps();
         break;
@@ -422,7 +453,7 @@ class LevelEditor {
         if (!a) return;
         const at = this.place(p);
         d.change((m) => m.objects.push({ asset: a.id, x: at.x, y: at.y, size: 1 }));
-        this.selected = d.map.objects.length - 1;
+        this.selection = [d.map.objects.length - 1];
         this.changed();
         break;
       }
@@ -451,12 +482,19 @@ class LevelEditor {
     if (!drag) return this.updateHint(p);
     const [col, row] = this.tileOf(p);
     if (drag.kind === 'move') {
-      const o = d.map.objects[drag.index];
+      const sel = this.selection;
+      const o = d.map.objects[sel[drag.anchor]];
       const at = this.place({ x: p.x + drag.dx, y: p.y + drag.dy });
       if (!o || (o.x === at.x && o.y === at.y)) return;
-      d.change((m) => Object.assign(m.objects[drag.index], at));
+      const mx = at.x - drag.from[drag.anchor].x;
+      const my = at.y - drag.from[drag.anchor].y;
+      d.change((m) => sel.forEach((j, k) => Object.assign(m.objects[j], { x: drag.from[k].x + mx, y: drag.from[k].y + my })));
       this.changed(false);
       this.buildProps();
+    } else if (drag.kind === 'box') {
+      const s = toScreen(p.x, p.y);
+      drag.x1 = s.x;
+      drag.y1 = s.y;
     } else if (drag.kind === 'paint') {
       // Paints every tile between the last one and this one, so a fast stroke leaves no gaps.
       const steps = Math.max(Math.abs(col - drag.col), Math.abs(row - drag.row));
@@ -479,6 +517,16 @@ class LevelEditor {
     if (!d || !drag) return;
     if (drag.kind === 'rect') {
       if (d.paintBox(drag.c0, drag.r0, drag.c1, drag.r1, this.floor)) this.changed();
+    } else if (drag.kind === 'box') {
+      const [x0, x1] = [Math.min(drag.x0, drag.x1), Math.max(drag.x0, drag.x1)];
+      const [y0, y1] = [Math.min(drag.y0, drag.y1), Math.max(drag.y0, drag.y1)];
+      const inside: number[] = [];
+      d.map.objects.forEach((o, i) => {
+        const s = toScreen(o.x, o.y);
+        if (s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1) inside.push(i);
+      });
+      this.selection = drag.add ? [...new Set([...this.selection, ...inside])] : inside;
+      this.buildProps();
     }
     d.endDrag();
   }
@@ -587,7 +635,7 @@ class LevelEditor {
         ring(o.x, o.y, 12, 0xf2d7a6);
         if (a.marker === 'shadeSpawn') ring(o.x, o.y, run.spawnZoneRadius * o.size, 0x66d9ef);
       }
-      if (i === this.selected) {
+      if (this.selection.includes(i)) {
         ring(o.x, o.y, 18, 0xffe14a);
         ring(o.x, o.y, 20, 0xffe14a);
       }
@@ -596,7 +644,11 @@ class LevelEditor {
     const p = this.canvas.pointer;
     const drag = this.drag;
     const color = floors.get(this.floor)?.colors[0] ?? 0xffffff;
-    if (drag?.kind === 'rect') {
+    if (drag?.kind === 'box') {
+      const pts = [{ x: drag.x0, y: drag.y0 }, { x: drag.x1, y: drag.y0 }, { x: drag.x1, y: drag.y1 }, { x: drag.x0, y: drag.y1 }];
+      g.fillStyle(0xffe14a, 0.08).fillPoints(pts, true);
+      g.lineStyle(1 / this.canvas.zoom, 0xffe14a, 1).strokePoints(pts, true);
+    } else if (drag?.kind === 'rect') {
       box(Math.min(drag.c0, drag.c1), Math.min(drag.r0, drag.r1), Math.max(drag.c0, drag.c1), Math.max(drag.r0, drag.r1), color, 0.6);
     } else if (p && this.tool === 'paint') {
       const [col, row] = this.tileOf(p);
@@ -648,17 +700,30 @@ class LevelEditor {
       this.duplicateSelected();
       return true;
     }
+    if (ctrl && k === 'c') {
+      this.copySelected();
+      return true;
+    }
+    if (ctrl && k === 'v') {
+      this.paste();
+      return true;
+    }
+    if (ctrl && k === 'a') {
+      this.selection = d.map.objects.map((_, i) => i);
+      this.setTool('select');
+      return true;
+    }
     if (ctrl) return false;
     if (TOOL_KEYS[k]) {
       this.setTool(TOOL_KEYS[k]);
       return true;
     }
-    const sel = this.selected;
+    const sel = this.selection;
     switch (e.key) {
       case ' ':
         return true;
       case 'Escape':
-        this.selected = null;
+        this.selection = [];
         this.setTool('select');
         return true;
       case 'Delete':
@@ -671,8 +736,8 @@ class LevelEditor {
         if (FLOOR_TOOLS.includes(this.tool)) {
           this.brush = Phaser.Math.Clamp(this.brush + (up ? 1 : -1), 1, 9);
           this.buildToolbar();
-        } else if (sel !== null) {
-          d.change((m) => (m.objects[sel].size = round(Math.max(0.1, m.objects[sel].size + (up ? 0.1 : -0.1)))));
+        } else if (sel.length) {
+          d.change((m) => sel.forEach((j) => (m.objects[j].size = round(Math.max(0.1, m.objects[j].size + (up ? 0.1 : -0.1))))));
           this.changed();
         }
         return true;
@@ -681,14 +746,14 @@ class LevelEditor {
       case 'ArrowRight':
       case 'ArrowUp':
       case 'ArrowDown': {
-        if (sel === null) return false;
+        if (!sel.length) return false;
         const step = e.shiftKey || !this.snap ? 1 : this.snap;
         // Arrows move along the screen, as WASD moves the hero: up is up the screen, which is diagonal in the world.
         const [dx, dy] = { ArrowLeft: [-1, 1], ArrowRight: [1, -1], ArrowUp: [-1, -1], ArrowDown: [1, 1] }[e.key]!;
-        d.change((m) => {
-          m.objects[sel].x += dx * step;
-          m.objects[sel].y += dy * step;
-        });
+        d.change((m) => sel.forEach((j) => {
+          m.objects[j].x += dx * step;
+          m.objects[j].y += dy * step;
+        }));
         this.changed();
         return true;
       }
@@ -716,21 +781,43 @@ class LevelEditor {
 
   private removeSelected(): void {
     const d = this.doc;
-    const sel = this.selected;
-    if (!d || sel === null) return;
-    d.change((m) => m.objects.splice(sel, 1));
-    this.selected = null;
+    const sel = new Set(this.selection);
+    if (!d || !sel.size) return;
+    d.change((m) => (m.objects = m.objects.filter((_, i) => !sel.has(i))));
+    this.selection = [];
+    this.changed();
+  }
+
+  // Adds copies of `list` to the map, moved by (dx, dy), and selects them.
+  private addCopies(list: EditObject[], dx: number, dy: number): void {
+    const d = this.doc;
+    if (!d || !list.length) return;
+    const first = d.map.objects.length;
+    d.change((m) => m.objects.push(...list.map((o) => ({ ...o, x: o.x + dx, y: o.y + dy }))));
+    this.selection = list.map((_, k) => first + k);
+    this.setTool('select');
     this.changed();
   }
 
   private duplicateSelected(): void {
     const d = this.doc;
-    const sel = this.selected;
-    if (!d || sel === null) return;
-    const step = this.snap || 32;
-    d.change((m) => m.objects.push({ ...m.objects[sel], x: m.objects[sel].x + step, y: m.objects[sel].y }));
-    this.selected = d.map.objects.length - 1;
-    this.changed();
+    if (!d) return;
+    this.addCopies(this.selection.map((j) => d.map.objects[j]), this.snap || 32, 0);
+  }
+
+  private copySelected(): void {
+    const d = this.doc;
+    if (!d || !this.selection.length) return;
+    this.clipboard = this.selection.map((j) => ({ ...d.map.objects[j] }));
+    this.hint.textContent = `Copied ${this.clipboard.length} thing${this.clipboard.length > 1 ? 's' : ''}. Ctrl+V pastes at the cursor, in this map or another.`;
+  }
+
+  // Pastes with the first copied thing at the cursor (on the grid), the rest in the same places relative to it.
+  private paste(): void {
+    const c = this.clipboard;
+    if (!c.length) return;
+    const at = this.place(this.canvas.pointer ?? this.canvas.viewCenter());
+    this.addCopies(c, at.x - c[0].x, at.y - c[0].y);
   }
 
   // ---- panels ----
@@ -830,7 +917,7 @@ class LevelEditor {
         else m.objects = m.objects.filter((o) => o.asset !== from);
       });
     }
-    this.selected = null;
+    this.selection = [];
     this.changed();
   }
 
@@ -887,9 +974,20 @@ class LevelEditor {
   }
 
   private selectionPanel(d: MapDoc): (HTMLElement | string)[] {
-    const sel = this.selected;
+    if (this.selection.length > 1) {
+      return [
+        el('h2', { text: 'Selected', style: 'margin-top:16px' }),
+        el('p', { class: 'hint', text: `${this.selection.length} things. Drag one to move them all; arrows nudge, [ and ] resize, Alt+drag moves copies.` }),
+        el('div', { class: 'bar' },
+          button('Copy (Ctrl+C)', () => this.copySelected()),
+          button('Duplicate (Ctrl+D)', () => this.duplicateSelected()),
+          button('Delete (Del)', () => this.removeSelected()),
+        ),
+      ];
+    }
+    const sel = this.single;
     const o = sel !== null ? d.map.objects[sel] : undefined;
-    if (sel === null || !o) return [el('h2', { text: 'Selected', style: 'margin-top:16px' }), el('p', { class: 'hint', text: 'Nothing. Use Select (V) and click a thing on the map.' })];
+    if (sel === null || !o) return [el('h2', { text: 'Selected', style: 'margin-top:16px' }), el('p', { class: 'hint', text: 'Nothing. Use Select (V) and click a thing on the map, or drag a box round several.' })];
     const edit = (fn: () => void) => {
       d.change(fn);
       this.changed(false);
@@ -903,7 +1001,8 @@ class LevelEditor {
       asset?.marker === 'shadeSpawn' ? el('p', { class: 'hint', text: `Shades appear inside the blue ring. Size scales it (radius ${run.spawnZoneRadius} at size 1, in the dev menu's run section). With no zones, Shades appear along the map's edge.` }) : '',
       asset?.marker === 'playerStart' ? el('p', { class: 'hint', text: 'Where a run starts. Only the first player start in a map counts.' }) : '',
       el('div', { class: 'bar' },
-        button('Copy (Ctrl+D)', () => this.duplicateSelected()),
+        button('Copy (Ctrl+C)', () => this.copySelected()),
+        button('Duplicate (Ctrl+D)', () => this.duplicateSelected()),
         button('Delete (Del)', () => this.removeSelected()),
       ),
     ];
@@ -919,19 +1018,26 @@ class LevelEditor {
           if (!FLOOR_TOOLS.includes(this.tool)) this.setTool('paint');
           else this.buildProps();
         }, { class: f.id === this.floor ? 'item on' : 'item' });
-        b.append(el('span', { class: 'floor-swatch' }, el('i', { style: `background:${hex(f.colors[0])}` }), `${f.name}${f.blocks ? ' (blocks walking)' : ''}`));
+        b.append(el('span', { class: 'floor-swatch' }, el('i', { style: `background:${hex(f.colors[0])}` }), `${f.name}${f.blocks ? ' (blocks walking)' : ''}${f.hurts ? ' (kills)' : ''}`));
         return b;
       }),
     ];
   }
 
+  // Which category tab the asset palette shows. Starts on the category of the asset being placed.
+  private assetCategory = '';
+
+  // One tab per asset category (set in the asset maker), so the list stays short however many assets there are.
   private assetPalette(): HTMLElement[] {
     const byCategory = new Map<string, Asset[]>();
     for (const a of assets.list()) byCategory.set(a.category, [...(byCategory.get(a.category) ?? []), a]);
-    return [...byCategory].sort(([a], [b]) => a.localeCompare(b)).flatMap(([cat, list]) => [
-      el('h3', { text: `${cat} (click, then click the map)` }),
-      ...list.map((a) => button(a.name, () => { this.asset = a.id; this.setTool('place'); }, { class: a.id === this.asset && this.tool === 'place' ? 'item on' : 'item' })),
-    ]);
+    const cats = [...byCategory.keys()].sort((a, b) => a.localeCompare(b));
+    if (!byCategory.has(this.assetCategory)) this.assetCategory = assets.get(this.asset)?.category ?? cats[0] ?? '';
+    return [
+      el('h3', { text: 'Assets (click, then click the map)' }),
+      el('div', { class: 'bar' }, ...cats.map((c) => button(c, () => { this.assetCategory = c; this.buildProps(); }, { class: c === this.assetCategory ? 'on' : '' }))),
+      ...(byCategory.get(this.assetCategory) ?? []).map((a) => button(a.name, () => { this.asset = a.id; this.setTool('place'); }, { class: a.id === this.asset && this.tool === 'place' ? 'item on' : 'item' })),
+    ];
   }
 
   private mapPanel(d: MapDoc): HTMLElement[] {
@@ -944,6 +1050,8 @@ class LevelEditor {
       el('h3', { text: 'Map' }),
       row('id', el('span', { text: `${d.id} (Rename on the left)` })),
       row('name', textInput(m.name, (v) => { d.change((mm) => (mm.name = v || d.id)); this.changed(); })),
+      row('darkness', numberInput(m.darkness ?? 0, 0.05, (v) => { d.change((mm) => (mm.darkness = Phaser.Math.Clamp(v, 0, 1))); this.changed(); }, { min: 0, max: 1 })),
+      el('p', { class: 'hint', text: 'How dark the map is away from lights, 0 to 1. Assets with a light (set in the asset maker) light it up.' }),
       el('p', { class: 'hint', text: `${m.cols} × ${m.rows} tiles, each ${m.tileSize} world units across. The top corner of the diamond is row 0, column 0.` }),
       edge('top', 'top edge'),
       edge('left', 'left edge'),
@@ -959,7 +1067,7 @@ class LevelEditor {
     const lost = d.lostBy(side, delta);
     if (lost && !confirm(`${lost} placed thing${lost > 1 ? 's are' : ' is'} on that edge and will be removed. Go ahead? (Ctrl+Z undoes it.)`)) return;
     if (d.resize(side, delta, this.floor)) {
-      this.selected = null;
+      this.selection = [];
       this.changed();
     }
   }

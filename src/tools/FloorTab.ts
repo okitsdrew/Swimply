@@ -65,6 +65,8 @@ export class FloorTab {
       used.length ? el('p', { class: 'hint', text: `Used in map${used.length > 1 ? 's' : ''}: ${used.join(', ')}. Its id is locked so those maps keep finding it.` }) : '',
       row('name', textInput(f.name, (v) => { f.name = v || f.id; this.edit(); this.refresh(); })),
       row('blocks walking', checkbox(f.blocks, (v) => { f.blocks = v; this.edit(); })),
+      row('kills the player', checkbox(!!f.hurts, (v) => { f.hurts = v; this.edit(); })),
+      el('p', { class: 'hint', text: 'Standing on it kills the player, unless they are dashing or teleporting (or in the short grace after). Enemies ignore it.' }),
       el('p', { class: 'hint', text: 'A blocking floor (water, a cliff) cannot be walked on or teleported onto. Arrows and teleports pass over it.' }),
       el('h3', { text: 'Colours' }),
       el('div', { class: 'chips' }, ...colors),
@@ -81,7 +83,7 @@ export class FloorTab {
 
   private create(): void {
     const id = uniqueId('floor', this.taken);
-    const f: Floor = { id, name: id, colors: [...(this.current?.colors ?? [0x1b1822])], blocks: false };
+    const f: Floor = { id, name: id, colors: [...(this.current?.colors ?? [0x1b1822])], blocks: false, hurts: false };
     this.ws.floors.push(f);
     this.ws.touch('floors');
     this.open(f);

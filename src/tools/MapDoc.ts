@@ -29,6 +29,7 @@ export function fromAreaMap(m: AreaMap): EditMap {
     cols: m.cols,
     rows: m.rows,
     legend: { ...m.legend },
+    darkness: m.darkness,
     tiles: m.tiles.map((t) => t.id),
     objects: m.objects.map((o) => ({ asset: o.asset.id, x: o.x, y: o.y, size: o.size })),
   };
@@ -63,7 +64,7 @@ export class MapDoc {
       const asset = assets.get(o.asset);
       if (asset) objects.push({ asset, x: o.x, y: o.y, size: o.size });
     }
-    return { id: this.id, name: m.name, tileSize: m.tileSize, cols: m.cols, rows: m.rows, legend: m.legend, tiles: m.tiles.map((id) => floors.get(id) ?? fallback), objects };
+    return { id: this.id, name: m.name, tileSize: m.tileSize, cols: m.cols, rows: m.rows, legend: m.legend, tiles: m.tiles.map((id) => floors.get(id) ?? fallback), objects, darkness: m.darkness ?? 0 };
   }
 
   // Records an undo step (unless a drag already has one), then lets fn change the map.

@@ -138,6 +138,8 @@ class EditorScene extends Phaser.Scene {
   }
 
   update(): void {
+    // Lights flicker and the map's darkness follows the view.
+    this.view?.render();
     this.overlay.clear();
     this.events2?.overlay(this.overlay);
   }
