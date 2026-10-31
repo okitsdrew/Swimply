@@ -1,6 +1,6 @@
 import { rgba, Sprite } from '../data/sprites';
 import { Preview } from './Preview';
-import { button, el, ID_PATTERN, numberInput, row, select, textInput, uniqueId } from './ui';
+import { button, colorInput, el, ID_PATTERN, numberInput, row, select, textInput, uniqueId } from './ui';
 import { Workspace } from './Workspace';
 
 // Characters handed out to new palette colours, in order. "." is see-through, so it is never one of them.
@@ -46,6 +46,9 @@ export class SpriteTab {
   private canvas = el('canvas', { class: 'pixels' });
   private ctx = this.canvas.getContext('2d')!;
   private small = [1, 2, 4].map(() => el('canvas', { class: 'small' }));
+  // Plays the sprite's animation: every sprite named like it with a different number (werewolf_0, werewolf_1, ...).
+  private anim = el('canvas', { class: 'small' });
+  private fps = 6;
   private stroke: { button: number; last: [number, number] | null } | null = null;
   private hover: [number, number] | null = null;
   // The select tool's rectangle, and pixels lifted out of the sprite (pasted, or moved) that float above it until
@@ -73,6 +76,46 @@ export class SpriteTab {
       this.setZoom(this.zoom + (e.deltaY < 0 ? 2 : -2));
     }, { passive: false });
     this.current = ws.sprites[0] ?? null;
+    const tick = (now: number): void => {
+      this.drawAnim(now);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  private frames(): Sprite[] {
+    const m = this.current?.id.match(/^(.*?)_?\d+$/);
+    if (!m) return [];
+    const re = new RegExp(`^${m[1].replace(/[^A-Za-z0-9]/g, '\\$&')}_?(\\d+)$`);
+    return this.ws.sprites
+      .map((s) => ({ s, n: s.id.match(re)?.[1] }))
+      .filter((f) => f.n !== undefined)
+      .sort((a, b) => +a.n! - +b.n!)
+      .map((f) => f.s);
+  }
+
+  private drawAnim(now: number): void {
+    if (!this.anim.isConnected) return;
+    const frames = this.frames();
+    const s = frames[Math.floor((now / 1000) * this.fps) % Math.max(1, frames.length)];
+    const scale = 2;
+    // Every frame stands on the same bottom middle point, as in the game.
+    const w = Math.max(1, ...frames.map((f) => f.width));
+    const h = Math.max(1, ...frames.map((f) => f.height));
+    if (this.anim.width !== w * scale || this.anim.height !== h * scale) {
+      this.anim.width = w * scale;
+      this.anim.height = h * scale;
+    }
+    const g = this.anim.getContext('2d')!;
+    g.clearRect(0, 0, this.anim.width, this.anim.height);
+    if (!s) return;
+    const ox = Math.floor((w - s.width) / 2);
+    const oy = h - s.height;
+    s.pixels.forEach((j, i) => {
+      if (j < 0) return;
+      g.fillStyle = s.palette[j].hex;
+      g.fillRect((ox + (i % s.width)) * scale, (oy + Math.floor(i / s.width)) * scale, scale, scale);
+    });
   }
 
   mount(list: HTMLElement, center: HTMLElement, props: HTMLElement): void {
@@ -99,6 +142,7 @@ export class SpriteTab {
     if (k === 'enter' || k === 'escape') return this.dropFloating(), (this.selection = null), this.draw(), true;
     const arrow = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, -1], arrowdown: [0, 1] }[k];
     if (arrow && (this.selection || this.floating)) return this.nudge(arrow[0], arrow[1]), true;
+    if (k === 'r' && (this.selection || this.floating)) return this.rotate(!e.shiftKey), true;
     if (TOOL_KEYS[k]) return this.setTool(TOOL_KEYS[k]), true;
     if (k === 'm') return (this.mirror = !this.mirror), this.refresh(), true;
     if (k === '+' || k === '=') return this.setZoom(this.zoom + 2), true;
@@ -166,9 +210,11 @@ export class SpriteTab {
         button(this.mirror ? 'mirror: on (M)' : 'mirror: off (M)', () => { this.mirror = !this.mirror; this.refresh(); }, { class: this.mirror ? 'on' : '' }),
         button('undo', () => this.undo()),
         button('redo', () => this.redo()),
+        button('turn ⟳ (R)', () => this.rotate(true), { title: 'turn the selection a quarter turn' }),
+        button('turn ⟲', () => this.rotate(false), { title: 'turn the selection the other way' }),
       ),
       el('p', { class: 'hint', text: 'Right mouse erases. Alt+click picks a colour. Wheel zooms.' }),
-      el('p', { class: 'hint', text: 'Select: drag a box, then drag it (or use the arrow keys) to move it. Ctrl+C, Ctrl+X, Ctrl+V copy, cut and paste, also between sprites; a paste lands where it was copied from. Delete clears, Enter or Esc drops it.' }),
+      el('p', { class: 'hint', text: 'Select: drag a box, then drag it (or use the arrow keys) to move it. R turns it a quarter turn clockwise, Shift+R the other way. Ctrl+C, Ctrl+X, Ctrl+V copy, cut and paste, also between sprites; a paste lands where it was copied from. Delete clears, Enter or Esc drops it.' }),
       el('h3', { text: 'Palette' }),
       el('div', { class: 'swatches' }, ...swatches),
       ...colorEdit,
@@ -189,18 +235,26 @@ export class SpriteTab {
       ),
       el('h3', { text: 'Actual size, 2x (as in game), 4x' }),
       el('div', { class: 'smalls' }, ...this.small),
+      ...this.animPanel(),
     );
   }
 
-  private colorInput(c: { hex: string }): HTMLInputElement {
-    const i = el('input', { type: 'color', value: c.hex.slice(0, 7) });
-    i.addEventListener('input', () => {
+  private animPanel(): (HTMLElement | string)[] {
+    const n = this.frames().length;
+    if (n < 2) return [];
+    return [
+      el('h3', { text: `Animation, ${n} frames, 2x` }),
+      row('frames a second', numberInput(this.fps, 1, (v) => (this.fps = Math.max(1, Math.min(30, v))), { min: 1, max: 30 })),
+      el('div', { class: 'smalls' }, this.anim),
+    ];
+  }
+
+  private colorInput(c: { hex: string }): HTMLButtonElement {
+    return colorInput(c.hex.slice(0, 7), (v) => {
       this.remember();
-      c.hex = i.value + c.hex.slice(7);
+      c.hex = v + c.hex.slice(7);
       this.changed();
-    });
-    i.addEventListener('change', () => this.refresh());
-    return i;
+    }, () => this.refresh());
   }
 
   private setAlpha(a: number): void {
@@ -553,6 +607,22 @@ export class SpriteTab {
     this.floating!.x += dx;
     this.floating!.y += dy;
     this.draw();
+  }
+
+  // Turns the selected pixels a quarter turn (clockwise, or the other way), about the selection's centre. They
+  // float afterwards, like a moved selection, until dropped.
+  private rotate(clockwise: boolean): void {
+    if (!this.selection && !this.floating) return;
+    if (!this.floating) this.lift();
+    const f = this.floating!;
+    const colors: (string | null)[] = [];
+    for (let y = 0; y < f.w; y++) {
+      for (let x = 0; x < f.h; x++) {
+        colors.push(clockwise ? f.colors[(f.h - 1 - x) * f.w + y] : f.colors[x * f.w + (f.w - 1 - y)]);
+      }
+    }
+    this.floating = { x: f.x + Math.floor((f.w - f.h) / 2), y: f.y + Math.floor((f.h - f.w) / 2), w: f.h, h: f.w, colors };
+    this.setTool('select');
   }
 
   // --- undo ---

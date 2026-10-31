@@ -52,3 +52,8 @@ input[type=color] { padding: 0; width: 34px; height: 24px; }
 .floor-swatch { display: flex; align-items: center; gap: 6px; }
 .floor-swatch i { display: inline-block; width: 14px; height: 14px; box-shadow: 0 0 0 1px #443c5c; }
 .banner { background: #3a2f12; color: #f2d7a6; padding: 4px 12px; display: flex; gap: 10px; align-items: center; }
+
+/* The colour picker (ui.ts colorInput) */
+.color-btn { width: 34px; height: 24px; padding: 0; }
+.color-pop { position: fixed; z-index: 100; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: #1d1929; border: 1px solid #5a3f99; box-shadow: 0 4px 16px #000a; }
+.color-pop canvas { display: block; cursor: crosshair; touch-action: none; }

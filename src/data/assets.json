@@ -29,20 +29,20 @@
     {
       "id": "lamp",
       "name": "Lamp",
-      "category": "props",
+      "category": "decor",
       "parts": [{ "texture": "lamp" }]
     },
     {
       "id": "standing-lamp",
       "name": "Standing lamp",
-      "category": "props",
+      "category": "decor",
       "parts": [{ "texture": "standing_lamp", "originY": 0.97 }],
       "collision": [{ "radius": 6 }]
     },
     {
       "id": "fire",
       "name": "Fire",
-      "category": "props",
+      "category": "decor",
       "parts": [{ "texture": "fire", "originY": 0.86 }],
       "collision": [{ "radius": 12 }]
     },
@@ -66,6 +66,79 @@
       "category": "props",
       "parts": [{ "texture": "weapon_rack", "originY": 0.91 }],
       "collision": [{ "x": -12, "y": 12, "radius": 9 }, { "x": 12, "y": -12, "radius": 9 }]
+    },
+    {
+      "id": "stone-wall",
+      "name": "Stone wall (straight)",
+      "category": "walls",
+      "parts": [{ "texture": "stone_wall", "originY": 0.96 }],
+      "collision": [{ "x": -16, "y": 16, "radius": 12 }, { "radius": 12 }, { "x": 16, "y": -16, "radius": 12 }]
+    },
+    {
+      "id": "stone-wall-se",
+      "name": "Stone wall (SE/NW)",
+      "category": "walls",
+      "parts": [{ "texture": "stone_wall_se", "originY": 0.87 }],
+      "collision": [{ "x": -20, "radius": 12 }, { "radius": 12 }, { "x": 20, "radius": 12 }]
+    },
+    {
+      "id": "stone-wall-sw",
+      "name": "Stone wall (SW/NE)",
+      "category": "walls",
+      "parts": [{ "texture": "stone_wall_sw", "originY": 0.87 }],
+      "collision": [{ "y": -20, "radius": 12 }, { "radius": 12 }, { "y": 20, "radius": 12 }]
+    },
+    {
+      "id": "fallen-column",
+      "name": "Fallen column",
+      "category": "props",
+      "parts": [{ "texture": "fallen_column", "originY": 0.88 }],
+      "collision": [{ "x": -14, "y": 14, "radius": 10 }, { "radius": 10 }, { "x": 14, "y": -14, "radius": 10 }]
+    },
+    {
+      "id": "granite-wall",
+      "name": "Granite wall (straight)",
+      "category": "walls",
+      "parts": [{ "texture": "granite_wall", "originY": 0.96 }],
+      "collision": [{ "x": -16, "y": 16, "radius": 12 }, { "radius": 12 }, { "x": 16, "y": -16, "radius": 12 }]
+    },
+    {
+      "id": "granite-wall-se",
+      "name": "Granite wall (SE/NW)",
+      "category": "walls",
+      "parts": [{ "texture": "granite_wall_se", "originY": 0.87 }],
+      "collision": [{ "x": -20, "radius": 12 }, { "radius": 12 }, { "x": 20, "radius": 12 }]
+    },
+    {
+      "id": "granite-wall-sw",
+      "name": "Granite wall (SW/NE)",
+      "category": "walls",
+      "parts": [{ "texture": "granite_wall_sw", "originY": 0.87 }],
+      "collision": [{ "y": -20, "radius": 12 }, { "radius": 12 }, { "y": 20, "radius": 12 }]
+    },
+    {
+      "id": "corpse-knight",
+      "name": "Knight corpse",
+      "category": "decor",
+      "parts": [{ "texture": "corpse_knight", "originY": 0.6, "ground": true }]
+    },
+    {
+      "id": "corpse-barbarian",
+      "name": "Barbarian corpse",
+      "category": "decor",
+      "parts": [{ "texture": "corpse_barbarian", "originY": 0.6, "ground": true }]
+    },
+    {
+      "id": "corpse-wizard",
+      "name": "Wizard corpse",
+      "category": "decor",
+      "parts": [{ "texture": "corpse_wizard", "originY": 0.6, "ground": true }]
+    },
+    {
+      "id": "corpse-horse",
+      "name": "Horse corpse",
+      "category": "decor",
+      "parts": [{ "texture": "corpse_horse", "originY": 0.6, "ground": true }]
     }
   ]
 }

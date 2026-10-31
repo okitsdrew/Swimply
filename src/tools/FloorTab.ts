@@ -1,7 +1,7 @@
 import { Floor } from '../data/floors';
 import { hex } from './files';
 import { Preview } from './Preview';
-import { button, checkbox, el, ID_PATTERN, row, textInput, uniqueId } from './ui';
+import { button, checkbox, colorInput, el, ID_PATTERN, row, textInput, uniqueId } from './ui';
 import { Workspace } from './Workspace';
 
 // Edits floors.json: the kinds of ground a map is painted with. The asset tab's preview stands on the floor
@@ -52,8 +52,7 @@ export class FloorTab {
     }
     const used = this.ws.mapsUsingFloor(f.id);
     const colors = f.colors.map((c, i) => {
-      const input = el('input', { type: 'color', value: hex(c) });
-      input.addEventListener('input', () => { f.colors[i] = parseInt(input.value.slice(1), 16); this.edit(); });
+      const input = colorInput(hex(c), (v) => { f.colors[i] = parseInt(v.slice(1), 16); this.edit(); });
       return el('span', { class: 'chip' }, input, button('×', () => {
         if (f.colors.length > 1) f.colors.splice(i, 1);
         this.edit();

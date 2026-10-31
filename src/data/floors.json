@@ -8,18 +8,33 @@
     {
       "id": "water",
       "name": "Still water",
-      "colors": ["#0f2430", "#112835", "#10262f", "#0e2129"],
+      "colors": ["#287493"],
       "blocks": true
     },
     {
-      "id": "brick",
-      "name": "brick",
-      "colors": ["#271c1c", "#1e1515", "#141010", "#1f1414"]
+      "id": "obsidian_stone",
+      "name": "obsidian stone",
+      "colors": ["#010101", "#000000", "#060606"]
     },
     {
-      "id": "granite",
-      "name": "granite",
-      "colors": ["#0d0d0d", "#080808", "#050505"]
+      "id": "black_stone",
+      "name": "black stone",
+      "colors": ["#0a0a0a"]
+    },
+    {
+      "id": "dirt",
+      "name": "dirt floor",
+      "colors": ["#0d0b0b", "#0f0c0c"]
+    },
+    {
+      "id": "purple_floor",
+      "name": "purple floor",
+      "colors": ["#290f40", "#2c1044"]
+    },
+    {
+      "id": "white_floor",
+      "name": "white floor",
+      "colors": ["#676767"]
     }
   ]
 }
