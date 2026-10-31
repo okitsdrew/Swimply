@@ -6,6 +6,8 @@ export const shade = defineConfig(
   'enemies',
   {
     hp: 10,
+    // Each wave's Shades have this much more health than the last wave's, so damage upgrades keep mattering.
+    hpPerWave: 0,
     speed: 170,
     // Keeps on-screen speed equal in every direction, as the player's does.
     uniformScreenSpeed: true,
@@ -33,6 +35,7 @@ export const shade = defineConfig(
   },
   {
     hp: { min: 1, max: 2000, step: 1 },
+    hpPerWave: { min: 0, max: 50, step: 0.5 },
     speed: { min: 10, max: 800, step: 5 },
     uniformScreenSpeed: 'bool',
     radius: { min: 2, max: 80, step: 1 },

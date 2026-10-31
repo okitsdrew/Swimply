@@ -5,9 +5,12 @@ import { render } from '../config/render';
 import { run } from '../config/run';
 import { shade } from '../config/shade';
 import { sim } from '../config/sim';
+import { tree } from '../config/tree';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { AreaMap, findMarker, maps } from '../data/maps';
+import { addShards, maxTree, resetTree } from '../data/tree';
+import { save } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
 import { ArrowsView } from '../render/ArrowsView';
 import { makeArt } from '../render/art';
@@ -22,8 +25,9 @@ import { Run } from '../sim/Run';
 import { Shades } from '../sim/Shades';
 import { FlowField } from '../sim/Nav';
 import { MapWorld } from '../sim/World';
+import { TreeSceneData } from './TreeScene';
 
-const DEFAULT_MAP = 'arena';
+const DEFAULT_MAP = 'mindscape';
 
 // The page address can pick what to play, which is how the level editor's "play here" opens the game:
 //   ?map=water-test   play that map
@@ -32,7 +36,7 @@ const DEFAULT_MAP = 'arena';
 // The map is kept in the address, so the reload after a tool saves comes back to the same map.
 const params = new URLSearchParams(location.search);
 
-// The arena: a map from src/data/maps, endless waves of Shades, death and restart. The sim runs on a fixed time
+// The arena: a map from src/data/maps, endless waves of Shades, death, the upgrade tree, and the next run. The sim runs on a fixed time
 // step here; drawing runs once per screen frame. Switching map restarts the scene with the new map's id.
 export class ArenaScene extends Phaser.Scene {
   private input2!: Input;
@@ -59,6 +63,7 @@ export class ArenaScene extends Phaser.Scene {
   private paused = false;
   private stepsQueued = 0;
   private aim: Vec2 | null = null;
+  private treeOpen = false;
 
   constructor() {
     super('arena');
@@ -84,6 +89,7 @@ export class ArenaScene extends Phaser.Scene {
     this.acc = 0;
     this.paused = false;
     this.stepsQueued = 0;
+    this.treeOpen = false;
 
     makeArt(this);
     this.cameras.main.setBackgroundColor(0x0b0a10);
@@ -119,7 +125,11 @@ export class ArenaScene extends Phaser.Scene {
     };
     this.shades.onRisen = (s) => this.shadesView.onRisen(s);
     this.shades.onKilled = (x, y) => {
-      if (this.run.state === 'fighting') this.run.kills++;
+      if (this.run.state === 'fighting') {
+        this.run.kills++;
+        this.run.shards += tree.shardsPerKill;
+        addShards(tree.shardsPerKill);
+      }
       this.shadesView.onKilled(x, y);
       this.fx.addShake(run.killShake);
       this.hitStop = Math.max(this.hitStop, run.killHitStop);
@@ -137,18 +147,54 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Hold waves', run: () => (this.run.holdWaves = !this.run.holdWaves) },
       { label: 'Pause', run: () => (this.paused = !this.paused) },
       { label: 'Step', run: () => { this.paused = true; this.stepsQueued++; } },
+      { label: 'Open tree', run: () => this.openTree() },
+      { label: '+50 shards', run: () => addShards(50) },
+      { label: 'Reset tree (refund)', run: () => resetTree(true) },
+      { label: 'Reset tree and shards', run: () => { resetTree(false); save.shards = 0; addShards(0); } },
+      { label: 'Max tree', run: () => maxTree() },
       { label: 'Toggle hitboxes', run: () => (this.showHitboxes = !this.showHitboxes) },
       { label: `Next map (${map.name})`, run: () => this.nextMap() },
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
       { label: 'Level editor', run: () => window.open(`level-editor.html?map=${this.mapId}`, 'swimply-level-editor') },
     ]);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input2.destroy());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input2.destroy();
+      this.scene.stop('tree');
+    });
   }
 
   private nextMap(): void {
     const all = maps.list();
     const next = all[(all.indexOf(this.map) + 1) % all.length];
     this.scene.restart({ map: next.id });
+  }
+
+  // The tree screen. After a death, closing it starts the next run; opened mid-run from the dev menu, the run is
+  // paused under it and carries on.
+  private openTree(): void {
+    if (this.treeOpen) return;
+    this.treeOpen = true;
+    this.hud.treeOpen = true;
+    const dead = this.run.state === 'dead';
+    const r = this.run;
+    if (!dead) this.paused = true;
+    const data: TreeSceneData = {
+      summary: dead ? `YOU DIED   wave ${r.wave}, ${r.kills} kills, +${r.shards} shards` : 'MEMORIES',
+      closeLabel: dead ? 'Next run' : 'Back',
+      onClose: () => this.closeTree(),
+    };
+    this.scene.launch('tree', data);
+  }
+
+  private closeTree(): void {
+    if (!this.treeOpen) return;
+    this.treeOpen = false;
+    this.hud.treeOpen = false;
+    this.scene.stop('tree');
+    // Clicks on the tree screen also reached the game's input; drop them so they don't fire an arrow.
+    this.input2.endFrame();
+    if (this.run.state === 'dead') this.startRun();
+    else this.paused = false;
   }
 
   private startRun(): void {
@@ -207,6 +253,8 @@ export class ArenaScene extends Phaser.Scene {
     const input = this.input2;
     const cam = this.cameras.main;
     input.update();
+    // Checked here, not in step(), because the sim does not step while the tree pauses a run.
+    if (this.treeOpen && input.justPressed('dash')) this.closeTree();
     this.mapView.render();
     this.aim = input.aim ? toWorld(cam.scrollX + input.aim.x, cam.scrollY + input.aim.y + render.aimHeight) : null;
 
@@ -252,10 +300,7 @@ export class ArenaScene extends Phaser.Scene {
   // One fixed step of the whole simulation, in the order things happen.
   private step(dt: number): void {
     const r = this.run;
-    if (r.state === 'dead' && r.canRestart && (this.input2.justPressed('fire') || this.input2.justPressed('dash'))) {
-      this.startRun();
-      return;
-    }
+    if (!this.treeOpen && r.state === 'dead' && r.canRestart) this.openTree();
     if (r.state === 'fighting') this.player.update(dt, this.input2, this.aim);
     r.update(dt);
     this.nav.setGoal(this.player.x, this.player.y);

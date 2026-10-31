@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { save } from '../core/save';
 import { Run } from '../sim/Run';
 
 const style = {
@@ -10,12 +11,14 @@ const style = {
   strokeThickness: 4,
 };
 
-// Wave and kill counts in the corner, a wave banner, and the death message. Fixed to the screen, not the world.
+// Wave, kill and shard counts in the corner, a wave banner, and the death message. Fixed to the screen, not the world.
 export class RunHud {
   private counts: Phaser.GameObjects.Text;
   private banner: Phaser.GameObjects.Text;
   private death: Phaser.GameObjects.Text;
   private bannerTime = 0;
+  // The tree screen shows its own death summary, so this one steps aside.
+  treeOpen = false;
 
   constructor(scene: Phaser.Scene, private run: Run) {
     const fixed = (t: Phaser.GameObjects.Text) => t.setScrollFactor(0).setDepth(2e7);
@@ -32,14 +35,11 @@ export class RunHud {
   // `note` shows dev states such as a pause, so a frozen game is never mistaken for a bug.
   update(dt: number, width: number, height: number, note = ''): void {
     const r = this.run;
-    this.counts.setText(`WAVE ${r.wave}   KILLS ${r.kills}${note ? `   ${note}` : ''}`);
+    this.counts.setText(`WAVE ${r.wave}   KILLS ${r.kills}   SHARDS ${save.shards}${note ? `   ${note}` : ''}`);
     this.bannerTime = Math.max(0, this.bannerTime - dt);
     this.banner.setPosition(width / 2, height * 0.22).setAlpha(Math.min(1, this.bannerTime * 2));
-    const dead = r.state === 'dead';
+    const dead = r.state === 'dead' && !this.treeOpen;
     this.death.setVisible(dead).setPosition(width / 2, height * 0.3);
-    if (dead) {
-      const hint = r.canRestart ? '\nclick or press space to try again' : '';
-      this.death.setText(`YOU DIED\nwave ${r.wave}, ${r.kills} kills, ${Math.floor(r.time)}s${hint}`);
-    }
+    if (dead) this.death.setText(`YOU DIED\nwave ${r.wave}, ${r.kills} kills, ${Math.floor(r.time)}s`);
   }
 }

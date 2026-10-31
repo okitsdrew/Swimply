@@ -1,4 +1,5 @@
 import { run } from '../config/run';
+import { shade } from '../config/shade';
 import { Shades } from './Shades';
 
 export type RunState = 'fighting' | 'dead';
@@ -8,6 +9,8 @@ export class Run {
   state: RunState = 'fighting';
   wave = 0;
   kills = 0;
+  // Memory shards earned this run (they are banked in the save as they are earned).
+  shards = 0;
   time = 0;
   // Seconds since death, so a restart click is not taken too early.
   deadTime = 0;
@@ -27,6 +30,7 @@ export class Run {
     this.state = 'fighting';
     this.wave = 0;
     this.kills = 0;
+    this.shards = 0;
     this.time = 0;
     this.deadTime = 0;
     this.toSpawn = 0;
@@ -62,7 +66,7 @@ export class Run {
       this.spawnTimer -= dt;
       while (this.toSpawn > 0 && this.spawnTimer <= 0) {
         const p = this.spawnPoint();
-        this.shades.spawn(p.x, p.y);
+        this.shades.spawn(p.x, p.y, Math.round(shade.hp + shade.hpPerWave * (this.wave - 1)));
         this.toSpawn--;
         this.spawnTimer += run.spawnStagger;
       }

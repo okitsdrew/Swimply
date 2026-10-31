@@ -44,9 +44,9 @@ export class Shades {
     return this.list.length;
   }
 
-  spawn(x: number, y: number): void {
+  spawn(x: number, y: number, hp = shade.hp): void {
     this.list.push({
-      id: this.nextId++, x, y, radius: shade.radius, alive: false, hp: shade.hp, vx: 0, vy: 0, kx: 0, ky: 0,
+      id: this.nextId++, x, y, radius: shade.radius, alive: false, hp, vx: 0, vy: 0, kx: 0, ky: 0,
       rising: Math.max(shade.spawnTell, 1e-4), flash: 0, phase: Math.random() * Math.PI * 2, avoid: null, side: 1,
     });
   }
