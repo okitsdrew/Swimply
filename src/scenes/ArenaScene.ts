@@ -17,7 +17,7 @@ import { makeArt } from '../render/art';
 import { Fx } from '../render/Fx';
 import { MapView } from '../render/MapView';
 import { PlayerView } from '../render/PlayerView';
-import { RunHud } from '../render/RunHud';
+import { clock, RunHud } from '../render/RunHud';
 import { ShadesView } from '../render/ShadesView';
 import { Arrows } from '../sim/Arrows';
 import { Player } from '../sim/Player';
@@ -32,11 +32,11 @@ const DEFAULT_MAP = 'mindscape';
 // The page address can pick what to play, which is how the level editor's "play here" opens the game:
 //   ?map=water-test   play that map
 //   &at=320,640       start there (world units) instead of at the map's player start
-//   &calm             waves held from the start, to walk round a map
+//   &calm             no Shades appear, to walk round a map
 // The map is kept in the address, so the reload after a tool saves comes back to the same map.
 const params = new URLSearchParams(location.search);
 
-// The arena: a map from src/data/maps, endless waves of Shades, death, the upgrade tree, and the next run. The sim runs on a fixed time
+// The arena: a map from src/data/maps, Shades that keep coming, death, the upgrade tree, and the next run. The sim runs on a fixed time
 // step here; drawing runs once per screen frame. Switching map restarts the scene with the new map's id.
 export class ArenaScene extends Phaser.Scene {
   private input2!: Input;
@@ -105,7 +105,7 @@ export class ArenaScene extends Phaser.Scene {
     this.shades = new Shades();
     this.shadesView = new ShadesView(this, this.shades, this.fx);
     this.run = new Run(this.shades);
-    this.run.holdWaves = params.has('calm');
+    this.run.holdSpawns = params.has('calm');
     this.hud = new RunHud(this, this.run);
 
     this.player.onFire = (_x, _y, dx, dy) => {
@@ -135,16 +135,15 @@ export class ArenaScene extends Phaser.Scene {
       this.hitStop = Math.max(this.hitStop, run.killHitStop);
     };
     this.run.spawnPoint = () => this.spawnPoint();
-    this.run.onWave = (n) => this.hud.announce(`WAVE ${n}`);
 
     this.startRun();
 
     DevMenu.get().setActions([
       { label: 'Restart run', run: () => this.startRun() },
-      { label: 'Next wave', run: () => this.run.nextWave() },
-      { label: 'Spawn a Shade', run: () => { const p = this.spawnPoint(); this.shades.spawn(p.x, p.y); } },
+      { label: 'Spawn a Shade', run: () => this.run.spawn() },
+      { label: 'Skip 15s', run: () => (this.run.time += 15) },
       { label: 'Kill all Shades', run: () => [...this.shades.list].forEach((s) => this.shades.kill(s)) },
-      { label: 'Hold waves', run: () => (this.run.holdWaves = !this.run.holdWaves) },
+      { label: 'Hold spawns', run: () => (this.run.holdSpawns = !this.run.holdSpawns) },
       { label: 'Pause', run: () => (this.paused = !this.paused) },
       { label: 'Step', run: () => { this.paused = true; this.stepsQueued++; } },
       { label: 'Open tree', run: () => this.openTree() },
@@ -179,7 +178,7 @@ export class ArenaScene extends Phaser.Scene {
     const r = this.run;
     if (!dead) this.paused = true;
     const data: TreeSceneData = {
-      summary: dead ? `YOU DIED   wave ${r.wave}, ${r.kills} kills, +${r.shards} shards` : 'MEMORIES',
+      summary: dead ? `YOU DIED   ${clock(r.time)}, ${r.kills} kills, +${r.shards} shards` : 'MEMORIES',
       closeLabel: dead ? 'Next run' : 'Back',
       onClose: () => this.closeTree(),
     };
@@ -292,7 +291,7 @@ export class ArenaScene extends Phaser.Scene {
 
     this.arrowsView.render();
     this.shadesView.render(this.player.x, this.player.y);
-    const notes = [this.paused && 'PAUSED', this.run.holdWaves && 'WAVES HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
+    const notes = [this.paused && 'PAUSED', this.run.holdSpawns && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
     this.drawDebug();
   }

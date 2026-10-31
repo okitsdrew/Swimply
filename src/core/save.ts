@@ -3,7 +3,7 @@
 // Two kinds of data, never mixed:
 //  - `baseline`, `tree`, `shards` and `flags` are permanent and live here (the character's lasting strength, what
 //    he has bought, the shards he has banked, story progress).
-//  - A run's own state (wave number, kills, the Shades on the map) is NOT saved. It starts fresh each run.
+//  - A run's own state (its clock, kills, the Shades on the map) is NOT saved. It starts fresh each run.
 
 const SAVE_KEY = 'swimply.save';
 export const SAVE_VERSION = 2;

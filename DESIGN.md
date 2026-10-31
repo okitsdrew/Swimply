@@ -8,9 +8,10 @@ All numbers in config are test values and will change.
 The whole early game is the **Mindscape** plus a **single hub room**. Nothing else is planned or built until this feels really good.
 
 - **Start:** the character wakes weakened in the hub, limps to his bow, and is pulled into the Mindscape to find his strength in his memories. (The wake-up cutscene comes last.)
-- **Mindscape:** played in **runs** (die, restart, keep progress), **no time limit**. Endless waves of **Shades**, an **upgrade tree** (stats only, no skills), and a **mini-boss**. It works like Heaven's core loop. Expect roughly 15 minutes.
+- **Mindscape:** played in **runs** (die, restart, keep progress), **no time limit**. Endless **Shades**, an **upgrade tree** (stats only, no skills), and a **mini-boss**. It works like Heaven's core loop. Expect roughly 15 minutes.
+- **A run:** no waves. Shades keep appearing, faster and with more health as the run's clock goes up (`run` in the dev menu), until a player who is not strong enough is overwhelmed.
 - **The loop (first draft):** each Shade kill gives memory shards (`tree.shardsPerKill`), banked in the save at once. Death opens the tree screen; spend shards, then start the next run. Unspent shards and bought nodes carry over. Today's tuned stats are the weakened start; the tree goes beyond them.
-- **The tree:** `src/data/tree.json`. Seven nodes in three branches from one root: bow (damage, pierce, extra arrows), hands (fire rate, range), feet (move speed). Nothing in it changes the dash or teleport. Stats only. Costs scale with `tree.costScale`; the whole tree is meant to take about 15 minutes.
+- **The tree:** `src/data/tree.json`. Six nodes from one root: bow (damage, pierce, extra arrows), hands (fire rate), feet (move speed). Fully upgraded: move speed 250, 2.5 shots a second, 40 damage, 3 pierce, 3 arrows a shot. Nothing in it changes the dash or teleport. Stats only. Costs scale with `tree.costScale`; the whole tree is meant to take about 15 minutes.
 - **Leaving:** when the tree is complete and the mini-boss is cleared, he leaves the Mindscape at full strength and returns to the hub.
 - **Permanent baseline:** what the tree grants becomes his lasting base stats for the rest of the game. This tutorial tree is **never shown again**; a different tree comes later in the game.
 - **Later:** the Mindscape also serves as a training ground where skills are equipped and tested. Skills do not exist yet.
@@ -32,7 +33,14 @@ The whole early game is the **Mindscape** plus a **single hub room**. Nothing el
 
 ## Enemies
 
-- **Shade:** easy fodder to learn on. 10 health (the bow does 5 a shot, so two shots). Walks at the player.
+Three classes (for reference):
+- **Basics:** die in 1 to 2 hits. Their only attack is touching the player, so they are easy to read and can come in numbers.
+- **Elites:** die in about 10 to 20 hits. Their spawns are what needs balancing. The Mindscape's mini-boss is an empowered elite.
+- **Bosses:** 50 to 100 hits.
+
+The Mindscape is all basics (Shades), plus the empowered elite mini-boss (the werewolf, `werewolf_10`-`14` attack frames), meant to arrive about 45 seconds into a run.
+
+- **Shade:** a basic, easy fodder to learn on. 10 health at the start of a run (the bow does 5 a shot, so two shots), more as the run goes on (`run.hpPerMinute`). Walks at the player.
 - **Mini-boss (built late):** dash and melee. 300 health. A visible windup, then a dash at about 75% of the player's dash speed, locked on to where the player was when the windup began, then a strike. After a miss it turns toward the player. Collision is checked along the whole dash path.
 
 ## Out of scope for now (do not plan or build)

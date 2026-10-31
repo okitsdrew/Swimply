@@ -9,9 +9,9 @@ export const STATS = {
   damage: { kind: 'add', label: 'damage' },
   pierce: { kind: 'add', label: 'pierce' },
   arrows: { kind: 'add', label: 'arrow per shot' },
-  fireRate: { kind: 'pct', label: 'fire rate' },
+  fireRate: { kind: 'add', label: 'shots a second' },
+  moveSpeed: { kind: 'add', label: 'move speed' },
   range: { kind: 'pct', label: 'arrow range' },
-  moveSpeed: { kind: 'pct', label: 'move speed' },
 } as const;
 
 export type StatId = keyof typeof STATS;
@@ -75,7 +75,7 @@ export const treeComplete = (): boolean => treeNodes.list().every(maxed);
 // "+15% fire rate" for `levels` levels of the node.
 export function describe(n: TreeNode, levels = 1): string {
   const s = STATS[n.stat];
-  const v = n.per * levels;
+  const v = Math.round(n.per * levels * 100) / 100;
   if (s.kind === 'add') return `${v >= 0 ? '+' : ''}${v} ${s.label}`;
   return `${v >= 0 ? '+' : ''}${Math.round(v * 100)}% ${s.label}`;
 }

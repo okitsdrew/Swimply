@@ -76,7 +76,7 @@ class LevelEditor {
       el('header', {},
         el('h1', { text: 'Swimply level editor' }),
         this.saveButton, this.discardButton,
-        button('Play here (P)', () => void this.play(this.canvas.pointer ?? this.selectedPos() ?? this.canvas.viewCenter()), { title: 'Saves, then opens the game on this map with waves held, at the cursor (or the selected thing)' }),
+        button('Play here (P)', () => void this.play(this.canvas.pointer ?? this.selectedPos() ?? this.canvas.viewCenter()), { title: 'Saves, then opens the game on this map with no Shades, at the cursor (or the selected thing)' }),
         button('Play from start', () => void this.play(null), { title: 'Saves, then opens the game on this map for a normal run' }),
         this.status,
         el('a', { href: 'asset-maker.html', target: 'swimply-asset-maker', text: 'asset maker' }),
@@ -252,7 +252,7 @@ class LevelEditor {
   }
 
   // Saves, then opens the game on this map (in the game tab, if one is open). With a spot, it starts there with
-  // waves held, for walking round the map; without, it is a normal run from the player start.
+  // no Shades, for walking round the map; without, it is a normal run from the player start.
   private async play(at: Vec2 | null): Promise<void> {
     const d = this.doc;
     if (!d || !(await this.save())) return;

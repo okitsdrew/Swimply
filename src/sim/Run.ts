@@ -4,38 +4,33 @@ import { Shades } from './Shades';
 
 export type RunState = 'fighting' | 'dead';
 
-// One run: waves of Shades that grow until the player dies. Run state is never saved; a restart starts fresh.
+// One run: Shades appear without pause, more often and with more health as the run's clock goes up, until the
+// player dies. Run state is never saved; a restart starts fresh.
 export class Run {
   state: RunState = 'fighting';
-  wave = 0;
   kills = 0;
   // Memory shards earned this run (they are banked in the save as they are earned).
   shards = 0;
   time = 0;
-  // Seconds since death, so a restart click is not taken too early.
+  // Seconds since death, so the tree does not open too early.
   deadTime = 0;
   // Spawning paused from the dev menu.
-  holdWaves = false;
-  private toSpawn = 0;
-  private spawnTimer = 0;
-  private breakTimer = 0;
+  holdSpawns = false;
+  // Shades owed, carried between steps so fractional rates add up.
+  private owed = 0;
 
   // The scene picks where a Shade appears, since it knows the room and the player.
   spawnPoint: () => { x: number; y: number } = () => ({ x: 0, y: 0 });
-  onWave: (wave: number) => void = () => {};
 
   constructor(private shades: Shades) {}
 
   reset(): void {
     this.state = 'fighting';
-    this.wave = 0;
     this.kills = 0;
     this.shards = 0;
     this.time = 0;
     this.deadTime = 0;
-    this.toSpawn = 0;
-    this.spawnTimer = 0;
-    this.breakTimer = run.waveDelay;
+    this.owed = 0;
   }
 
   die(): void {
@@ -48,12 +43,19 @@ export class Run {
     return this.state === 'dead' && this.deadTime >= run.restartDelay;
   }
 
-  // Starts the next wave at once.
-  nextWave(): void {
-    this.wave++;
-    this.toSpawn = Math.min(Math.round(run.maxPerWave), Math.round(run.firstWave + run.perWave * (this.wave - 1)));
-    this.spawnTimer = 0;
-    this.onWave(this.wave);
+  // Shades per second right now.
+  get spawnRate(): number {
+    return Math.min(run.maxSpawnRate, run.spawnRate + run.spawnRatePerMinute * (this.time / 60));
+  }
+
+  // Health of a Shade spawned right now.
+  get shadeHp(): number {
+    return Math.round(shade.hp + run.hpPerMinute * (this.time / 60));
+  }
+
+  spawn(): void {
+    const p = this.spawnPoint();
+    this.shades.spawn(p.x, p.y, this.shadeHp);
   }
 
   update(dt: number): void {
@@ -62,21 +64,11 @@ export class Run {
       return;
     }
     this.time += dt;
-    if (this.toSpawn > 0) {
-      this.spawnTimer -= dt;
-      while (this.toSpawn > 0 && this.spawnTimer <= 0) {
-        const p = this.spawnPoint();
-        this.shades.spawn(p.x, p.y, Math.round(shade.hp + shade.hpPerWave * (this.wave - 1)));
-        this.toSpawn--;
-        this.spawnTimer += run.spawnStagger;
-      }
-      return;
+    if (this.holdSpawns || this.time < run.startDelay) return;
+    this.owed += this.spawnRate * dt;
+    while (this.owed >= 1) {
+      this.owed--;
+      if (this.shades.remaining < run.maxAlive) this.spawn();
     }
-    if (this.holdWaves || this.shades.remaining > 0) {
-      this.breakTimer = run.waveDelay;
-      return;
-    }
-    this.breakTimer -= dt;
-    if (this.breakTimer <= 0) this.nextWave();
   }
 }

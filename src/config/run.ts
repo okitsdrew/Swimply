@@ -1,25 +1,28 @@
 import { defineConfig } from './store';
 
-// One run in the arena: endless waves of Shades until the player dies, then a restart.
+// One run in the Mindscape: Shades appear without pause, faster and tougher as the run goes on, until the player
+// is overwhelmed. Then the tree, then a fresh run.
 export const run = defineConfig(
   'run',
   'run',
   {
-    firstWave: 3,
-    // Each wave brings this many more Shades than the last.
-    perWave: 1,
-    // Waves never grow past this many Shades.
-    maxPerWave: 20,
-    // Pause between clearing a wave and the next one starting.
-    waveDelay: 2,
-    // Gap between Shades of the same wave appearing.
-    spawnStagger: 0.35,
+    // Seconds of calm at the start of a run before the first Shade.
+    startDelay: 1.5,
+    // Shades per second at the start of a run.
+    spawnRate: 0.5,
+    // The spawn rate rises by this much (Shades per second) each minute.
+    spawnRatePerMinute: 1.2,
+    maxSpawnRate: 6,
+    // No new Shades while this many are already out.
+    maxAlive: 60,
+    // Each minute of the run adds this much health to newly spawned Shades.
+    hpPerMinute: 20,
     // Shades never appear closer to the player than this.
     minSpawnDistance: 260,
     // A Shade spawn zone marker covers a circle this big (times the marker's size). With no zones in the map,
     // Shades appear along its edge.
     spawnZoneRadius: 96,
-    // Pause after death before a click restarts.
+    // Pause after death before the tree opens.
     restartDelay: 0.8,
     deathShake: 10,
     deathSmoke: 30,
@@ -28,11 +31,12 @@ export const run = defineConfig(
     killShake: 2,
   },
   {
-    firstWave: { min: 1, max: 40, step: 1 },
-    perWave: { min: 0, max: 10, step: 1 },
-    maxPerWave: { min: 1, max: 100, step: 1 },
-    waveDelay: { min: 0, max: 10, step: 0.25 },
-    spawnStagger: { min: 0, max: 3, step: 0.05 },
+    startDelay: { min: 0, max: 10, step: 0.25 },
+    spawnRate: { min: 0, max: 10, step: 0.05 },
+    spawnRatePerMinute: { min: 0, max: 10, step: 0.05 },
+    maxSpawnRate: { min: 0.1, max: 30, step: 0.1 },
+    maxAlive: { min: 1, max: 200, step: 1 },
+    hpPerMinute: { min: 0, max: 200, step: 1 },
     minSpawnDistance: { min: 0, max: 800, step: 10 },
     spawnZoneRadius: { min: 8, max: 400, step: 8 },
     restartDelay: { min: 0, max: 5, step: 0.1 },

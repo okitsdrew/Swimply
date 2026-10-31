@@ -6,7 +6,7 @@ export const player = defineConfig(
   'player',
   'player',
   {
-    moveSpeed: 200,
+    moveSpeed: 150,
     // While shooting, walking slows to this fraction for shootSlowTime seconds.
     shootSpeedMult: 0.5,
     shootSlowTime: 0.25,

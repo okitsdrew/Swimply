@@ -1,14 +1,13 @@
 {
   "nodes": [
-    { "id": "steady-draw", "name": "Steady Draw", "stat": "fireRate", "per": 0.15, "costs": [3], "parents": [], "x": 0, "y": 170 },
+    { "id": "steady-draw", "name": "Steady Draw", "stat": "damage", "per": 5, "costs": [3], "parents": [], "x": 0, "y": 170 },
 
-    { "id": "heavy-head", "name": "Heavy Head", "stat": "damage", "per": 1, "costs": [4, 6, 8, 10, 12], "parents": ["steady-draw"], "x": -260, "y": 40 },
-    { "id": "bone-tip", "name": "Bone Tip", "stat": "pierce", "per": 1, "costs": [12, 18], "parents": ["heavy-head"], "x": -370, "y": -85 },
-    { "id": "split-nock", "name": "Split Nock", "stat": "arrows", "per": 1, "costs": [15, 25], "parents": ["bone-tip"], "x": -430, "y": -210 },
+    { "id": "heavy-head", "name": "Heavy Head", "stat": "damage", "per": 5, "costs": [5, 8, 12, 16, 22, 30], "parents": ["steady-draw"], "x": -260, "y": 40 },
+    { "id": "bone-tip", "name": "Bone Tip", "stat": "pierce", "per": 1, "costs": [15, 25, 40], "parents": ["heavy-head"], "x": -370, "y": -85 },
+    { "id": "split-nock", "name": "Split Nock", "stat": "arrows", "per": 1, "costs": [30, 50], "parents": ["bone-tip"], "x": -430, "y": -210 },
 
-    { "id": "quick-fingers", "name": "Quick Fingers", "stat": "fireRate", "per": 0.15, "costs": [5, 8, 12], "parents": ["steady-draw"], "x": 0, "y": 10 },
-    { "id": "far-sight", "name": "Far Sight", "stat": "range", "per": 0.2, "costs": [8, 12], "parents": ["quick-fingers"], "x": 0, "y": -150 },
+    { "id": "quick-fingers", "name": "Quick Fingers", "stat": "fireRate", "per": 0.3, "costs": [5, 9, 14, 20, 28], "parents": ["steady-draw"], "x": 0, "y": 10 },
 
-    { "id": "light-feet", "name": "Light Feet", "stat": "moveSpeed", "per": 0.06, "costs": [4, 7, 10], "parents": ["steady-draw"], "x": 260, "y": 40 }
+    { "id": "light-feet", "name": "Light Feet", "stat": "moveSpeed", "per": 20, "costs": [4, 7, 11, 16, 22], "parents": ["steady-draw"], "x": 260, "y": 40 }
   ]
 }
