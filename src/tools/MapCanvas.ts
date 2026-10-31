@@ -145,23 +145,32 @@ class EditorScene extends Phaser.Scene {
 
 export class MapCanvas {
   private scene = new EditorScene();
-  readonly game: Phaser.Game;
+  game!: Phaser.Game;
   readonly ready = new Promise<void>((done) => (this.scene.onReady = done));
 
   constructor(readonly host: HTMLElement, events: CanvasEvents) {
     this.scene.events2 = events;
-    this.game = new Phaser.Game({
-      type: Phaser.AUTO,
-      parent: host,
-      backgroundColor: '#0b0a10',
-      pixelArt: true,
-      roundPixels: true,
-      // Starts at the host's size and follows it when the window resizes.
-      scale: { mode: Phaser.Scale.RESIZE, width: host.clientWidth || 640, height: host.clientHeight || 480 },
-      // The page handles keys, so typing in the side panels never reaches the map.
-      input: { keyboard: false },
-      scene: [this.scene],
-    });
+    // WebGL cannot start on a canvas of size 0, which is what the host has while the page is hidden or still laying
+    // out, so the game starts once the host has a real size.
+    const start = () => {
+      if (this.game || !host.clientWidth || !host.clientHeight) return;
+      observer.disconnect();
+      this.game = new Phaser.Game({
+        type: Phaser.AUTO,
+        parent: host,
+        backgroundColor: '#0b0a10',
+        pixelArt: true,
+        roundPixels: true,
+        // Starts at the host's size and follows it when the window resizes.
+        scale: { mode: Phaser.Scale.RESIZE, width: host.clientWidth, height: host.clientHeight },
+        // The page handles keys, so typing in the side panels never reaches the map.
+        input: { keyboard: false },
+        scene: [this.scene],
+      });
+    };
+    const observer = new ResizeObserver(start);
+    observer.observe(host);
+    start();
   }
 
   setMap(map: AreaMap): void {
