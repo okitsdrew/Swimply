@@ -30,6 +30,7 @@ Drew is new to making games and to programming. Teach as you go: explain what yo
 - `npm run build`: check, then build to `dist/` (what CI runs).
 - `npm run preview`: serve the built `dist/`.
 - Asset maker: `localhost:5173/asset-maker.html` while `npm run dev` runs.
+- Level editor: `localhost:5173/level-editor.html` while `npm run dev` runs.
 
 ## Code map
 
@@ -41,7 +42,8 @@ Drew is new to making games and to programming. Teach as you go: explain what yo
 - `src/data/`: `registry.ts` (the `Registry` class and JSON readers), `floors.ts`/`floors.json`, `assets.ts`/`assets.json`, `maps.ts` (map format, loader, `maps` registry) and `maps/*.json`. See "Data files" in `ARCHITECTURE.md`.
 - `src/sim/`: `World.ts` (the `CollisionWorld` interface and `MapWorld`, built from a map: asset circles, blocking floor boxes, the map's edge), `Nav.ts` (the `Navigator` interface and `FlowField`, which routes walkers round blocking floor), `Player` (movement, dash, teleport, firing), `Arrows`, `Shades`, `Run` (waves and run state), `stats.ts` (effective stats; the upgrade baseline is added here later).
 - `src/render/`: `MapView` (floor and placed assets), `PlayerView`, `BowView`, `ArrowsView`, `ShadesView`, `RunHud`, `Fx`, `art.ts` (code-drawn textures under the keys in `Tex`; asset parts name these keys).
-- `src/scenes/ArenaScene.ts`: the arena, loaded from a map file (`arena` by default). Runs the sim on a fixed time step (`step()`), draws once per frame. Dev menu buttons: restart, next wave, spawn, kill all, hold waves, pause, step, hitboxes (also shows blocking floor and markers), next map.
-- `src/tools/`: the asset maker (`asset-maker.html`, dev server only; also the "Asset maker" dev menu button). `assetMaker.ts` (the page and tabs), `Workspace.ts` (working copies and save), `files.ts` (writes the JSON in the hand-written style), `SpriteTab.ts` (pixel editor), `AssetTab.ts`, `FloorTab.ts`, `Preview.ts` (a small Phaser view using the game's own `MapView`).
+- `src/scenes/ArenaScene.ts`: the arena, loaded from a map file (`arena` by default, or `?map=<id>&at=x,y&calm` in the address). Runs the sim on a fixed time step (`step()`), draws once per frame. Shades spawn in the map's `shadeSpawn` zones, or along its edge if it has none. Dev menu buttons: restart, next wave, spawn, kill all, hold waves, pause, step, hitboxes (also shows blocking floor, markers and spawn zones), next map, asset maker, level editor.
+- `src/tools/`: the asset maker (`asset-maker.html`, dev server only; also the "Asset maker" dev menu button). `assetMaker.ts` (the page and tabs), `Workspace.ts` (working copies and save), `files.ts` (writes the JSON in the hand-written style, and the calls to the dev-server API), `SpriteTab.ts` (pixel editor), `AssetTab.ts`, `FloorTab.ts`, `Preview.ts` (a small Phaser view using the game's own `MapView`), `tools.css` (the look of both tool pages).
+- The level editor (`level-editor.html`, dev server only; also a dev menu button): `levelEditor.ts` (the page, tools, panels, keys, save, play here, renaming ids across maps), `MapDoc.ts` (one map's working copy, its undo history, paint, fill, resize), `MapCanvas.ts` (the Phaser view: the game's `MapView` plus the editor's overlay, pan and zoom).
 - `src/data/sprites.ts`/`sprites.json`: drawn pixel art; `render/art.ts` turns each sprite into a texture over any code art of the same name.
-- `scripts/check-layers.mjs`: the layer guard. `scripts/data-api.ts`: the dev-server save API the tools use.
+- `scripts/check-layers.mjs`: the layer guard. `scripts/data-api.ts`: the dev-server API the tools use (save with a check that nobody else changed the file, delete a map, read the maps).

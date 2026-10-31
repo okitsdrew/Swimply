@@ -62,6 +62,7 @@ class PreviewScene extends Phaser.Scene {
       tileSize: TILE,
       cols: TILES,
       rows: TILES,
+      legend: {},
       tiles: Array.from({ length: TILES * TILES }, () => floor),
       objects: asset ? [{ asset, x: mid, y: mid, size: 1 }] : [],
     };

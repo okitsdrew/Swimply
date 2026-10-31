@@ -16,6 +16,9 @@ export const run = defineConfig(
     spawnStagger: 0.35,
     // Shades never appear closer to the player than this.
     minSpawnDistance: 260,
+    // A Shade spawn zone marker covers a circle this big (times the marker's size). With no zones in the map,
+    // Shades appear along its edge.
+    spawnZoneRadius: 96,
     // Pause after death before a click restarts.
     restartDelay: 0.8,
     deathShake: 10,
@@ -31,6 +34,7 @@ export const run = defineConfig(
     waveDelay: { min: 0, max: 10, step: 0.25 },
     spawnStagger: { min: 0, max: 3, step: 0.05 },
     minSpawnDistance: { min: 0, max: 800, step: 10 },
+    spawnZoneRadius: { min: 8, max: 400, step: 8 },
     restartDelay: { min: 0, max: 5, step: 0.1 },
     deathShake: { min: 0, max: 40, step: 1 },
     deathSmoke: { min: 0, max: 100, step: 1 },

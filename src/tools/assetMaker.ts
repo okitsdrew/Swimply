@@ -1,3 +1,4 @@
+import './tools.css';
 import { AssetTab } from './AssetTab';
 import { FloorTab } from './FloorTab';
 import { Preview } from './Preview';

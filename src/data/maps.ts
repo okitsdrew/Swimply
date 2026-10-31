@@ -28,6 +28,8 @@ export interface AreaMap {
   tileSize: number;
   cols: number;
   rows: number;
+  // The file's legend, character to floor id, so a tool that saves the map can keep the same characters.
+  legend: Record<string, string>;
   // Row by row, cols * rows entries.
   tiles: Floor[];
   objects: Placed[];
@@ -76,6 +78,7 @@ export function parseMap(id: string, data: unknown, problems: Problems): AreaMap
     else if (!f) problems.push(`${where}: legend "${ch}" names unknown floor ${JSON.stringify(floorId)}`);
     else legend.set(ch, f);
   }
+  const legendIds = Object.fromEntries([...legend].map(([ch, f]) => [ch, f.id]));
   const fallback = legend.values().next().value ?? floors.list()[0];
   if (!fallback) {
     problems.push(`${where}: no floors defined, not loaded`);
@@ -110,7 +113,7 @@ export function parseMap(id: string, data: unknown, problems: Problems): AreaMap
     objects.push({ asset, x: num(e.x, 0, `${w}.x`, problems), y: num(e.y, 0, `${w}.y`, problems), size: num(e.size, 1, `${w}.size`, problems) });
   });
 
-  return { id, name: str(d.name, id, `${where}.name`, problems), tileSize: num(d.tileSize, 64, `${where}.tileSize`, problems), cols, rows, tiles, objects };
+  return { id, name: str(d.name, id, `${where}.name`, problems), tileSize: num(d.tileSize, 64, `${where}.tileSize`, problems), cols, rows, legend: legendIds, tiles, objects };
 }
 
 function loadAll(): AreaMap[] {

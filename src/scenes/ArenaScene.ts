@@ -25,11 +25,18 @@ import { MapWorld } from '../sim/World';
 
 const DEFAULT_MAP = 'arena';
 
+// The page address can pick what to play, which is how the level editor's "play here" opens the game:
+//   ?map=water-test   play that map
+//   &at=320,640       start there (world units) instead of at the map's player start
+//   &calm             waves held from the start, to walk round a map
+// The map is kept in the address, so the reload after a tool saves comes back to the same map.
+const params = new URLSearchParams(location.search);
+
 // The arena: a map from src/data/maps, endless waves of Shades, death and restart. The sim runs on a fixed time
 // step here; drawing runs once per screen frame. Switching map restarts the scene with the new map's id.
 export class ArenaScene extends Phaser.Scene {
   private input2!: Input;
-  private mapId = DEFAULT_MAP;
+  private mapId = params.get('map') ?? DEFAULT_MAP;
   private map!: AreaMap;
   private world!: MapWorld;
   private nav!: FlowField;
@@ -67,6 +74,11 @@ export class ArenaScene extends Phaser.Scene {
     if (!map) throw new Error('No maps in src/data/maps');
     this.map = map;
     this.mapId = map.id;
+    if (params.get('map') !== map.id) {
+      params.set('map', map.id);
+      params.delete('at');
+      history.replaceState(null, '', `?${params}`);
+    }
     this.world = new MapWorld(map);
     this.nav = new FlowField(map, this.world);
     this.acc = 0;
@@ -87,6 +99,7 @@ export class ArenaScene extends Phaser.Scene {
     this.shades = new Shades();
     this.shadesView = new ShadesView(this, this.shades, this.fx);
     this.run = new Run(this.shades);
+    this.run.holdWaves = params.has('calm');
     this.hud = new RunHud(this, this.run);
 
     this.player.onFire = (_x, _y, dx, dy) => {
@@ -127,6 +140,7 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Toggle hitboxes', run: () => (this.showHitboxes = !this.showHitboxes) },
       { label: `Next map (${map.name})`, run: () => this.nextMap() },
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
+      { label: 'Level editor', run: () => window.open(`level-editor.html?map=${this.mapId}`, 'swimply-level-editor') },
     ]);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input2.destroy());
   }
@@ -141,8 +155,10 @@ export class ArenaScene extends Phaser.Scene {
     this.shades.clear();
     this.shadesView.clear();
     this.arrows.clear();
-    // The map's player start marker, or the middle of the map if it has none.
-    const start = findMarker(this.map, 'playerStart') ?? { x: this.world.width / 2, y: this.world.height / 2 };
+    // Where the address says, else the map's player start marker, else the middle of the map.
+    const at = params.get('at')?.split(',').map(Number);
+    const start = at?.length === 2 && at.every(Number.isFinite) ? { x: at[0], y: at[1] }
+      : findMarker(this.map, 'playerStart') ?? { x: this.world.width / 2, y: this.world.height / 2 };
     this.player.reset(start.x, start.y);
     this.view.setVisible(true);
     this.run.reset();
@@ -152,19 +168,29 @@ export class ArenaScene extends Phaser.Scene {
     this.camCenter = { x: s.x, y: s.y };
   }
 
-  // A random spot along the map's edge, far enough from the player and clear of anything solid.
+  // A random spot inside one of the map's Shade spawn zones, or along its edge if it has none, far enough from the
+  // player and clear of anything solid.
   private spawnPoint(): Vec2 {
     const m = shade.radius * 1.5;
     const w = this.world.width - m;
     const h = this.world.height - m;
+    const zones = this.map.objects.filter((o) => o.asset.marker === 'shadeSpawn');
     const p = { x: 0, y: 0, radius: shade.radius };
     let best = { x: 0, y: 0 };
     let bestDist = -1;
     for (let i = 0; i < 12; i++) {
-      const side = Math.floor(Math.random() * 4);
-      const along = Math.random();
-      p.x = side < 2 ? m + along * (w - m) : side === 2 ? m : w;
-      p.y = side < 2 ? (side === 0 ? m : h) : m + along * (h - m);
+      if (zones.length) {
+        const z = zones[Math.floor(Math.random() * zones.length)];
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(Math.random()) * run.spawnZoneRadius * z.size;
+        p.x = z.x + Math.cos(a) * r;
+        p.y = z.y + Math.sin(a) * r;
+      } else {
+        const side = Math.floor(Math.random() * 4);
+        const along = Math.random();
+        p.x = side < 2 ? m + along * (w - m) : side === 2 ? m : w;
+        p.y = side < 2 ? (side === 0 ? m : h) : m + along * (h - m);
+      }
       this.world.resolve(p);
       const d = Math.hypot(p.x - this.player.x, p.y - this.player.y);
       if (d > bestDist) {
@@ -278,6 +304,7 @@ export class ArenaScene extends Phaser.Scene {
     for (const o of this.map.objects) {
       if (!o.asset.marker) continue;
       ring(o.x, o.y, 12, 0xf2d7a6);
+      if (o.asset.marker === 'shadeSpawn') ring(o.x, o.y, run.spawnZoneRadius * o.size, 0xf2d7a6);
       const s = toScreen(o.x, o.y);
       g.lineStyle(1, 0xf2d7a6, 1).lineBetween(s.x - 6, s.y, s.x + 6, s.y).lineBetween(s.x, s.y - 6, s.x, s.y + 6);
     }
