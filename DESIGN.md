@@ -7,7 +7,7 @@ All numbers in config are test values and will change.
 
 The whole early game is the **spawn room**, the **Mindscape** and the **throne room** (the hub, the only safe place). Nothing else is built until this feels really good.
 
-- **Start:** the character wakes weakened in the spawn room (a short cutscene with Timo), walks at 10% speed with no bow or dash to the void bow on its pedestal, and touching it (F) pulls him into the Mindscape to find his strength in his memories.
+- **Start:** the character wakes weakened in the spawn room (a short cutscene with Timo), walks at 25% speed with no bow or dash to the void bow on its pedestal, and touching it (F) pulls him into the Mindscape to find his strength in his memories.
 - **The way through:** spawn room, Mindscape, back to the spawn room at the pedestal (now just a pedestal), then through the flaming hallway to the throne room. The way back to the spawn room is closed once he is in the throne room.
 - **Mindscape:** played in **runs** (die, restart, keep progress), **no time limit**. Endless **Shades**, an **upgrade tree** (stats only, no skills), and a **mini-boss**. It works like Heaven's core loop. Expect roughly 15 minutes.
 - **A run:** no waves. Shades keep appearing, faster and with more health as the run's clock goes up (`run` in the dev menu), until a player who is not strong enough is overwhelmed.

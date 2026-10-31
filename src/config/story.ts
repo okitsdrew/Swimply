@@ -7,7 +7,7 @@ export const story = defineConfig(
   'story',
   {
     // Before he first enters the Mindscape he walks at this fraction of his speed, and cannot shoot or dash.
-    weakSpeedMult: 0.1,
+    weakSpeedMult: 0.25,
     // How close (world units, from the edge of its collision) he must be to a thing to interact with it.
     interactRange: 40,
     // A door marker's radius at size 1.
