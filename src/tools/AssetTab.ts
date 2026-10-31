@@ -4,8 +4,8 @@ import { Preview } from './Preview';
 import { button, checkbox, el, ID_PATTERN, numberInput, row, select, suggestInput, textInput, uniqueId } from './ui';
 import { Workspace } from './Workspace';
 
-// Markers the game knows about. More arrive with the level editor (spawn zones).
-const MARKERS = ['', 'playerStart'];
+// Markers the game knows about.
+const MARKERS = ['', 'playerStart', 'shadeSpawn'];
 
 // Edits assets.json: what each placeable thing looks like (its parts) and what is solid (its collision circles).
 // The preview shows it on the floor chosen in the Floors tab, as the game draws it.

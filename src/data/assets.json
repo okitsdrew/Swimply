@@ -12,6 +12,12 @@
       "name": "Player start",
       "category": "markers",
       "marker": "playerStart"
+    },
+    {
+      "id": "shade-spawn",
+      "name": "Shade spawn zone",
+      "category": "markers",
+      "marker": "shadeSpawn"
     }
   ]
 }
