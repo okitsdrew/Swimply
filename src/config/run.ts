@@ -7,7 +7,7 @@ export const run = defineConfig(
   'run',
   {
     // Seconds of calm at the start of a run before the first Shade.
-    startDelay: 1.5,
+    startDelay: 1,
     // Shades per second at the start of a run.
     spawnRate: 1,
     // The spawn rate rises by this much (Shades per second) each minute.
