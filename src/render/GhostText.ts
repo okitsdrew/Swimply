@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { dialogue } from '../config/story';
 
 const FADE_IN = 0.5;
+// Room round each letter for its glow, so the glow is not cut off in a box.
+const PAD = 24;
 
 interface Letter {
   text: Phaser.GameObjects.Text;
@@ -39,7 +41,7 @@ export class GhostText {
     };
     for (const ch of text) {
       const t = this.scene.add.text(0, 0, ch, style).setOrigin(0.5).setScrollFactor(0).setDepth(2.2e7).setAlpha(0);
-      t.setShadow(0, 0, '#9fb6ff', 12, true, true);
+      t.setPadding(PAD).setShadow(0, 0, '#9fb6ff', 12, true, true);
       this.letters.push({ text: t, x: 0, y: 0, vx: 0, vy: 0, spin: 0, catch: 0.7 + Math.random() * 0.6, phase: Math.random() * Math.PI * 2 });
     }
   }
@@ -57,7 +59,7 @@ export class GhostText {
     if (!this.letters.length) return;
     this.age += dt;
     const n = this.letters.length;
-    const charW = this.letters[0].text.width * 0.92;
+    const charW = (this.letters[0].text.width - PAD * 2) * 0.92;
     const left = width / 2 - ((n - 1) * charW) / 2;
     let gone = 0;
     this.letters.forEach((l, i) => {

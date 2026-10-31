@@ -40,7 +40,7 @@ export class StoryRunner {
     this.events.add(event);
   }
 
-  // F: finishes typing a line, or moves on from a typed one.
+  // Click or F: finishes typing a line, or moves on from a typed one. Lines never move on by themselves.
   skip(): void {
     const step = this.script?.steps[this.index];
     if (step?.kind !== 'say') return;
@@ -52,9 +52,7 @@ export class StoryRunner {
     const step = this.script?.steps[this.index];
     if (!step) return;
     this.time += dt;
-    // A line's read time starts once it has typed out.
-    if (step.kind === 'say' && !this.box.typed) this.time = 0;
-    const done = step.kind === 'say' ? this.box.typed && this.time >= this.box.readTime
+    const done = step.kind === 'say' ? false
       : step.kind === 'wait' ? this.time >= step.seconds
       : step.kind === 'waitFor' ? this.events.has(step.event)
       : true;

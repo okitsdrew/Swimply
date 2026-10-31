@@ -23,6 +23,8 @@ export class DialogueBox {
   private face: Phaser.GameObjects.Image;
   private name: Phaser.GameObjects.Text;
   private words: Phaser.GameObjects.Text;
+  // Shows once a line has typed out: click or F for the next.
+  private more: Phaser.GameObjects.Text;
   private bubble: Phaser.GameObjects.Graphics;
   private bubbleWords: Phaser.GameObjects.Text;
   private text = '';
@@ -36,6 +38,7 @@ export class DialogueBox {
     this.panel = fixed(scene.add.graphics());
     this.face = fixed(scene.add.image(0, 0, '__WHITE').setOrigin(0.5));
     this.name = fixed(scene.add.text(0, 0, '', { ...font, fontSize: '13px' }));
+    this.more = fixed(scene.add.text(0, 0, '▼', { ...font, fontSize: '14px', color: '#c58cff' }).setOrigin(1, 1));
     this.words = fixed(scene.add.text(0, 0, '', { ...font, fontSize: '18px', wordWrap: { width: BOX_W - FACE - PAD * 3 } }));
     this.bubble = scene.add.graphics().setDepth(DEPTH);
     this.bubbleWords = scene.add.text(0, 0, '', { ...font, fontSize: '16px', color: '#f2d7a6' }).setOrigin(0.5).setDepth(DEPTH);
@@ -73,11 +76,6 @@ export class DialogueBox {
     this.shown = this.text.length;
   }
 
-  // Seconds a fully typed line should stay before moving on.
-  get readTime(): number {
-    return dialogue.readTime + dialogue.readPerChar * this.text.length;
-  }
-
   // `heroX`/`heroY` are the hero's world position, for the bubble.
   update(dt: number, width: number, heroX: number, heroY: number): void {
     this.open = Phaser.Math.Clamp(this.open + (this.visible ? dt : -dt) * 8, 0, 1);
@@ -98,10 +96,12 @@ export class DialogueBox {
     this.name.setPosition(x + FACE + PAD * 2, y + PAD);
     this.words.setPosition(x + FACE + PAD * 2, y + PAD + 20).setText(boxA > 0 ? typed : '');
     for (const o of [this.panel, this.face, this.name, this.words]) o.setAlpha(boxA);
+    const blink = this.typed && this.visible && Math.sin(performance.now() / 180) > -0.3 ? 1 : 0;
+    this.more.setPosition(x + BOX_W - PAD, y + BOX_H - PAD + Math.sin(performance.now() / 180) * 2).setAlpha(boxA * blink);
 
     const s = toScreen(heroX, heroY);
     const by = s.y - 40 * render.pixelScale;
-    this.bubbleWords.setText(bubbleA > 0 ? typed || ' ' : '').setPosition(s.x, by).setAlpha(bubbleA);
+    this.bubbleWords.setText(bubbleA > 0 ? (typed || ' ') + (blink ? ' ▼' : '  ') : '').setPosition(s.x, by).setAlpha(bubbleA);
     this.bubble.clear();
     if (bubbleA > 0) {
       const w = Math.max(36, this.bubbleWords.width + 16);
@@ -113,6 +113,6 @@ export class DialogueBox {
   }
 
   private setAlpha(a: number): void {
-    for (const o of [this.panel, this.face, this.name, this.words, this.bubbleWords]) o.setAlpha(a);
+    for (const o of [this.panel, this.face, this.name, this.words, this.more, this.bubbleWords]) o.setAlpha(a);
   }
 }

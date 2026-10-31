@@ -511,10 +511,14 @@ export class ArenaScene extends Phaser.Scene {
     }
     if (!this.calm && !this.treeOpen && r.state === 'dead' && r.canRestart) this.openTree();
     this.story.update(dt);
-    if (this.story.talking && this.input2.justPressed('interact')) {
+    // While a line is up, click and F move the dialogue on instead of shooting or interacting. The bow stays held
+    // back until the button that skipped the last line is let go.
+    if (this.story.talking && (this.input2.justPressed('interact') || this.input2.justPressed('fire'))) {
       this.story.skip();
       this.input2.consume('interact');
+      this.input2.consume('fire');
     }
+    this.player.fireBlocked = this.story.talking || (this.player.fireBlocked && this.input2.isDown('fire'));
     if (r.state === 'fighting' && !this.leaving) {
       this.player.update(dt, this.input2, this.aim);
       this.checkLinks();
