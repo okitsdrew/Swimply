@@ -53,7 +53,7 @@
       "unless": "dodgeTaught",
       "steps": [
         { "wait": 0.6 },
-        { "tutorial": "Space to dash" },
+        { "tutorial": "Space to dodge. Click to shoot." },
         { "flag": "dodgeTaught" }
       ]
     },
