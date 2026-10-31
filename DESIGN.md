@@ -9,6 +9,8 @@ The whole early game is the **Mindscape** plus a **single hub room**. Nothing el
 
 - **Start:** the character wakes weakened in the hub, limps to his bow, and is pulled into the Mindscape to find his strength in his memories. (The wake-up cutscene comes last.)
 - **Mindscape:** played in **runs** (die, restart, keep progress), **no time limit**. Endless waves of **Shades**, an **upgrade tree** (stats only, no skills), and a **mini-boss**. It works like Heaven's core loop. Expect roughly 15 minutes.
+- **The loop (first draft):** each Shade kill gives memory shards (`tree.shardsPerKill`), banked in the save at once. Death opens the tree screen; spend shards, then start the next run. Unspent shards and bought nodes carry over. Today's tuned stats are the weakened start; the tree goes beyond them.
+- **The tree:** `src/data/tree.json`. Nine nodes in three branches from one root: bow (damage, pierce, extra arrows), hands (fire rate, range), body (move speed, dash cooldown, teleport distance). Stats only. Costs scale with `tree.costScale`; the whole tree is meant to take about 15 minutes.
 - **Leaving:** when the tree is complete and the mini-boss is cleared, he leaves the Mindscape at full strength and returns to the hub.
 - **Permanent baseline:** what the tree grants becomes his lasting base stats for the rest of the game. This tutorial tree is **never shown again**; a different tree comes later in the game.
 - **Later:** the Mindscape also serves as a training ground where skills are equipped and tested. Skills do not exist yet.
