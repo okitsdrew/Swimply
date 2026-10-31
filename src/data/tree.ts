@@ -12,6 +12,7 @@ export const STATS = {
   fireRate: { kind: 'add', label: 'shots a second' },
   moveSpeed: { kind: 'add', label: 'move speed' },
   range: { kind: 'pct', label: 'arrow range' },
+  shardGain: { kind: 'pct', label: 'shards' },
 } as const;
 
 export type StatId = keyof typeof STATS;

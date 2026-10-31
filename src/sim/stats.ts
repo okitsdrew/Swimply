@@ -16,6 +16,8 @@ export const stats = {
   range: (): number => bow.arrowRange * pct('range'),
   damage: (): number => bow.damage + add('damage'),
   arrowSize: (): number => 1,
+  // Multiplies the memory shards each kill gives.
+  shardGain: (): number => pct('shardGain'),
   // Teleport is locked until it is unlocked after the Mindscape (a save flag), or by the dev menu.
   hasTeleport: (): boolean => !!save.flags.teleport || sim.allowTeleport,
 };

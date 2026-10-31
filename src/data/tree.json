@@ -2,6 +2,8 @@
   "nodes": [
     { "id": "steady-draw", "name": "Steady Draw", "stat": "damage", "per": 5, "costs": [3], "parents": [], "x": 0, "y": 170 },
 
+    { "id": "memory-echo", "name": "Memory Echo", "stat": "shardGain", "per": 1, "costs": [20], "parents": ["steady-draw"], "x": -150, "y": 170 },
+
     { "id": "heavy-head", "name": "Heavy Head", "stat": "damage", "per": 5, "costs": [5, 8, 12, 16, 22, 30], "parents": ["steady-draw"], "x": -260, "y": 40 },
     { "id": "bone-tip", "name": "Bone Tip", "stat": "pierce", "per": 1, "costs": [15, 25, 40], "parents": ["heavy-head"], "x": -370, "y": -85 },
     { "id": "split-nock", "name": "Split Nock", "stat": "arrows", "per": 1, "costs": [30, 50], "parents": ["bone-tip"], "x": -430, "y": -210 },

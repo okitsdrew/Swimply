@@ -11,7 +11,7 @@ The whole early game is the **Mindscape** plus a **single hub room**. Nothing el
 - **Mindscape:** played in **runs** (die, restart, keep progress), **no time limit**. Endless **Shades**, an **upgrade tree** (stats only, no skills), and a **mini-boss**. It works like Heaven's core loop. Expect roughly 15 minutes.
 - **A run:** no waves. Shades keep appearing, faster and with more health as the run's clock goes up (`run` in the dev menu), until a player who is not strong enough is overwhelmed.
 - **The loop (first draft):** each Shade kill gives memory shards (`tree.shardsPerKill`), banked in the save at once. Death opens the tree screen; spend shards, then start the next run. Unspent shards and bought nodes carry over. Today's tuned stats are the weakened start; the tree goes beyond them.
-- **The tree:** `src/data/tree.json`. Six nodes from one root: bow (damage, pierce, extra arrows), hands (fire rate), feet (move speed). Fully upgraded: move speed 250, 2.5 shots a second, 40 damage, 3 pierce, 3 arrows a shot. Nothing in it changes the dash or teleport. Stats only. Costs scale with `tree.costScale`; the whole tree is meant to take about 15 minutes.
+- **The tree:** `src/data/tree.json`. Seven nodes from one root: bow (damage, pierce, extra arrows), hands (fire rate), feet (move speed), and Memory Echo (doubles shards). Fully upgraded: move speed 250, 2.5 shots a second, 40 damage, 3 pierce, 3 arrows a shot. Nothing in it changes the dash or teleport. Stats only. Costs scale with `tree.costScale`; the whole tree is meant to take about 15 minutes.
 - **Leaving:** when the tree is complete and the mini-boss is cleared, he leaves the Mindscape at full strength and returns to the hub.
 - **Permanent baseline:** what the tree grants becomes his lasting base stats for the rest of the game. This tutorial tree is **never shown again**; a different tree comes later in the game.
 - **Later:** the Mindscape also serves as a training ground where skills are equipped and tested. Skills do not exist yet.
@@ -28,7 +28,7 @@ The whole early game is the **Mindscape** plus a **single hub room**. Nothing el
 
 - One-hit death, with a small forgiving hitbox.
 - Moves with WASD (screen directions), aims with the mouse.
-- **Bow** (primary), **dash**, **teleport**. Teleport is locked at the start and unlocked shortly after winning the Mindscape (save flag `teleport`; `testing → allowTeleport` in the dev menu bypasses it). Heaven's stats are the starting point; values live in config.
+- **Bow** (primary), **dash** (stops at walls and props), **teleport**. Teleport is locked at the start and unlocked shortly after winning the Mindscape (save flag `teleport`; `testing → allowTeleport` in the dev menu bypasses it). Heaven's stats are the starting point; values live in config.
 - Dash and teleport grant invulnerability. Some enemy damage can pierce it (damage carries a flag).
 
 ## Enemies

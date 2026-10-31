@@ -25,6 +25,7 @@ import { Arrows } from '../sim/Arrows';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
 import { Shades } from '../sim/Shades';
+import { stats } from '../sim/stats';
 import { Target } from '../sim/targets';
 import { Werewolf } from '../sim/Werewolf';
 import { FlowField } from '../sim/Nav';
@@ -139,8 +140,7 @@ export class ArenaScene extends Phaser.Scene {
     this.shades.onKilled = (x, y) => {
       if (this.run.state === 'fighting') {
         this.run.kills++;
-        this.run.shards += tree.shardsPerKill;
-        addShards(tree.shardsPerKill);
+        this.earn(tree.shardsPerKill);
       }
       this.shadesView.onKilled(x, y);
       this.fx.addShake(run.killShake);
@@ -228,11 +228,17 @@ export class ArenaScene extends Phaser.Scene {
     if (this.wolf.inAttack(p.x, p.y, cfgPlayer.hitRadius)) this.die();
   }
 
+  // Banks shards for a kill, after the tree's shard bonus.
+  private earn(base: number): void {
+    const n = Math.round(base * stats.shardGain());
+    this.run.shards += n;
+    addShards(n);
+  }
+
   private onWolfKilled(x: number, y: number): void {
     this.wolfView.onKilled(x, y);
     if (this.run.state !== 'fighting') return;
-    this.run.shards += werewolf.shards;
-    addShards(werewolf.shards);
+    this.earn(werewolf.shards);
     this.hitStop = Math.max(this.hitStop, 0.15);
     // Winning the Mindscape needs the full tree too. What happens next (the hub, teleport) comes later.
     if (treeComplete()) {
