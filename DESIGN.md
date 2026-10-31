@@ -5,14 +5,15 @@ All numbers in config are test values and will change.
 
 ## The slice we are building
 
-The whole early game is the **Mindscape** plus a **single hub room**. Nothing else is planned or built until this feels really good.
+The whole early game is the **spawn room**, the **Mindscape** and the **throne room** (the hub, the only safe place). Nothing else is built until this feels really good.
 
-- **Start:** the character wakes weakened in the hub, limps to his bow, and is pulled into the Mindscape to find his strength in his memories. (The wake-up cutscene comes last.)
+- **Start:** the character wakes weakened in the spawn room (a short cutscene with Timo), walks at 10% speed with no bow or dash to the void bow on its pedestal, and touching it (F) pulls him into the Mindscape to find his strength in his memories.
+- **The way through:** spawn room, Mindscape, back to the spawn room at the pedestal (now just a pedestal), then through the flaming hallway to the throne room. The way back to the spawn room is closed once he is in the throne room.
 - **Mindscape:** played in **runs** (die, restart, keep progress), **no time limit**. Endless **Shades**, an **upgrade tree** (stats only, no skills), and a **mini-boss**. It works like Heaven's core loop. Expect roughly 15 minutes.
 - **A run:** no waves. Shades keep appearing, faster and with more health as the run's clock goes up (`run` in the dev menu), until a player who is not strong enough is overwhelmed.
 - **The loop (first draft):** each Shade kill gives memory shards (`tree.shardsPerKill`), banked in the save at once. Death opens the tree screen; spend shards, then start the next run. Unspent shards and bought nodes carry over. Today's tuned stats are the weakened start; the tree goes beyond them.
 - **The tree:** `src/data/tree.json`. Ten nodes, each bought once or twice, in two tiers. Tier 1 (about a quarter of the power): pierce at the root, then fire rate, damage and an extra arrow around it, and double shards. Tier 2: move speed (after double shards), more fire rate, two more pierce (after damage), a third arrow, and more damage at the top (after either fire rate or pierce). A hidden extra, Time Warp (100 shards: runs start 35 seconds in), appears once the rest of the tree is bought and the werewolf has been met. Fully upgraded: move speed 250, 2.5 shots a second, 40 damage, 3 pierce, 3 arrows a shot. Nothing in it changes the dash or teleport. Stats only. Costs scale with `tree.costScale`; the whole tree is meant to take about 15 minutes.
-- **Leaving:** when the tree is complete and the mini-boss is cleared, he leaves the Mindscape at full strength and returns to the hub.
+- **Leaving:** killing the mini-boss ends the Mindscape ("Memories restored") and grants the whole tree, bought or not. It should be very hard without a full tree, but trying early is not punished. He returns to the spawn room at full strength, and teleport is taught there.
 - **Permanent baseline:** what the tree grants becomes his lasting base stats for the rest of the game. This tutorial tree is **never shown again**; a different tree comes later in the game.
 - **Later:** the Mindscape also serves as a training ground where skills are equipped and tested. Skills do not exist yet.
 
@@ -45,10 +46,10 @@ The Mindscape is all basics (Shades), plus the empowered elite mini-boss (the we
 
 ## Out of scope for now (do not plan or build)
 
-Castle, city, open world, city and factory management, large-scale siege combat, skills and equipping, a second upgrade tree, cutscenes, map generation. They are listed so the ideas are safe, not so code is written for them.
+Castle, city, city and factory management, large-scale siege combat, skills and equipping, a second upgrade tree, map generation. They are listed so the ideas are safe, not so code is written for them.
 
 Large-scale combat conflicts with pillar 1 and would need its own simulation, so it must not shape the slice.
 
 ## Stage order
 
-1. Foundation  2. Character in an empty room  3. Shade, collision and run loop in a plain arena  4. Data layer  5. Asset maker with pixel editor  6. Level editor (areas only)  7. Upgrade tree and permanent baseline  8. Mini-boss  9. Polish pass  10. Hub room and wake-up (cutscene approach must be shown to Drew first).
+1. Foundation  2. Character in an empty room  3. Shade, collision and run loop in a plain arena  4. Data layer  5. Asset maker with pixel editor  6. Level editor (areas only)  7. Upgrade tree and permanent baseline  8. Mini-boss  9. Polish pass  10. Spawn room, throne room and wake-up (cutscene approach agreed: steps in a data file, played by one small runner).
