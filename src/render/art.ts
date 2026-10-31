@@ -15,7 +15,7 @@ export const Tex = {
 export const shadeFrames = ['shade_0', 'shade_1'];
 // The werewolf exists only as drawn sprites (no code art), so these keys come from sprites.json.
 export const wolfWalkFrames = ['werewolf_0', 'werewolf_1', 'werewolf_2', 'werewolf_3'];
-export const wolfAttackFrames = ['werewolf_10', 'werewolf_12', 'werewolf_13', 'werewolf_14'];
+export const wolfAttackFrames = ['werewolf_10', 'werewolf_11', 'werewolf_12', 'werewolf_13'];
 
 export const heroWalkFrames = ['hero_walk0', 'hero_walk1', 'hero_walk2', 'hero_walk3'];
 

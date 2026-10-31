@@ -67,10 +67,11 @@ export class MapWorld implements CollisionWorld {
     const ux = dx / len;
     const uy = dy / len;
     let best = 1;
-    // Already touching counts as free, so a circle pressed against something can still move away from it.
+    // A circle already touching something may move away from it, but not further into it.
     for (const o of this.circles) {
       const t = segmentCircle(x, y, ux, uy, len, o.x, o.y, o.radius + r);
       if (t > 0 && t / len < best) best = t / len;
+      else if (t === 0 && (x - o.x) * ux + (y - o.y) * uy < 0) best = 0;
     }
     if (!overFloors) for (const b of this.floorBoxes) best = Math.min(best, boxFraction(x, y, ux, uy, len, b, r));
     for (const b of this.frame) best = Math.min(best, boxFraction(x, y, ux, uy, len, b, r));

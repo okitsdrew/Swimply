@@ -309,9 +309,14 @@ export class Player {
 
   private updateDash(dt: number): void {
     const step = Math.min(dt, this.dashTime);
-    this.x += this.dashVx * step;
-    this.y += this.dashVy * step;
+    // Swept, so a dash stops at a wall instead of skipping through it in one step.
+    const mx = this.dashVx * step;
+    const my = this.dashVy * step;
+    const f = this.world.sweep(this.x, this.y, mx, my, cfgPlayer.bodyRadius);
+    this.x += mx * f;
+    this.y += my * f;
     this.dashTime -= dt;
+    if (f < 1) this.dashTime = 0;
     if (this.dashTime <= 0) {
       this.dashTime = 0;
       this.graceTime = cfgPlayer.invulnAfter;
