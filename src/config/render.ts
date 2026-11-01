@@ -15,6 +15,11 @@ export const render = defineConfig(
     arrowHeight: 20,
     // Aiming at the cursor points this far below it, so shots meet what is drawn under the cursor.
     aimHeight: 20,
+    // Each pixel of the mouse cursor sprites is this many screen pixels.
+    cursorScale: 3,
+    // Where the pointer clicks, in screen pixels from its top-left corner.
+    pointerHotX: 0,
+    pointerHotY: 0,
   },
   {
     isoScale: { min: 0.3, max: 1.5, step: 0.01 },
@@ -23,5 +28,8 @@ export const render = defineConfig(
     bowScale: { min: 0.3, max: 3, step: 0.05 },
     arrowHeight: { min: 0, max: 40, step: 1 },
     aimHeight: { min: 0, max: 80, step: 1 },
+    cursorScale: { min: 1, max: 6, step: 1 },
+    pointerHotX: { min: 0, max: 6, step: 1 },
+    pointerHotY: { min: 0, max: 6, step: 1 },
   },
 );

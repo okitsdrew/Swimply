@@ -2334,6 +2334,156 @@
         "........kkkkkkkkk.............",
         ".............................."
       ]
+    },
+    {
+      "id": "cursor",
+      "name": "cursor",
+      "palette": { "w": "#4a1a7a", "d": "#2a0a4a", "k": "#07000d", "p": "#7a2fd0", "P": "#e0c8ff" },
+      "rows": [
+        "PPPPPP....",
+        "PppppdP...",
+        "PpPPpP....",
+        "PpPkdP....",
+        "PppdkdP...",
+        "PdPPdkdP..",
+        ".P..PdkdP.",
+        ".....PdkpP",
+        "......PpkP",
+        ".......PP."
+      ]
+    },
+    {
+      "id": "crosshair",
+      "name": "crosshair",
+      "palette": { "w": "#4a1a7a", "d": "#2a0a4a", "k": "#07000d", "p": "#7a2fd0", "P": "#e0c8ff" },
+      "rows": [
+        "...pkp...",
+        "...pkp...",
+        "...pkp...",
+        "ppppkpppp",
+        "kkkk.kkkk",
+        "ppppkpppp",
+        "...pkp...",
+        "...pkp...",
+        "...pkp..."
+      ]
+    },
+    {
+      "id": "time",
+      "name": "time",
+      "palette": { "k": "#0b0910", "K": "#1c1826", "p": "#5d2ca0", "w": "#cccccc" },
+      "rows": [
+        "wwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+        "wkkkkkkkkwkkwkkkkkkkkwkkkkkkw",
+        "wkkkkkkkkwkkwkkkkkkkkwkkkkkkw",
+        "wwwwkkwwwwkkwkkwkkwkkwkkwwwww",
+        "...wkkw..wkkwkkwkkwkkwkkkkkw.",
+        "...wkkw..wkkwkkwkkwkkwkkkkkw.",
+        "...wkkw..wkkwkkwkkwkkwkkwwwww",
+        "...wkkw..wkkwkkwwwwkkwkkkkkkw",
+        "...wkkw..wkkwkkw..wkkwkkkkkkw",
+        "...wwww..wwwwwww..wwwwwwwwwww"
+      ]
+    },
+    {
+      "id": "getup_draft_0",
+      "name": "getup_draft_0",
+      "palette": { "a": "#0b0910", "r": "#2a2140", "h": "#1c1826", "b": "#9a50ff", "f": "#5a2a9a", "d": "#949494", "e": "#b4b4c6", "s": "#5e5e70", "g": "#07070a" },
+      "rows": [
+        "..................",
+        "..................",
+        "..................",
+        "..................",
+        ".............aaa..",
+        "............ahhra.",
+        "............aaaara",
+        "...........aaaaah.",
+        ".........eeeaaaaha",
+        "s.......dddaaaaaaa",
+        "sdeaaagbdfdaaaaaa.",
+        "ssdahagbdfdsaaaaaa",
+        "....eeebdddaaaaaa.",
+        "....dddbsss..aaa..",
+        "sdeaaagbs..a......",
+        "ssdaaagf...a......",
+        "s..........a......",
+        "..........ss......"
+      ]
+    },
+    {
+      "id": "getup_draft_1",
+      "name": "getup_draft_1",
+      "palette": { "a": "#0b0910", "r": "#2a2140", "h": "#1c1826", "b": "#9a50ff", "c": "#f0e0ff", "f": "#5a2a9a", "d": "#949494", "e": "#b4b4c6", "s": "#5e5e70", "g": "#07070a" },
+      "rows": [
+        "............",
+        "............",
+        "............",
+        "............",
+        "...a.aa.a...",
+        "..arhhaaaa..",
+        ".arhaaaaaaa.",
+        ".ahbcaacbaa.",
+        ".ahbbaabbaa.",
+        "..aaaaaaaa..",
+        "...aeaasa...",
+        "...edddds...",
+        "...edffds...",
+        "...ddddss...",
+        "...bbbbbf...",
+        "...ggedgg...",
+        "...aaedaa...",
+        "..sssa.dss.."
+      ]
+    },
+    {
+      "id": "getup_draft_2",
+      "name": "getup_draft_2",
+      "palette": { "a": "#0b0910", "r": "#2a2140", "h": "#1c1826", "b": "#9a50ff", "c": "#f0e0ff", "f": "#5a2a9a", "d": "#949494", "e": "#b4b4c6", "s": "#5e5e70", "g": "#07070a" },
+      "rows": [
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...a.aa.a...",
+        "..arhhaaaa..",
+        ".arhaaaaaaa.",
+        ".ahbcaacbaa.",
+        ".ahbbaabbaa.",
+        "..aaaeaasa..",
+        "...edddds...",
+        "...edffds...",
+        "...ddddss...",
+        "...bbbbbf...",
+        "...ggedgg...",
+        "...aaedaa...",
+        "..sssa.dss.."
+      ]
+    },
+    {
+      "id": "getup_draft_3",
+      "name": "getup_draft_3",
+      "palette": { "a": "#0b0910", "r": "#2a2140", "h": "#1c1826", "b": "#9a50ff", "c": "#f0e0ff", "f": "#5a2a9a", "d": "#949494", "e": "#b4b4c6", "s": "#5e5e70", "g": "#07070a" },
+      "rows": [
+        "............",
+        "............",
+        "...a.aa.a...",
+        "..arhhaaaa..",
+        ".arbcaacbaa.",
+        ".ahbbaabbaa.",
+        ".ahaaaaaaaa.",
+        "..aaaaaaaa..",
+        "...aeaasa...",
+        "...edddds...",
+        "...edffds...",
+        "...ddddss...",
+        "...bbbbbf...",
+        "...ggedgg...",
+        "..aaed.daa..",
+        "..ahd...aa..",
+        "..ed....ed..",
+        ".sss....sss."
+      ]
     }
   ]
 }

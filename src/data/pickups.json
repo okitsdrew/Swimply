@@ -1,0 +1,5 @@
+{
+  "pickups": [
+    { "id": "memory_shard", "name": "Memory shard", "wallet": "memory", "value": 1, "core": "#ffffff", "rim": "#a8dcff", "glow": "#4aa8ff" }
+  ]
+}

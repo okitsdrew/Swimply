@@ -5,7 +5,7 @@ export const tree = defineConfig(
   'tree',
   'upgrades',
   {
-    // Memory shards each Shade kill gives.
+    // Memory shard orbs each Shade kill drops.
     shardsPerKill: 1,
     // Multiplies every node's cost, to speed up or slow down the whole tree at once.
     costScale: 1,
