@@ -12,6 +12,7 @@ const SLAM_FADE = 0.35;
 
 // Draws the werewolf, his attack markings on the ground, the slam and landing, and his health bar.
 //   walk: werewolf_0-3   windup: werewolf_10 then 11 (held)   dash: 11   slam: 12 then 13 (held)   recover: 13
+//   swipe windup: werewolf_10 then 11   swipe: 12 then 13   (the dash attack's frames, quicker)
 //   crouch: werewolf_14   jump: werewolf_12 (takeoff) then 15   land: werewolf_13   quick dash: walk frames, afterimages
 export class WerewolfView {
   private sprite: Phaser.GameObjects.Image;
@@ -25,7 +26,7 @@ export class WerewolfView {
   private sinceSlam = SLAM_FADE;
   private slamAt = { x: 0, y: 0 };
   // Which attack the fading flash belongs to.
-  private flashShape: 'slam' | 'land' = 'slam';
+  private flashShape: 'slam' | 'land' | 'swipe' = 'slam';
 
   constructor(scene: Phaser.Scene, private wolf: Werewolf, private fx: Fx) {
     this.sprite = scene.add.image(0, 0, wolfWalkFrames[0]).setOrigin(0.5, 1).setVisible(false);
@@ -58,6 +59,14 @@ export class WerewolfView {
       toScreen(w.ax + w.dirX * w.reach * k, w.ay + w.dirY * w.reach * k, screen);
       this.fx.smoke(screen.x, screen.y, Math.round(this.wolf.cfg.slamSmoke / 4), 6 * px);
     }
+  }
+
+  onSwipe(): void {
+    const w = this.wolf;
+    this.sinceSlam = 0;
+    this.flashShape = 'swipe';
+    this.slamAt = { x: w.ax, y: w.ay };
+    this.fx.addShake(w.cfg.slamShake * 0.4);
   }
 
   onLand(): void {
@@ -115,6 +124,19 @@ export class WerewolfView {
       }
     }
 
+    if (w.state === 'swipeWindup') {
+      // The cone fills from him outward; its full size shows faintly from the start.
+      const k = Math.min(1, w.time / Math.max(w.cfg.swipeWindup, 1e-3));
+      this.cone(g, w.reach);
+      g.fillStyle(0xff3040, 0.15 + 0.25 * k).fillPath();
+      this.cone(g, w.cfg.swipeRange);
+      g.lineStyle(2, 0xff6070, 0.4 + 0.6 * k).strokePath();
+    }
+    if (w.state === 'swipe') {
+      this.cone(g, w.cfg.swipeRange);
+      g.fillStyle(0xff3040, 0.45).fillPath();
+    }
+
     if (w.state === 'jump') {
       // Where he will land: the outline from the moment he leaves the ground, filling as he comes down.
       const k = w.jumpProgress;
@@ -132,6 +154,10 @@ export class WerewolfView {
       frame = wolfWalkFrames[Math.floor(this.walkTime * this.wolf.cfg.walkFps) % wolfWalkFrames.length];
     } else if (w.state === 'windup') {
       frame = w.time < w.windupTime * 0.3 ? wolfAttackFrames[0] : wolfAttackFrames[1];
+    } else if (w.state === 'swipeWindup') {
+      frame = w.time < w.cfg.swipeWindup * 0.3 ? wolfAttackFrames[0] : wolfAttackFrames[1];
+    } else if (w.state === 'swipe') {
+      frame = w.time < 0.04 ? wolfAttackFrames[2] : wolfAttackFrames[3];
     } else if (w.state === 'dash') {
       frame = wolfAttackFrames[1];
     } else if (w.state === 'slam') {
@@ -191,6 +217,23 @@ export class WerewolfView {
     g.closePath();
   }
 
+  // The swipe's cone out to `reach`, as a path on the ground: a fan round its locked direction.
+  private cone(g: Phaser.GameObjects.Graphics, reach: number): void {
+    const w = this.wolf;
+    const half = (w.cfg.swipeAngle * Math.PI) / 360;
+    const base = Math.atan2(w.dirY, w.dirX);
+    const steps = Math.max(2, Math.ceil(w.cfg.swipeAngle / 10));
+    g.beginPath();
+    toScreen(w.ax, w.ay, corner);
+    g.moveTo(corner.x, corner.y);
+    for (let i = 0; i <= steps; i++) {
+      const a = base - half + (2 * half * i) / steps;
+      toScreen(w.ax + Math.cos(a) * reach, w.ay + Math.sin(a) * reach, corner);
+      g.lineTo(corner.x, corner.y);
+    }
+    g.closePath();
+  }
+
   // The hit: the part that hurt (the far end of the rectangle, or the landing circle) flashes and fades, and a ring
   // spreads from where he came down.
   private drawSlamFlash(g: Phaser.GameObjects.Graphics): void {
@@ -199,6 +242,12 @@ export class WerewolfView {
     const w = this.wolf;
     toScreen(this.slamAt.x, this.slamAt.y, screen);
     let size = w.cfg.attackWidth;
+    if (this.flashShape === 'swipe') {
+      // Just the cone flashing and fading, no ring.
+      this.cone(g, w.cfg.swipeRange);
+      g.fillStyle(0xffe0c0, 0.6 * (1 - k)).fillPath();
+      return;
+    }
     if (this.flashShape === 'land') {
       const area = ellipseHalfSize(w.cfg.jumpRadius);
       g.fillStyle(0xffe0c0, 0.6 * (1 - k)).fillEllipse(screen.x, screen.y, area.x * 2, area.y * 2);

@@ -43,7 +43,8 @@
     "treeOpen": "ui_tree_open",
     "door": "door",
     "wolfAttack": "werewolf_initiate",
-    "wolfSmash": "werewolf_smash"
+    "wolfSmash": "werewolf_smash",
+    "wolfSwipe": "werewolf_swipe"
   },
   "ambience": [
     { "map": "spawn", "sounds": ["boom_distant", "rumble_tail"], "every": 4, "jitter": 1 }

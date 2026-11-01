@@ -6,17 +6,20 @@ import { Navigator } from './Nav';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
-export type WolfState = 'gone' | 'rising' | 'walk' | 'quickDash' | 'windup' | 'dash' | 'slam' | 'crouch' | 'jump' | 'land' | 'recover';
+export type WolfState = 'gone' | 'rising' | 'walk' | 'quickDash' | 'windup' | 'dash' | 'slam' | 'crouch' | 'jump' | 'land' | 'swipeWindup' | 'swipe' | 'recover';
 
 const off = { x: 0, y: 0 };
 const way = { x: 0, y: 0 };
 
 // The werewolf mini-boss. One at a time, so this is a single creature rather than a list. A state machine with
-// two attacks, picked at random when the player comes in range:
+// three attacks. Two are picked at random when the player comes in range:
 //   dash: windup (the attack rectangle grows, aimed where the player was) -> dash (to the rectangle's far end,
 //         hurting what it passes) -> slam (hurts the far end) -> recover
 //   jump: crouch -> jump (in the air, over anything, toward where the player was) -> land (hurts the landing
 //         circle) -> recover
+// The third, the swipe, is for when the player is right next to him, whatever his cooldown:
+//   swipe: swipeWindup (a cone aimed at the player fills from him outward) -> swipe (he lunges, hurting the cone)
+//          -> recover
 // Between attacks he walks at the player, with a quick dash toward them when it is ready; straight after a quick
 // dash, an attack that is ready starts with a shorter windup.
 // No drawing: render/WerewolfView reads the state.
@@ -34,7 +37,7 @@ export class Werewolf implements Target {
   vx = 0;
   vy = 0;
   flash = 0;
-  // The attack: where the rectangle starts, its locked direction, and how far it reaches right now.
+  // The attack: where the rectangle (or the swipe's cone) starts, its locked direction, and how far it reaches now.
   ax = 0;
   ay = 0;
   dirX = 1;
@@ -95,6 +98,8 @@ export class Werewolf implements Target {
   onAttack: () => void = () => {};
   onSlam: () => void = () => {};
   onLand: () => void = () => {};
+  // The swipe's lunge begins.
+  onSwipe: () => void = () => {};
   onKilled: (x: number, y: number) => void = () => {};
 
   get present(): boolean {
@@ -158,6 +163,17 @@ export class Werewolf implements Target {
     return this.inAttack(x, y, r, this.reach - this.cfg.attackWidth, this.reach);
   }
 
+  // True if the circle is inside the swipe's cone, which stays where it was drawn while he lunges into it.
+  inSwipe(x: number, y: number, r: number): boolean {
+    const px = x - this.ax;
+    const py = y - this.ay;
+    const d = Math.hypot(px, py);
+    if (d > this.cfg.swipeRange + r) return false;
+    if (d <= r) return true;
+    const angle = Math.acos(Math.max(-1, Math.min(1, (px * this.dirX + py * this.dirY) / d)));
+    return angle <= (this.cfg.swipeAngle * Math.PI) / 360 + Math.asin(r / d);
+  }
+
   // True if the circle is inside the landing circle.
   inLanding(x: number, y: number, r: number): boolean {
     const min = this.cfg.jumpRadius + r;
@@ -184,8 +200,10 @@ export class Werewolf implements Target {
         break;
       case 'walk':
         this.walk(dt, world, nav, target);
-        // The quick dash comes first whenever it is ready; the attack follows straight out of it.
-        if (this.quickDashCooldown <= 0 && Math.hypot(target.x - this.x, target.y - this.y) > this.cfg.quickDashMinRange) {
+        // Right next to the player he swipes, cooldown or not. Otherwise the quick dash comes first whenever it is ready; the attack follows straight out of it.
+        if (Math.hypot(target.x - this.x, target.y - this.y) <= this.cfg.swipeTriggerRange) {
+          this.startSwipe(target);
+        } else if (this.quickDashCooldown <= 0 && Math.hypot(target.x - this.x, target.y - this.y) > this.cfg.quickDashMinRange) {
           this.startQuickDash(target);
         } else {
           this.chooseAttack(target);
@@ -247,6 +265,23 @@ export class Werewolf implements Target {
           this.landed = true;
           this.onLand();
         }
+        break;
+      }
+      case 'swipeWindup':
+        this.reach = this.cfg.swipeRange * Math.min(1, this.time / Math.max(this.cfg.swipeWindup, 1e-3));
+        if (this.time >= this.cfg.swipeWindup) {
+          this.enter('swipe');
+          this.onSwipe();
+        }
+        break;
+      case 'swipe': {
+        const speed = this.cfg.swipeLunge / Math.max(this.cfg.swipeTime, 1e-3);
+        const step = speed * Math.min(dt, Math.max(0, this.cfg.swipeTime - (this.time - dt)));
+        const f = world.sweep(this.x, this.y, this.dirX * step, this.dirY * step, this.radius);
+        this.x += this.dirX * step * f;
+        this.y += this.dirY * step * f;
+        world.resolve(this);
+        if (this.time >= this.cfg.swipeTime) this.enter('recover');
         break;
       }
       case 'land':
@@ -343,6 +378,24 @@ export class Werewolf implements Target {
     this.jx = this.x + dx * k;
     this.jy = this.y + dy * k;
     this.enter('jump');
+    this.onAttack();
+  }
+
+  // Aims the cone at the player and starts its windup. Leaves a planned dash planned.
+  private startSwipe(target: Vec2): void {
+    this.struck = false;
+    const dx = target.x - this.x;
+    const dy = target.y - this.y;
+    const d = Math.hypot(dx, dy) || 1;
+    this.dirX = dx / d;
+    this.dirY = dy / d;
+    this.ax = this.x;
+    this.ay = this.y;
+    this.reach = 0;
+    this.vx = 0;
+    this.vy = 0;
+    this.face(target);
+    this.enter('swipeWindup');
     this.onAttack();
   }
 
