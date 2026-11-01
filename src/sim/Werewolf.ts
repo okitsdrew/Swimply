@@ -91,6 +91,8 @@ export class Werewolf implements Target {
   }
 
   onRisen: () => void = () => {};
+  // He launches into an attack: the dash starts, or he leaves the ground for the jump.
+  onLeap: () => void = () => {};
   onSlam: () => void = () => {};
   onLand: () => void = () => {};
   onKilled: (x: number, y: number) => void = () => {};
@@ -196,6 +198,7 @@ export class Werewolf implements Target {
         if (k >= 1) {
           this.dashed = 0;
           this.enter('dash');
+          this.onLeap();
         }
         break;
       }
@@ -341,6 +344,7 @@ export class Werewolf implements Target {
     this.jx = this.x + dx * k;
     this.jy = this.y + dy * k;
     this.enter('jump');
+    this.onLeap();
   }
 
   private startWindup(target: Vec2): void {
