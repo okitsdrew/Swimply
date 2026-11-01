@@ -7,6 +7,9 @@ export const pickups = defineConfig(
   {
     // How far from the player an orb starts flying to him. Not drawn (hitboxes in the dev menu shows it).
     pickupRadius: 100,
+    // Measure the pickup radius as a circle on screen. The iso view squashes a ground circle to half its height,
+    // so without this, orbs above and below him must be twice as close as ones beside him.
+    roundOnScreen: true,
     // Flying orbs start at this speed and speed up to flySpeed, so the flight is seen but he can never outrun one.
     flyStartSpeed: 300,
     flyAccel: 15000,
@@ -30,6 +33,7 @@ export const pickups = defineConfig(
   },
   {
     pickupRadius: { min: 0, max: 600, step: 5 },
+    roundOnScreen: 'bool',
     flyStartSpeed: { min: 0, max: 2000, step: 10 },
     flyAccel: { min: 100, max: 50000, step: 100 },
     flySpeed: { min: 100, max: 8000, step: 50 },

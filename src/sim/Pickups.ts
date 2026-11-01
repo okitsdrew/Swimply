@@ -1,5 +1,17 @@
 import { pickups as cfg } from '../config/pickups';
+import { render } from '../config/render';
+import { toScreen } from '../core/iso';
 import { PickupKind } from '../data/pickups';
+
+const off = { x: 0, y: 0 };
+
+// How far an orb is from him for the pickup radius: on the ground, or as seen on screen (pickups.roundOnScreen),
+// scaled so the two agree beside him.
+function reach(dx: number, dy: number): number {
+  if (!cfg.roundOnScreen) return Math.hypot(dx, dy);
+  toScreen(dx, dy, off);
+  return Math.hypot(off.x, off.y) / (render.isoScale * Math.SQRT2);
+}
 
 export interface Pickup {
   kind: PickupKind;
@@ -57,7 +69,7 @@ export class Pickups {
         p.y += p.vy * dt;
         p.vx *= drag;
         p.vy *= drag;
-        if (collecting && p.age >= cfg.settleTime && (p.called || d <= cfg.pickupRadius)) {
+        if (collecting && p.age >= cfg.settleTime && (p.called || reach(dx, dy) <= cfg.pickupRadius)) {
           p.flying = true;
           p.speed = cfg.flyStartSpeed;
         }

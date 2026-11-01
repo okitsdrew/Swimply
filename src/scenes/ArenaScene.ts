@@ -675,7 +675,10 @@ export class ArenaScene extends Phaser.Scene {
     };
     ring(this.player.x, this.player.y, cfgPlayer.bodyRadius, 0x66ccff);
     ring(this.player.x, this.player.y, cfgPlayer.hitRadius, 0xff4466);
-    ring(this.player.x, this.player.y, cfgPickups.pickupRadius, 0x7fc8ff);
+    if (cfgPickups.roundOnScreen) {
+      const p = toScreen(this.player.x, this.player.y);
+      g.lineStyle(1, 0x7fc8ff, 1).strokeCircle(p.x, p.y, cfgPickups.pickupRadius * render.isoScale * Math.SQRT2);
+    } else ring(this.player.x, this.player.y, cfgPickups.pickupRadius, 0x7fc8ff);
     for (const s of this.shades.list) {
       if (!s.alive) continue;
       ring(s.x, s.y, s.radius, 0xffcc44);
