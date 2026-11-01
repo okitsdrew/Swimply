@@ -374,8 +374,8 @@ export class ArenaScene extends Phaser.Scene {
     addShards(0);
   }
 
-  // The tree screen. After a death, closing it starts the next run; opened mid-run from the dev menu, the run is
-  // paused under it and carries on.
+  // The tree screen. The world is paused under it, so nothing keeps attacking where he died. After a death, closing
+  // it starts the next run; opened mid-run from the dev menu, the run carries on.
   private openTree(): void {
     if (this.treeOpen) return;
     this.treeOpen = true;
@@ -383,7 +383,7 @@ export class ArenaScene extends Phaser.Scene {
     this.sfx.play('treeOpen');
     const r = this.run;
     const dead = r.state === 'dead' && !this.calm;
-    if (!dead) this.paused = true;
+    this.paused = true;
     const data: TreeSceneData = {
       summary: dead ? `YOU DIED   ${clock(r.time)}, ${r.kills} kills, +${r.shards} shards` : 'MEMORIES',
       closeLabel: dead ? 'Next run' : 'Back',
@@ -402,6 +402,8 @@ export class ArenaScene extends Phaser.Scene {
     this.input2.endFrame();
     if (this.run.state === 'dead') this.startRun();
     this.paused = false;
+    // The click that closed it is still held down: keep the bow from firing until it is let go.
+    this.player.fireBlocked = true;
   }
 
   private spawnWolf(): void {
@@ -571,7 +573,7 @@ export class ArenaScene extends Phaser.Scene {
     this.box.update(frameDt, cam.width, this.player.x, this.player.y);
     this.ghost.update(frameDt, cam.width, cam.height);
     this.hint.update(frameDt, this.player.x, this.player.y, !!this.near && !this.leaving && this.control && this.run.state === 'fighting');
-    const notes = [this.showHitboxes && this.wolf.present && `WEREWOLF ${this.wolf.state.toUpperCase()}`, this.paused && 'PAUSED', this.run.holdSpawns && !this.calm && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
+    const notes = [this.showHitboxes && this.wolf.present && `WEREWOLF ${this.wolf.state.toUpperCase()}`, this.paused && !this.treeOpen && 'PAUSED', this.run.holdSpawns && !this.calm && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
     this.drawDebug();
   }
