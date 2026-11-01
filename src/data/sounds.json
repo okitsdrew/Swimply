@@ -4,8 +4,18 @@
     { "id": "rumble_tail", "file": "rumble_tail_01.ogg" },
     { "id": "explosion_large", "file": "explosion_large_01.ogg" },
     { "id": "explosion_medium", "file": "explosion_medium_01.ogg" },
-    { "id": "fireball", "file": "fireball_01.ogg" }
+    { "id": "fireball", "file": "fireball_01.ogg" },
+    { "id": "teleport_whoosh", "file": "teleport_whoosh.wav", "volume": 0.7 },
+    { "id": "dash_swish", "file": "dash_swish.wav", "volume": 0.6 },
+    { "id": "bow_shot", "file": "bow_shot.wav", "volume": 0.5 },
+    { "id": "enemy_hit", "file": "enemy_hit.wav", "volume": 0.6 }
   ],
+  "effects": {
+    "teleport": "teleport_whoosh",
+    "dash": "dash_swish",
+    "fire": "bow_shot",
+    "hit": "enemy_hit"
+  },
   "ambience": [
     { "map": "spawn", "sounds": ["boom_distant", "rumble_tail"], "every": 4, "jitter": 1 }
   ]

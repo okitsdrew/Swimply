@@ -20,9 +20,13 @@ export interface Ambience {
   jitter: number;
 }
 
+// What plays when something happens in the game, by event: teleport, dash, fire (a bow shot), hit (an arrow hits).
+export const EFFECT_EVENTS = ['teleport', 'dash', 'fire', 'hit'] as const;
+export type EffectEvent = (typeof EFFECT_EVENTS)[number];
+
 const files = import.meta.glob('./sounds/*', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 
-function parseSounds(data: unknown): { sounds: Sound[]; ambience: Ambience[] } {
+function parseSounds(data: unknown): { sounds: Sound[]; ambience: Ambience[]; effects: Partial<Record<EffectEvent, string>> } {
   const problems: Problems = [];
   const sounds = list(obj(data).sounds, 'sounds.json sounds', problems).flatMap((entry, i): Sound[] => {
     const e = obj(entry);
@@ -41,12 +45,25 @@ function parseSounds(data: unknown): { sounds: Sound[]; ambience: Ambience[] } {
     for (const n of names) if (!ids.has(n)) problems.push(`${w}: unknown sound ${JSON.stringify(n)}`);
     return { map: str(e.map, '', `${w}.map`, problems), sounds: names.filter((n) => ids.has(n)), every: num(e.every, 4, `${w}.every`, problems), jitter: num(e.jitter, 0, `${w}.jitter`, problems) };
   });
+  const effects: Partial<Record<EffectEvent, string>> = {};
+  for (const [event, id] of Object.entries(obj(obj(data).effects))) {
+    const name = str(id, '', `sounds.json effects.${event}`, problems);
+    if (!(EFFECT_EVENTS as readonly string[]).includes(event)) problems.push(`sounds.json effects: unknown event "${event}" (known: ${EFFECT_EVENTS.join(', ')})`);
+    else if (!ids.has(name)) problems.push(`sounds.json effects.${event}: unknown sound ${JSON.stringify(name)}`);
+    else effects[event as EffectEvent] = name;
+  }
   report('sounds', problems);
-  return { sounds, ambience };
+  return { sounds, ambience, effects };
 }
 
 const parsed = parseSounds(raw);
 export const sounds = new Registry<Sound>('sounds', parsed.sounds);
+
+// The sound for a game event, if one is set.
+export function effectSound(event: EffectEvent): Sound | undefined {
+  const id = parsed.effects[event];
+  return id ? sounds.get(id) : undefined;
+}
 
 export function ambienceFor(mapId: string): Ambience | undefined {
   return parsed.ambience.find((a) => a.map === mapId && a.sounds.length);

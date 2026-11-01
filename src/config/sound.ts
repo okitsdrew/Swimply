@@ -9,11 +9,20 @@ export const sound = defineConfig(
     volume: 0.8,
     // A map's background sounds (distant explosions in spawn), on top of volume.
     ambientVolume: 0.7,
+    // Effects (teleport, dash, shots, hits), on top of volume.
+    effectsVolume: 0.8,
+    // Each effect plays a little higher or lower at random, by up to this fraction, so repeats do not grate.
+    pitchJitter: 0.08,
+    // The same effect again within this many seconds is skipped (three arrows hitting at once make one sound).
+    repeatGap: 0.04,
     mute: false,
   },
   {
     volume: { min: 0, max: 1, step: 0.05 },
     ambientVolume: { min: 0, max: 1, step: 0.05 },
+    effectsVolume: { min: 0, max: 1, step: 0.05 },
+    pitchJitter: { min: 0, max: 0.5, step: 0.01 },
+    repeatGap: { min: 0, max: 0.3, step: 0.01 },
     mute: 'bool',
   },
 );

@@ -17,6 +17,7 @@ import { addShards, maxTree, resetTree } from '../data/tree';
 import { save, writeSave } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
 import { AmbienceView } from '../render/AmbienceView';
+import { SoundFx } from '../render/SoundFx';
 import { ArrowsView } from '../render/ArrowsView';
 import { makeArt } from '../render/art';
 import { DialogueBox } from '../render/DialogueBox';
@@ -86,6 +87,7 @@ export class ArenaScene extends Phaser.Scene {
   // Whether the hero's own look was hidden for a pose last frame.
   private posed = false;
   private ambience!: AmbienceView;
+  private sfx!: SoundFx;
   // A script can take control away (the hero lying down, a scene playing out).
   private control = true;
   private world!: MapWorld;
@@ -174,6 +176,7 @@ export class ArenaScene extends Phaser.Scene {
     this.shadesView = new ShadesView(this, this.shades, this.fx);
     this.wolf = new Werewolf(werewolf);
     this.wolfView = new WerewolfView(this, this.wolf, this.fx);
+    this.sfx = new SoundFx(this);
     this.run = new Run(this.shades);
     this.run.holdSpawns = this.calm || params.has('calm');
     this.hud = new RunHud(this, this.run);
@@ -202,14 +205,17 @@ export class ArenaScene extends Phaser.Scene {
       const m = this.view.muzzle();
       this.arrows.fire(m.x, m.y, dx, dy);
       this.view.onFire();
+      this.sfx.play('fire');
       this.story.notify('fire');
     };
     this.player.onDashStart = () => {
       this.view.onDashStart();
+      this.sfx.play('dash');
       this.story.notify('dash');
     };
     this.player.onTeleport = (x0, y0, x1, y1, t) => {
       this.view.onTeleport(x0, y0, x1, y1, t);
+      this.sfx.play('teleport');
       this.story.notify('teleport');
     };
     this.player.onTeleportArrive = (x, y) => this.view.onTeleportArrive(x, y);
@@ -220,6 +226,7 @@ export class ArenaScene extends Phaser.Scene {
       const s = toScreen(ax, ay);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
       this.fx.addShake(camera.shakeOnHit);
+      this.sfx.play('hit');
     };
     this.shades.onRisen = (s) => this.shadesView.onRisen(s);
     this.shades.onKilled = (x, y) => {
