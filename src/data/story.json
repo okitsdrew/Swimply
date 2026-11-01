@@ -64,10 +64,10 @@
       "unless": "teleportTaught",
       "steps": [
         { "wait": 0.8 },
-        { "say": "timo", "face": "timo_happy", "text": "those juices flowing yet?" },
+        { "say": "timo", "face": "timo_shocked", "text": "those juices flowing yet?" },
         { "tutorial": "Right click to teleport" },
         { "waitFor": "teleport" },
-        { "say": "timo", "face": "timo_laugh", "text": "oh heck yeah, now lets get out of this burning wing!" },
+        { "say": "timo", "face": "timo_happy", "text": "oh heck yeah, now lets get out of this burning wing!" },
         { "say": "timo", "text": "you should be able to teleport through the lava if you're quick enough" },
         { "flag": "teleportTaught" }
       ]
