@@ -2104,7 +2104,7 @@
         "a": "#8a8a98",
         "b": "#ac3ebe",
         "c": "#b15f5f",
-        "d": "#dddddd"
+        "d": "#4755b1"
       },
       "rows": [
         ".....aaaaa.....",
@@ -2113,11 +2113,11 @@
         "..akkkkkkkkka..",
         ".akkkpkkkpkkka.",
         "akkpppkkkpppkka",
-        "akkkpkkkkkpkkka",
-        "akkkpkkkkkpkkka",
-        ".akkpkkpkkpkka.",
-        ".akkpkkkkkpkka.",
-        "..akpkkkkkpka..",
+        "akkkdkkkkkdkkka",
+        "akkkdkkkkkdkkka",
+        ".akkdkkpkkdkka.",
+        ".akkdkkkkkdkka.",
+        "..akdkkkkkdka..",
         "...akkkkkkka...",
         "....akkkkka....",
         ".....aaaaa....."
