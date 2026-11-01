@@ -13,3 +13,4 @@ Sounds and art from other people, where each came from and its license. Add a li
 | fireball_01.ogg | [Reeboo Labs: Explosions & Destruction SFX (free sample)](https://reeboolabs.itch.io/explosions-destruction-sfx-free-sample) | Free to use; credit appreciated, not required |
 | dash_swish.wav, enemy_hit.wav, voice_blip.wav | Placeholders made for Swimply by `scripts/make-placeholder-sounds.py` | Ours |
 | fire_ambience.ogg, bow_shot_4.ogg, teleport_4.ogg | Made for Swimply with Claude | Ours |
+| boop_conversation_3s_v2.ogg, boop_death_v4c.ogg, boop_cast_strain_2_short.ogg, mindscape_portal.ogg, death_powder_2.ogg, footstep_grit_2_quiet.ogg | Made for Swimply with Claude | Ours |

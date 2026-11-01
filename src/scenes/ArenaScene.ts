@@ -179,6 +179,7 @@ export class ArenaScene extends Phaser.Scene {
     this.wolf = new Werewolf(werewolf);
     this.wolfView = new WerewolfView(this, this.wolf, this.fx);
     this.sfx = new SoundFx(this);
+    this.view.onStep = () => this.sfx.play('step');
     this.run = new Run(this.shades);
     this.run.holdSpawns = this.calm || params.has('calm');
     this.hud = new RunHud(this, this.run);
@@ -238,6 +239,7 @@ export class ArenaScene extends Phaser.Scene {
         this.earn(tree.shardsPerKill);
       }
       this.shadesView.onKilled(x, y);
+      this.sfx.play('kill');
       this.fx.addShake(run.killShake);
       this.freeze(run.killHitStop);
     };
@@ -296,6 +298,8 @@ export class ArenaScene extends Phaser.Scene {
     this.leaving = true;
     leftFrom.set(this.mapId, { x: this.player.x, y: this.player.y });
     cameFrom = this.mapId;
+    // Into the Mindscape (a map Shades spawn in) from somewhere calm.
+    if (this.calm && next.objects.some((o) => o.asset.marker === 'shadeSpawn')) this.sfx.play('portal');
     const cam = this.cameras.main;
     cam.fadeOut(story.fadeTime * 1000);
     cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.restart({ map: next.id, at: leftFrom.get(next.id) }));
@@ -432,6 +436,7 @@ export class ArenaScene extends Phaser.Scene {
 
   private onWolfKilled(x: number, y: number): void {
     this.wolfView.onKilled(x, y);
+    this.sfx.play('kill');
     if (this.run.state !== 'fighting') return;
     this.earn(werewolf.shards);
     this.freeze(0.15, true);
@@ -601,6 +606,8 @@ export class ArenaScene extends Phaser.Scene {
   private die(): void {
     this.run.die();
     this.view.setVisible(false);
+    this.sfx.play('death');
+    this.sfx.play('kill');
     const px = render.pixelScale;
     const s = toScreen(this.player.x, this.player.y);
     this.fx.smoke(s.x, s.y - 10 * px, run.deathSmoke, 8 * px);

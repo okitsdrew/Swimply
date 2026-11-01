@@ -20,8 +20,9 @@ export interface Ambience {
   jitter: number;
 }
 
-// What plays when something happens in the game, by event: teleport, dash, fire (a bow shot), hit (an arrow hits).
-export const EFFECT_EVENTS = ['teleport', 'dash', 'fire', 'hit'] as const;
+// What plays when something happens in the game, by event: teleport, dash, fire (a bow shot), hit (an arrow hits),
+// death (the hero dies), kill (anything dies, the hero too), portal (going into the Mindscape), step (a footstep).
+export const EFFECT_EVENTS = ['teleport', 'dash', 'fire', 'hit', 'death', 'kill', 'portal', 'step'] as const;
 export type EffectEvent = (typeof EFFECT_EVENTS)[number];
 
 const files = import.meta.glob('./sounds/*', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;

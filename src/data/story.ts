@@ -18,6 +18,8 @@ export interface Speaker {
   // (1 as recorded, 2 an octave up). Empty for silent.
   voice: string;
   pitch: number;
+  // A sound id played once as each of their lines starts (for a speaker whose lines are only dots). Empty for none.
+  lineSound: string;
 }
 
 // One step of a script. Exactly one kind per step:
@@ -69,7 +71,7 @@ function parseSpeakers(data: unknown, problems: Problems): Speaker[] {
       problems.push(`${id}.color is ${JSON.stringify(color)}, expected a colour like "#c58cff"`);
       color = '#f2d7a6';
     }
-    return [{ id, name: str(e.name, id, `${id}.name`, problems), color, face: str(e.face, '', `${id}.face`, problems), bubble: bool(e.bubble, false, `${id}.bubble`, problems), voice: str(e.voice, '', `${id}.voice`, problems), pitch: num(e.pitch, 1, `${id}.pitch`, problems) }];
+    return [{ id, name: str(e.name, id, `${id}.name`, problems), color, face: str(e.face, '', `${id}.face`, problems), bubble: bool(e.bubble, false, `${id}.bubble`, problems), voice: str(e.voice, '', `${id}.voice`, problems), pitch: num(e.pitch, 1, `${id}.pitch`, problems), lineSound: str(e.lineSound, '', `${id}.lineSound`, problems) }];
   });
 }
 

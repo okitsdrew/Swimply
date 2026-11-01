@@ -36,6 +36,8 @@ export class DialogueBox {
   private k = 1;
   private voice = '';
   private pitch = 1;
+  // The speaker's line sound, playing, so the next line can cut it off.
+  private lineSound?: Phaser.Sound.BaseSound;
   // Letters spoken since the last blip.
   private letters = 0;
   private open = 0;
@@ -55,8 +57,9 @@ export class DialogueBox {
   }
 
   // `face` is a texture key; a missing one leaves the face empty rather than showing a broken image.
-  show(name: string, color: string, face: string, text: string, bubble: boolean, voice = '', pitch = 1): void {
+  show(name: string, color: string, face: string, text: string, bubble: boolean, voice = '', pitch = 1, lineSound = ''): void {
     this.text = text;
+    this.playLine(lineSound);
     this.shown = 0;
     this.wait = 0;
     this.voice = voice;
@@ -149,6 +152,16 @@ export class DialogueBox {
     if (!s || sound.mute || !this.scene.cache.audio.exists(s.id)) return;
     const rate = this.pitch * (1 + (Math.random() * 2 - 1) * dialogue.blipJitter);
     this.scene.sound.play(s.id, { volume: sound.volume * sound.voiceVolume * s.volume, rate });
+  }
+
+  private playLine(id: string): void {
+    this.lineSound?.stop();
+    this.lineSound = undefined;
+    const s = sounds.get(id);
+    if (!s || sound.mute || !this.scene.cache.audio.exists(s.id)) return;
+    this.lineSound = this.scene.sound.add(s.id, { volume: sound.volume * sound.voiceVolume * s.volume });
+    this.lineSound.once(Phaser.Sound.Events.COMPLETE, () => this.lineSound?.destroy());
+    this.lineSound.play();
   }
 
   private setAlpha(a: number): void {

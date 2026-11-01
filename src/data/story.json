@@ -1,7 +1,7 @@
 {
   "speakers": [
     { "id": "timo", "name": "Timo", "color": "#c58cff", "face": "timo", "voice": "voice_blip", "pitch": 1.5 },
-    { "id": "swimply", "name": "Swimply", "color": "#f2d7a6", "face": "hero", "bubble": true, "voice": "voice_blip", "pitch": 0.8 }
+    { "id": "swimply", "name": "Swimply", "color": "#f2d7a6", "face": "hero", "bubble": true, "voice": "voice_blip", "pitch": 0.8, "lineSound": "swimply_dots" }
   ],
   "scripts": [
     {
