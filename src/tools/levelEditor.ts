@@ -6,12 +6,12 @@ import { story } from '../config/story';
 import { ellipseHalfSize, toScreen, Vec2 } from '../core/iso';
 import { Asset, assets } from '../data/assets';
 import { floors } from '../data/floors';
-import { parseMap } from '../data/maps';
+import { AreaMap, parseMap, withFlags } from '../data/maps';
 import { Problems, report } from '../data/registry';
 import { deleteFile, hex, readFile, readMapFiles, renameInDataFile, saveFile } from './files';
 import { MapCanvas } from './MapCanvas';
 import { EditMap, EditObject, fromAreaMap, MapDoc, MAX_TILES, Side } from './MapDoc';
-import { button, el, ID_PATTERN, numberInput, round, row, select, textInput, uniqueId } from './ui';
+import { button, checkbox, el, ID_PATTERN, numberInput, round, row, select, textInput, uniqueId } from './ui';
 
 // The level editor page (level-editor.html, dev server only). Paints floors and places assets and markers in the
 // area maps under src/data/maps, and writes them back in the hand-written style. It also renames or replaces a
@@ -59,6 +59,8 @@ class LevelEditor {
   private snap = 32;
   private grid = true;
   private collision = true;
+  // Previewing the map as the game shows it for these save flags; null shows every thing, whatever its flags.
+  private flagView: Record<string, boolean> | null = null;
   // Indexes into the map's objects, in the order they were picked.
   private selection: number[] = [];
   // Things copied with Ctrl+C, relative to the first one, so they can be pasted into any map.
@@ -194,7 +196,7 @@ class LevelEditor {
   // Every edit ends here: redraw the map, mark it unsaved, keep a draft.
   private changed(rebuildProps = true): void {
     if (this.doc) {
-      this.canvas.setMap(this.doc.toAreaMap());
+      this.canvas.setMap(this.viewMap(this.doc));
       // Undoing back to the saved version counts as saved again.
       this.doc.dirty = this.doc.disk === null || this.doc.text() !== this.doc.disk;
     }
@@ -281,9 +283,39 @@ class LevelEditor {
       // Only a convenience.
     }
     history.replaceState(null, '', `?map=${d.id}`);
-    this.canvas.setMap(d.toAreaMap());
+    this.canvas.setMap(this.viewMap(d));
     this.frame();
     this.refresh();
+  }
+
+  // The map as drawn: everything, or only what the previewed flags let through.
+  private viewMap(d: MapDoc): AreaMap {
+    const m = d.toAreaMap();
+    return this.flagView ? withFlags(m, this.flagView) : m;
+  }
+
+  // Whether a placed thing shows under the flag preview (always, with the preview off).
+  private shown(o: EditObject): boolean {
+    const f = this.flagView;
+    return !f || ((!o.if || !!f[o.if]) && (!o.unless || !f[o.unless]));
+  }
+
+  // Every save flag the open map's things depend on.
+  private mapFlags(): string[] {
+    const out = new Set<string>();
+    for (const o of this.doc?.map.objects ?? []) for (const f of [o.if, o.unless]) if (f) out.add(f);
+    return [...out].sort();
+  }
+
+  private setFlagView(view: Record<string, boolean> | null): void {
+    this.flagView = view;
+    const d = this.doc;
+    if (d) {
+      this.selection = this.selection.filter((i) => d.map.objects[i] && this.shown(d.map.objects[i]));
+      this.canvas.setMap(this.viewMap(d));
+    }
+    this.buildList();
+    this.buildProps();
   }
 
   // Zooms so the whole map fits the view.
@@ -523,6 +555,7 @@ class LevelEditor {
       const [y0, y1] = [Math.min(drag.y0, drag.y1), Math.max(drag.y0, drag.y1)];
       const inside: number[] = [];
       d.map.objects.forEach((o, i) => {
+        if (!this.shown(o)) return;
         const s = toScreen(o.x, o.y);
         if (s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1) inside.push(i);
       });
@@ -566,7 +599,7 @@ class LevelEditor {
     let bestY = -Infinity;
     d.map.objects.forEach((o, i) => {
       const a = assets.get(o.asset);
-      if (!a) return;
+      if (!a || !this.shown(o)) return;
       const s = toScreen(o.x, o.y);
       const inBox = (key: string, ox: number, oy: number, originX: number, originY: number, scale: number) => {
         const size = this.canvas.textureSize(key);
@@ -630,7 +663,7 @@ class LevelEditor {
 
     m.objects.forEach((o, i) => {
       const a = assets.get(o.asset);
-      if (!a) return;
+      if (!a || !this.shown(o)) return;
       if (this.collision) for (const c of a.collision) ring(o.x + c.x * o.size, o.y + c.y * o.size, c.radius * o.size, 0x66ffaa, 0.8);
       if (a.marker) {
         ring(o.x, o.y, 12, 0xf2d7a6);
@@ -857,12 +890,27 @@ class LevelEditor {
         button('Delete', () => void this.remove(), { disabled: !this.doc }),
       ),
       el('p', { class: 'hint', text: '• means not saved yet.' }),
+      ...this.flagPanel(),
 
       el('h2', { text: 'In every map', style: 'margin-top:18px' }),
       el('p', { class: 'hint', text: 'Swap or rename a floor or asset everywhere it is used. Maps find them by id, which is why the asset maker locks ids that maps use.' }),
       this.acrossBox('floor', floorIds, used.floors),
       this.acrossBox('asset', assetIds, used.assets),
     );
+  }
+
+  // Shows the map before or after a story moment, by ticking the save flags its things depend on.
+  private flagPanel(): (HTMLElement | string)[] {
+    const flags = this.mapFlags();
+    const view = this.flagView;
+    return [
+      el('h2', { text: 'Story flags', style: 'margin-top:18px' }),
+      flags.length
+        ? button(view ? 'Show everything' : 'Preview flags', () => this.setFlagView(view ? null : {}), { class: view ? 'on' : '' })
+        : el('p', { class: 'hint', text: 'Nothing in this map has "only if" or "only unless" set.' }),
+      ...(view ? flags.map((f) => el('label', { class: 'row' }, checkbox(!!view[f], (v) => this.setFlagView({ ...view, [f]: v })), ` ${f}`)) : []),
+      flags.length ? el('p', { class: 'hint', text: view ? 'Showing the map as the game does with the ticked flags on. Hidden things cannot be picked.' : 'Off: every thing shows, whatever its flags.' }) : '',
+    ];
   }
 
   // Which maps use each floor and asset id, from the working copies (so unsaved changes count).
