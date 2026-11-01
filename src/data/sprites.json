@@ -2367,6 +2367,23 @@
         "...pkp...",
         "...pkp..."
       ]
+    },
+    {
+      "id": "time",
+      "name": "time",
+      "palette": { "k": "#0b0910", "K": "#1c1826", "p": "#5d2ca0", "w": "#cccccc" },
+      "rows": [
+        "wwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+        "wkkkkkkkkwkkwkkkkkkkkwkkkkkkw",
+        "wkkkkkkkkwkkwkkkkkkkkwkkkkkkw",
+        "wwwwkkwwwwkkwkkwkkwkkwkkwwwww",
+        "...wkkw..wkkwkkwkkwkkwkkkkkw.",
+        "...wkkw..wkkwkkwkkwkkwkkkkkw.",
+        "...wkkw..wkkwkkwkkwkkwkkwwwww",
+        "...wkkw..wkkwkkwwwwkkwkkkkkkw",
+        "...wkkw..wkkwkkw..wkkwkkkkkkw",
+        "...wwww..wwwwwww..wwwwwwwwwww"
+      ]
     }
   ]
 }
