@@ -108,7 +108,7 @@ export const teleport = defineConfig(
     wispChance: 0.5,
     wispLife: 0.35,
     // The burst where he lands: sparks that fly out, and a ring that grows to burstRing art pixels across.
-    burstSparks: 10,
+    burstSparks: 6,
     burstSpeed: 100,
     burstLife: 0.3,
     burstRing: 15,
