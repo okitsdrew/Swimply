@@ -2,7 +2,7 @@ import { render } from '../config/render';
 import { rgba, sprites } from '../data/sprites';
 
 // The mouse cursors, drawn from the `cursor` and `crosshair` sprites and handed to the browser as CSS cursors, so
-// they move with no lag. `cursor` points with its top-left pixel; `crosshair` aims with its middle pixel.
+// they move with no lag. `cursor` points with the middle of its top-left pixel; `crosshair` aims with its middle pixel.
 // A missing sprite falls back to the browser's own cursor.
 export type CursorKind = 'pointer' | 'crosshair';
 
@@ -41,8 +41,8 @@ function draw(kind: CursorKind, wanted: number): string {
     ctx.fillStyle = colors[j];
     ctx.fillRect((i % sprite.width) * scale, Math.floor(i / sprite.width) * scale, scale, scale);
   });
-  const hot = kind === 'pointer'
-    ? { x: 0, y: 0 }
-    : { x: Math.floor(sprite.width / 2) * scale + Math.floor(scale / 2), y: Math.floor(sprite.height / 2) * scale + Math.floor(scale / 2) };
+  // The click lands in the middle of the aiming pixel, not on its corner.
+  const at = kind === 'pointer' ? { x: 0, y: 0 } : { x: Math.floor(sprite.width / 2), y: Math.floor(sprite.height / 2) };
+  const hot = { x: at.x * scale + Math.floor(scale / 2), y: at.y * scale + Math.floor(scale / 2) };
   return `url(${canvas.toDataURL()}) ${hot.x} ${hot.y}, ${FALLBACK[kind]}`;
 }
