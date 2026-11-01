@@ -21,11 +21,11 @@ export const pickups = defineConfig(
     // Seconds a dropped orb hops before it can be picked up.
     settleTime: 0.35,
     // Look: how high the hop goes and how much a lying orb bobs, in art pixels; how fast it bobs and pulses.
-    hopHeight: 8,
-    bobHeight: 1.5,
+    hopHeight: 5,
+    bobHeight: 0.5,
     bobRate: 2.2,
     orbScale: 1,
-    glowScale: 0.55,
+    glowScale: 0.3,
     glowAlpha: 0.7,
   },
   {
