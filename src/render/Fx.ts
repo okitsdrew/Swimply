@@ -17,12 +17,43 @@ interface Fading {
   obj: Phaser.GameObjects.Image | Phaser.GameObjects.Text;
 }
 
+// The teleport's tear, rasterised once on the art pixel grid. `jag` pushes an extra edge pixel out from the line,
+// `hole` decides when each pixel crumbles as the tail closes in.
+interface Streak {
+  cells: { x: number; y: number; jag: number; hole: number }[];
+  // Which side the edges go: below/above for a flat line, right/left for a steep one.
+  nx: number;
+  ny: number;
+  age: number;
+  zip: number;
+  fade: number;
+  width: number;
+  shed: number;
+}
+
+interface Bit {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  age: number;
+  life: number;
+  size: number;
+  drag: number;
+}
+
+// The arrow's palette, which the tear and the burst are drawn in.
+const VOID = { core: 0x07000d, deep: 0x2a0a4a, mid: 0x4a1a7a, purple: 0x7a2fd0, lilac: 0xe0c8ff };
+
 // Short-lived visual effects. Positions here are already in screen space.
 export class Fx {
   private images: Pool<Fading>;
   private texts: Pool<Fading>;
   private streakGfx: Phaser.GameObjects.Graphics;
-  private streaks: { x0: number; y0: number; x1: number; y1: number; age: number; zip: number; fade: number; width: number }[] = [];
+  private streaks: Streak[] = [];
+  // Single art pixels in flight: the tear's wisps and the landing burst's sparks.
+  private bits: Bit[] = [];
+  private rings: { x: number; y: number; age: number }[] = [];
   private shake = 0;
   private numbersThisFrame = 0;
   private numbersAlive = 0;
@@ -105,9 +136,40 @@ export class Fx {
     f.vy = o.vy ?? 0;
   }
 
-  // A line that zips from start to end, then its tail catches up and it fades.
+  // A tear in art pixels that zips from start to end, then crumbles from its tail, shedding wisps.
   streak(x0: number, y0: number, x1: number, y1: number, zip = teleport.zipTime, width = teleport.lineWidth): void {
-    this.streaks.push({ x0, y0, x1, y1, age: 0, zip, fade: teleport.lineFade, width });
+    const px = render.pixelScale;
+    let x = Math.round(x0 / px);
+    let y = Math.round(y0 / px);
+    const ex = Math.round(x1 / px);
+    const ey = Math.round(y1 / px);
+    const dx = Math.abs(ex - x);
+    const dy = -Math.abs(ey - y);
+    const sx = x < ex ? 1 : -1;
+    const sy = y < ey ? 1 : -1;
+    let err = dx + dy;
+    const cells: Streak['cells'] = [];
+    for (;;) {
+      cells.push({ x, y, jag: Math.random() < 0.33 ? 1 : 0, hole: Math.random() });
+      if (x === ex && y === ey) break;
+      const e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x += sx; }
+      if (e2 <= dx) { err += dx; y += sy; }
+    }
+    const flat = dx >= -dy;
+    this.streaks.push({ cells, nx: flat ? 0 : 1, ny: flat ? 1 : 0, age: 0, zip, fade: teleport.lineFade, width, shed: 0 });
+  }
+
+  // Where he lands: a ring of pixels that grows and a spray of chunky sparks.
+  burst(x: number, y: number): void {
+    const px = render.pixelScale;
+    this.rings.push({ x: x / px, y: y / px, age: 0 });
+    const n = Math.round(teleport.burstSparks);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+      const v = teleport.burstSpeed * (0.7 + Math.random() * 0.6);
+      this.bits.push({ x: x / px, y: y / px, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6, age: 0, life: teleport.burstLife * (0.6 + Math.random() * 0.4), size: 2, drag: 4 });
+    }
   }
 
   smoke(x: number, y: number, count: number, spread: number): void {
@@ -168,7 +230,9 @@ export class Fx {
 
   private drawStreaks(dt: number): void {
     const g = this.streakGfx;
+    const px = render.pixelScale;
     g.clear();
+    const dot = (x: number, y: number, color: number, alpha = 1, size = 1) => g.fillStyle(color, alpha).fillRect(Math.round(x) * px, Math.round(y) * px, px * size, px * size);
     for (let i = this.streaks.length - 1; i >= 0; i--) {
       const s = this.streaks[i];
       s.age += dt;
@@ -176,21 +240,56 @@ export class Fx {
         this.streaks.splice(i, 1);
         continue;
       }
-      const head = Math.min(1, s.age / s.zip);
-      const tail = s.age <= s.zip ? 0 : (s.age - s.zip) / s.fade;
-      const ax = s.x0 + (s.x1 - s.x0) * tail;
-      const ay = s.y0 + (s.y1 - s.y0) * tail;
-      const bx = s.x0 + (s.x1 - s.x0) * head;
-      const by = s.y0 + (s.y1 - s.y0) * head;
-      const alpha = 1 - tail * tail;
-      for (const [w, color, a] of [
-        [s.width * 3.2, 0x7a2fd0, 0.45],
-        [s.width * 2, 0x3a0f6a, 0.9],
-        [s.width, 0x07000d, 1],
-      ] as const) {
-        g.lineStyle(w, color, a * alpha);
-        g.lineBetween(ax, ay, bx, by);
+      const n = s.cells.length - 1;
+      const head = Math.round(Math.min(1, s.age / s.zip) * n);
+      const closing = s.age <= s.zip ? 0 : (s.age - s.zip) / s.fade;
+      const tail = Math.round(closing * n);
+      // Pixels the tail has passed shed wisps.
+      for (; s.shed < tail; s.shed++) {
+        if (Math.random() >= teleport.wispChance) continue;
+        const c = s.cells[s.shed];
+        this.bits.push({ x: c.x, y: c.y, vx: (Math.random() - 0.5) * 12, vy: -4 - Math.random() * 10, age: 0, life: teleport.wispLife * (0.6 + Math.random() * 0.4), size: 1, drag: 1 });
       }
+      const thick = Math.max(1, Math.round(s.width / px));
+      const crumbling = tail + (head - tail) * 0.6;
+      for (let k = tail; k <= head; k++) {
+        const c = s.cells[k];
+        // Near the tail the tear crumbles away pixel by pixel.
+        if (k < crumbling && c.hole < closing * 1.3) continue;
+        for (let t = 0; t < thick; t++) dot(c.x + s.nx * t, c.y + s.ny * t, VOID.core);
+        dot(c.x - s.nx, c.y - s.ny, VOID.mid);
+        dot(c.x + s.nx * thick, c.y + s.ny * thick, VOID.deep);
+        if (c.jag) dot(c.x - s.nx * 2, c.y - s.ny * 2, VOID.purple);
+      }
+    }
+    for (let i = this.rings.length - 1; i >= 0; i--) {
+      const r = this.rings[i];
+      r.age += dt;
+      const t = r.age / Math.max(teleport.burstRingTime, 1e-3);
+      if (t >= 1) {
+        this.rings.splice(i, 1);
+        continue;
+      }
+      const radius = 2 + (teleport.burstRing / 2 - 2) * t;
+      const steps = Math.max(8, Math.round(radius * 5));
+      for (let k = 0; k < steps; k++) {
+        const a = (k / steps) * Math.PI * 2;
+        dot(r.x + Math.cos(a) * radius, r.y + Math.sin(a) * radius * 0.6, t < 0.5 ? VOID.lilac : VOID.purple);
+      }
+    }
+    for (let i = this.bits.length - 1; i >= 0; i--) {
+      const b = this.bits[i];
+      b.age += dt;
+      if (b.age >= b.life) {
+        this.bits.splice(i, 1);
+        continue;
+      }
+      const slow = Math.exp(-b.drag * dt);
+      b.vx *= slow;
+      b.vy *= slow;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      dot(b.x, b.y, b.age < b.life * 0.5 ? VOID.lilac : VOID.purple, 1, b.size);
     }
   }
 

@@ -160,7 +160,7 @@ export class PlayerView {
     this.afterimageTimer = 0;
   }
 
-  // A dark purple line zips between the two points, with a puff of void at the start.
+  // A pixel tear in the void zips between the two points, with a puff of void at the start.
   onTeleport(fromX: number, fromY: number, toX: number, toY: number, travelTime: number, lineWidth?: number): void {
     const a = toScreen(fromX, fromY);
     const b = toScreen(toX, toY);
@@ -172,7 +172,7 @@ export class PlayerView {
 
   onTeleportArrive(x: number, y: number): void {
     const a = toScreen(x, y);
-    this.voidPuff(a.x, a.y - 10 * this.px);
+    this.fx.burst(a.x, a.y - 10 * this.px);
   }
 
   private voidPuff(x: number, y: number): void {
