@@ -74,7 +74,7 @@ export const werewolfMiniboss = defineConfig(
     // swipeTime, killing anyone in the cone, then recovers (recoverTime).
     swipeTriggerRange: 100,
     swipeRange: 200,
-    swipeAngle: 70,
+    swipeAngle: 120,
     swipeWindup: 0.45,
     swipeLunge: 60,
     swipeTime: 0.12,

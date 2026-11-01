@@ -374,8 +374,8 @@ export class ArenaScene extends Phaser.Scene {
     addShards(0);
   }
 
-  // The tree screen. After a death, closing it starts the next run; opened mid-run from the dev menu, the run is
-  // paused under it and carries on.
+  // The tree screen. The sim is paused under it, so nothing goes on attacking where he fell. After a death, closing
+  // it starts the next run; opened mid-run from the dev menu, the run carries on.
   private openTree(): void {
     if (this.treeOpen) return;
     this.treeOpen = true;
@@ -383,7 +383,7 @@ export class ArenaScene extends Phaser.Scene {
     this.sfx.play('treeOpen');
     const r = this.run;
     const dead = r.state === 'dead' && !this.calm;
-    if (!dead) this.paused = true;
+    this.paused = true;
     const data: TreeSceneData = {
       summary: dead ? `YOU DIED   ${clock(r.time)}, ${r.kills} kills, +${r.shards} shards` : 'MEMORIES',
       closeLabel: dead ? 'Next run' : 'Back',
@@ -401,6 +401,8 @@ export class ArenaScene extends Phaser.Scene {
     // Clicks on the tree screen also reached the game's input; drop them so they don't fire an arrow.
     this.input2.endFrame();
     if (this.run.state === 'dead') this.startRun();
+    // The click on Next run is still held; the bow waits until it is let go.
+    this.player.fireBlocked = true;
     this.paused = false;
   }
 
