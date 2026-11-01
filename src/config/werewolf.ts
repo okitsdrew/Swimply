@@ -2,7 +2,7 @@ import { defineConfig } from './store';
 
 // The Mindscape's werewolf mini-boss, an empowered elite. He walks at the player and, once close, winds up a
 // dash attack: a rectangle grows out along the ground toward where the player was, then he dashes to its far end
-// and slams, hurting everything inside it. The plain werewolf (a recurring elite) will get its own section with
+// and slams, hurting everything inside it. Right up close he swipes instead: a cone in front of him. The plain werewolf (a recurring elite) will get its own section with
 // the same fields when it is built; sim/Werewolf.ts takes whichever section it is given.
 export const werewolfMiniboss = defineConfig(
   'werewolf_miniboss',
@@ -68,6 +68,16 @@ export const werewolfMiniboss = defineConfig(
     quickDashMinRange: 200,
     quickDashAfterimages: 2,
     quickDashWindupScale: 0.5,
+    // The swipe, for when the player is right next to him: it ignores attackCooldown, so he never just walks
+    // into them. When the player is within swipeTriggerRange he winds up (a cone on the ground, swipeAngle degrees
+    // wide and swipeRange long, aimed at the player, fills from him outward), then lunges swipeLunge forward over
+    // swipeTime, killing anyone in the cone, then recovers (recoverTime).
+    swipeTriggerRange: 100,
+    swipeRange: 200,
+    swipeAngle: 70,
+    swipeWindup: 0.45,
+    swipeLunge: 60,
+    swipeTime: 0.12,
     // The slam hurts the player even mid-dash or mid-teleport.
     slamPiercesInvuln: false,
     slamShake: 9,
@@ -113,6 +123,12 @@ export const werewolfMiniboss = defineConfig(
     quickDashMinRange: { min: 0, max: 1000, step: 10 },
     quickDashAfterimages: { min: 0, max: 20, step: 1 },
     quickDashWindupScale: { min: 0.05, max: 1, step: 0.05 },
+    swipeTriggerRange: { min: 0, max: 500, step: 5 },
+    swipeRange: { min: 10, max: 600, step: 5 },
+    swipeAngle: { min: 5, max: 360, step: 5 },
+    swipeWindup: { min: 0.05, max: 3, step: 0.05 },
+    swipeLunge: { min: 0, max: 300, step: 5 },
+    swipeTime: { min: 0.02, max: 1, step: 0.01 },
     slamPiercesInvuln: 'bool',
     slamShake: { min: 0, max: 40, step: 1 },
     slamSmoke: { min: 0, max: 100, step: 1 },

@@ -22,11 +22,11 @@ export interface Ambience {
 
 // What plays when something happens in the game, by event: teleport, dash, fire (a bow shot), hit (an arrow hits),
 // death (the hero dies), portal (going into the Mindscape), door (going through a door to another calm map), step
-// (a footstep), wolfAttack (the werewolf starts his dash's windup or leaves the ground for his jump),
-// wolfSmash (his dash ends or he lands), and on screens: click (a menu button), next (moving on through dialogue),
+// (a footstep), wolfAttack (the werewolf starts his dash's or swipe's windup or leaves the ground for his
+// jump), wolfSmash (his dash ends or he lands), wolfSwipe (his swipe lands), and on screens: click (a menu button), next (moving on through dialogue),
 // buy (taking a memory on the tree), deny (one that can't be taken), treeOpen (the tree screen opens).
 // An event names one sound id, or a list that all play together.
-export const EFFECT_EVENTS = ['teleport', 'dash', 'fire', 'hit', 'death', 'portal', 'door', 'step', 'wolfAttack', 'wolfSmash', 'click', 'next', 'buy', 'deny', 'treeOpen'] as const;
+export const EFFECT_EVENTS = ['teleport', 'dash', 'fire', 'hit', 'death', 'portal', 'door', 'step', 'wolfAttack', 'wolfSmash', 'wolfSwipe', 'click', 'next', 'buy', 'deny', 'treeOpen'] as const;
 export type EffectEvent = (typeof EFFECT_EVENTS)[number];
 
 const files = import.meta.glob('./sounds/*', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
