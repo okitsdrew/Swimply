@@ -21,13 +21,15 @@ export interface Ambience {
 }
 
 // What plays when something happens in the game, by event: teleport, dash, fire (a bow shot), hit (an arrow hits),
-// death (the hero dies), kill (anything dies, the hero too), portal (going into the Mindscape), step (a footstep).
-export const EFFECT_EVENTS = ['teleport', 'dash', 'fire', 'hit', 'death', 'kill', 'portal', 'step'] as const;
+// death (the hero dies), portal (going into the Mindscape), step (a footstep), and on screens: click (a menu
+// button), next (moving on through dialogue), buy (taking a memory on the tree), deny (one that can't be taken).
+// An event names one sound id, or a list that all play together.
+export const EFFECT_EVENTS = ['teleport', 'dash', 'fire', 'hit', 'death', 'portal', 'step', 'click', 'next', 'buy', 'deny'] as const;
 export type EffectEvent = (typeof EFFECT_EVENTS)[number];
 
 const files = import.meta.glob('./sounds/*', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 
-function parseSounds(data: unknown): { sounds: Sound[]; ambience: Ambience[]; effects: Partial<Record<EffectEvent, string>> } {
+function parseSounds(data: unknown): { sounds: Sound[]; ambience: Ambience[]; effects: Partial<Record<EffectEvent, string[]>> } {
   const problems: Problems = [];
   const sounds = list(obj(data).sounds, 'sounds.json sounds', problems).flatMap((entry, i): Sound[] => {
     const e = obj(entry);
@@ -46,12 +48,16 @@ function parseSounds(data: unknown): { sounds: Sound[]; ambience: Ambience[]; ef
     for (const n of names) if (!ids.has(n)) problems.push(`${w}: unknown sound ${JSON.stringify(n)}`);
     return { map: str(e.map, '', `${w}.map`, problems), sounds: names.filter((n) => ids.has(n)), every: num(e.every, 4, `${w}.every`, problems), jitter: num(e.jitter, 0, `${w}.jitter`, problems) };
   });
-  const effects: Partial<Record<EffectEvent, string>> = {};
-  for (const [event, id] of Object.entries(obj(obj(data).effects))) {
-    const name = str(id, '', `sounds.json effects.${event}`, problems);
-    if (!(EFFECT_EVENTS as readonly string[]).includes(event)) problems.push(`sounds.json effects: unknown event "${event}" (known: ${EFFECT_EVENTS.join(', ')})`);
-    else if (!ids.has(name)) problems.push(`sounds.json effects.${event}: unknown sound ${JSON.stringify(name)}`);
-    else effects[event as EffectEvent] = name;
+  const effects: Partial<Record<EffectEvent, string[]>> = {};
+  for (const [event, value] of Object.entries(obj(obj(data).effects))) {
+    const w = `sounds.json effects.${event}`;
+    if (!(EFFECT_EVENTS as readonly string[]).includes(event)) {
+      problems.push(`sounds.json effects: unknown event "${event}" (known: ${EFFECT_EVENTS.join(', ')})`);
+      continue;
+    }
+    const names = (Array.isArray(value) ? value : [value]).map((v) => str(v, '', w, problems));
+    for (const n of names) if (!ids.has(n)) problems.push(`${w}: unknown sound ${JSON.stringify(n)}`);
+    effects[event as EffectEvent] = names.filter((n) => ids.has(n));
   }
   report('sounds', problems);
   return { sounds, ambience, effects };
@@ -60,10 +66,9 @@ function parseSounds(data: unknown): { sounds: Sound[]; ambience: Ambience[]; ef
 const parsed = parseSounds(raw);
 export const sounds = new Registry<Sound>('sounds', parsed.sounds);
 
-// The sound for a game event, if one is set.
-export function effectSound(event: EffectEvent): Sound | undefined {
-  const id = parsed.effects[event];
-  return id ? sounds.get(id) : undefined;
+// The sounds for a game event, none if it has none.
+export function effectSounds(event: EffectEvent): Sound[] {
+  return (parsed.effects[event] ?? []).flatMap((id) => sounds.get(id) ?? []);
 }
 
 export function ambienceFor(mapId: string): Ambience | undefined {

@@ -239,8 +239,7 @@ export class ArenaScene extends Phaser.Scene {
         this.earn(tree.shardsPerKill);
       }
       this.shadesView.onKilled(x, y);
-      this.sfx.play('kill');
-      this.fx.addShake(run.killShake);
+            this.fx.addShake(run.killShake);
       this.freeze(run.killHitStop);
     };
     this.wolf.onRisen = () => this.wolfView.onRisen();
@@ -384,6 +383,7 @@ export class ArenaScene extends Phaser.Scene {
     if (!this.treeOpen) return;
     this.treeOpen = false;
     this.hud.treeOpen = false;
+    this.sfx.play('click');
     this.scene.stop('tree');
     // Clicks on the tree screen also reached the game's input; drop them so they don't fire an arrow.
     this.input2.endFrame();
@@ -436,8 +436,7 @@ export class ArenaScene extends Phaser.Scene {
 
   private onWolfKilled(x: number, y: number): void {
     this.wolfView.onKilled(x, y);
-    this.sfx.play('kill');
-    if (this.run.state !== 'fighting') return;
+        if (this.run.state !== 'fighting') return;
     this.earn(werewolf.shards);
     this.freeze(0.15, true);
     // Beating him wins the Mindscape, full tree or not: the Shades fade, then he wakes back where he touched the bow.
@@ -577,6 +576,7 @@ export class ArenaScene extends Phaser.Scene {
     // While a line is up, click and F move the dialogue on instead of shooting or interacting. The bow stays held
     // back until the button that skipped the last line is let go.
     if (this.story.talking && (this.input2.justPressed('interact') || this.input2.justPressed('fire'))) {
+      this.sfx.play('next');
       this.story.skip();
       this.input2.consume('interact');
       this.input2.consume('fire');
@@ -607,7 +607,6 @@ export class ArenaScene extends Phaser.Scene {
     this.run.die();
     this.view.setVisible(false);
     this.sfx.play('death');
-    this.sfx.play('kill');
     const px = render.pixelScale;
     const s = toScreen(this.player.x, this.player.y);
     this.fx.smoke(s.x, s.y - 10 * px, run.deathSmoke, 8 * px);

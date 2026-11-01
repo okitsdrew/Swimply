@@ -88,7 +88,7 @@ export class StoryRunner {
       return;
     }
     if (step.kind === 'say') {
-      this.box.show(step.speaker.name, step.speaker.color, step.face, step.text, step.speaker.bubble, step.speaker.voice, step.speaker.pitch, step.speaker.lineSound);
+      this.box.show(step.speaker.name, step.speaker.color, step.face, step.text, step.speaker.bubble, step.speaker.voice, step.speaker.pitch, step.speaker.lineSounds);
       this.stage.onLine(step.speaker.id, step.face);
     } else if (step.kind === 'tutorial') this.ghost.show(step.text);
     else if (step.kind === 'flag') {
