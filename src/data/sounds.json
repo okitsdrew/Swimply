@@ -42,7 +42,7 @@
     "deny": "ui_deny",
     "treeOpen": "ui_tree_open",
     "door": "door",
-    "wolfLeap": "werewolf_initiate",
+    "wolfAttack": "werewolf_initiate",
     "wolfSmash": "werewolf_smash"
   },
   "ambience": [

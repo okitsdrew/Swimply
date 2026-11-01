@@ -243,7 +243,7 @@ export class ArenaScene extends Phaser.Scene {
       this.freeze(run.killHitStop);
     };
     this.wolf.onRisen = () => this.wolfView.onRisen();
-    this.wolf.onLeap = () => this.sfx.play('wolfLeap');
+    this.wolf.onAttack = () => this.sfx.play('wolfAttack');
     this.wolf.onSlam = () => {
       this.sfx.play('wolfSmash');
       this.onSlam();
