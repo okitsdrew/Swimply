@@ -19,7 +19,7 @@ export const player = defineConfig(
     // The circle that collides with walls.
     bodyRadius: 10,
     // Safe time after a dash or teleport ends.
-    invulnAfter: 0.2,
+    invulnAfter: 0.3,
   },
   {
     moveSpeed: { min: 50, max: 800, step: 5 },
