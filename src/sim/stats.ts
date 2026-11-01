@@ -23,7 +23,7 @@ export const stats = {
   arrowSize: (): number => 1,
   // Seconds a run's clock starts at (Time Warp).
   runStart: (): number => add('runStart'),
-  // Multiplies the memory shards each kill gives.
+  // Multiplies what each memory shard is worth.
   shardGain: (): number => pct('shardGain'),
   // Teleport is locked until it is unlocked after the Mindscape (a save flag), or by the dev menu.
   hasTeleport: (): boolean => !!save.flags.teleport || sim.allowTeleport,

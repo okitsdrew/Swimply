@@ -6,11 +6,13 @@ import { run } from '../config/run';
 import { shade } from '../config/shade';
 import { sim } from '../config/sim';
 import { story } from '../config/story';
+import { pickups as cfgPickups } from '../config/pickups';
 import { tree } from '../config/tree';
 import { werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
+import { PickupKind, pickupKinds } from '../data/pickups';
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
@@ -29,12 +31,14 @@ import { GhostText } from '../render/GhostText';
 import { HeroPose } from '../render/HeroPose';
 import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
+import { PickupsView } from '../render/PickupsView';
 import { PlayerView } from '../render/PlayerView';
 import { clock, RunHud } from '../render/RunHud';
 import { ShadesView } from '../render/ShadesView';
 import { TimoView } from '../render/TimoView';
 import { WerewolfView } from '../render/WerewolfView';
 import { Arrows } from '../sim/Arrows';
+import { Pickups } from '../sim/Pickups';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
 import { Shades } from '../sim/Shades';
@@ -102,6 +106,8 @@ export class ArenaScene extends Phaser.Scene {
   private arrows!: Arrows;
   private arrowsView!: ArrowsView;
   private shades!: Shades;
+  private pickups!: Pickups;
+  private pickupsView!: PickupsView;
   private shadesView!: ShadesView;
   private wolf!: Werewolf;
   private wolfView!: WerewolfView;
@@ -178,6 +184,9 @@ export class ArenaScene extends Phaser.Scene {
     this.arrowsView = new ArrowsView(this, this.arrows, this.fx);
     this.shades = new Shades();
     this.shadesView = new ShadesView(this, this.shades, this.fx);
+    this.pickups = new Pickups();
+    this.pickupsView = new PickupsView(this, this.pickups);
+    this.pickups.onCollected = (kind) => this.collect(kind);
     this.wolf = new Werewolf(werewolf);
     this.wolfView = new WerewolfView(this, this.wolf, this.fx);
     this.sfx = new SoundFx(this);
@@ -238,7 +247,7 @@ export class ArenaScene extends Phaser.Scene {
     this.shades.onKilled = (x, y) => {
       if (this.run.state === 'fighting') {
         this.run.kills++;
-        this.earn(tree.shardsPerKill);
+        this.dropShards(x, y, tree.shardsPerKill);
       }
       this.shadesView.onKilled(x, y);
             this.fx.addShake(run.killShake);
@@ -444,9 +453,16 @@ export class ArenaScene extends Phaser.Scene {
     this.hitStop = Math.max(this.hitStop, seconds);
   }
 
-  // Banks shards for a kill, after the tree's shard bonus.
-  private earn(base: number): void {
-    const n = Math.round(base * stats.shardGain());
+  // Memory shard orbs where something died in the Mindscape. A boss's pile bursts out further.
+  private dropShards(x: number, y: number, count: number, burst = false): void {
+    const kind = pickupKinds.get('memory_shard');
+    if (kind && count > 0) this.pickups.drop(kind, x, y, count, burst ? cfgPickups.burstSpeed : cfgPickups.popSpeed);
+  }
+
+  // An orb reached him: bank its worth, after the tree's bonus for memory shards.
+  private collect(kind: PickupKind): void {
+    if (kind.wallet !== 'memory') return;
+    const n = Math.round(kind.value * stats.shardGain());
     this.run.shards += n;
     addShards(n);
   }
@@ -454,12 +470,14 @@ export class ArenaScene extends Phaser.Scene {
   private onWolfKilled(x: number, y: number): void {
     this.wolfView.onKilled(x, y);
         if (this.run.state !== 'fighting') return;
-    this.earn(werewolf.shards);
+    this.dropShards(x, y, werewolf.shards, true);
     this.freeze(0.15, true);
     // Beating him wins the Mindscape, full tree or not: the Shades fade, then he wakes back where he touched the bow.
     this.winMindscape();
     this.run.holdSpawns = true;
     [...this.shades.list].forEach((s) => this.shades.kill(s));
+    // Every orb left on the floor comes to him.
+    this.pickups.callAll();
     this.ghost.show('Memories restored', Math.max(0.5, story.clearedDelay - 1));
     this.time.delayedCall(story.clearedDelay * 1000, () => this.travel(this.wayBack()));
   }
@@ -467,6 +485,8 @@ export class ArenaScene extends Phaser.Scene {
   private startRun(): void {
     this.shades.clear();
     this.shadesView.clear();
+    this.pickups.clear();
+    this.pickupsView.clear();
     this.wolf.clear();
     this.wolfView.clear();
     this.wolfCame = false;
@@ -563,6 +583,7 @@ export class ArenaScene extends Phaser.Scene {
 
     this.arrowsView.render();
     this.shadesView.render(this.player.x, this.player.y);
+    this.pickupsView.render(frameDt);
     this.wolfView.render(frameDt, cam.width);
     // A story pose (lying, getting up) stands in for his normal look.
     this.pose.update(frameDt, this.player.x, this.player.y);
@@ -624,6 +645,7 @@ export class ArenaScene extends Phaser.Scene {
     this.targets.push(...this.shades.list);
     if (this.wolf.alive && !this.wolf.airborne) this.targets.push(this.wolf);
     this.arrows.update(dt, this.targets, this.world);
+    this.pickups.update(dt, this.player.x, this.player.y, r.state === 'fighting' && this.control);
     if (r.state === 'fighting' && !this.player.safe && !sim.godMode) {
       const { x, y } = this.player;
       if (this.shades.touching(x, y, cfgPlayer.hitRadius) || this.wolf.touching(x, y, cfgPlayer.hitRadius) || this.world.onHurtingFloor(x, y)) this.die();
@@ -653,6 +675,7 @@ export class ArenaScene extends Phaser.Scene {
     };
     ring(this.player.x, this.player.y, cfgPlayer.bodyRadius, 0x66ccff);
     ring(this.player.x, this.player.y, cfgPlayer.hitRadius, 0xff4466);
+    ring(this.player.x, this.player.y, cfgPickups.pickupRadius, 0x7fc8ff);
     for (const s of this.shades.list) {
       if (!s.alive) continue;
       ring(s.x, s.y, s.radius, 0xffcc44);

@@ -12,7 +12,7 @@ export const STATS = {
   fireRate: { kind: 'add', label: 'shots a second' },
   moveSpeed: { kind: 'add', label: 'move speed' },
   range: { kind: 'pct', label: 'arrow range' },
-  shardGain: { kind: 'pct', label: 'shards' },
+  shardGain: { kind: 'pct', label: 'memory shard value' },
   runStart: { kind: 'add', label: 'seconds: runs start this far in' },
 } as const;
 

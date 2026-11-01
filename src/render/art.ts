@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { pickupKinds, pickupTexture } from '../data/pickups';
 import { rgba, Sprite, sprites } from '../data/sprites';
 
 // Code-drawn placeholder art. Gameplay only refers to these texture keys, so real sprite sheets
@@ -209,4 +210,8 @@ export function makeCodeArt(scene: Phaser.Scene): void {
   softCircle(scene, Tex.shadow, 16, 0x000000, 0.6);
   softCircle(scene, Tex.smoke, 12, 0x8a8698, 0.9);
   pillar(scene);
+  // Pickup orbs (memory shards): a small round orb in each kind's colours; the glow is drawn round it in play.
+  for (const k of pickupKinds.list()) {
+    fromGrid(scene, pickupTexture(k), ['.rrr.', 'rccrr', 'rcccr', 'rrccr', '.rrr.'], { c: k.core, r: k.rim });
+  }
 }
