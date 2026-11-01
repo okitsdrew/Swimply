@@ -104,6 +104,15 @@ export const teleport = defineConfig(
     lineFade: 0.1,
     lineWidth: 2.5,
     puffs: 2,
+    // The line is a pixel tear: how many of its pixels shed a drifting wisp as it closes (0 to 1).
+    wispChance: 0.5,
+    wispLife: 0.35,
+    // The burst where he lands: sparks that fly out, and a ring that grows to burstRing art pixels across.
+    burstSparks: 10,
+    burstSpeed: 100,
+    burstLife: 0.3,
+    burstRing: 15,
+    burstRingTime: 0.12,
   },
   {
     distance: { min: 50, max: 1000, step: 10 },
@@ -117,5 +126,12 @@ export const teleport = defineConfig(
     lineFade: { min: 0.05, max: 2, step: 0.05 },
     lineWidth: { min: 0.5, max: 10, step: 0.5 },
     puffs: { min: 0, max: 60, step: 1 },
+    wispChance: { min: 0, max: 1, step: 0.05 },
+    wispLife: { min: 0.05, max: 2, step: 0.05 },
+    burstSparks: { min: 0, max: 60, step: 1 },
+    burstSpeed: { min: 0, max: 400, step: 5 },
+    burstLife: { min: 0.05, max: 2, step: 0.05 },
+    burstRing: { min: 0, max: 60, step: 1 },
+    burstRingTime: { min: 0.02, max: 1, step: 0.01 },
   },
 );
