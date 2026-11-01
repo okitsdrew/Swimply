@@ -159,14 +159,7 @@ def ui_tree_open():
     return out
 
 
-def shade_rise():
-    # A Shade coming up out of the ground: a short, dark breath. Kept small, as it plays often.
-    n = int(RATE * 0.25)
-    bp = BandPass(2.5)
-    return [bp(random.uniform(-1, 1), 250 + 500 * (i / n)) * env(i / RATE, 0.08, 0.25, 2) for i in range(n)]
-
-
-SOUNDS = {'dash_swish': dash, 'enemy_hit': hit, 'voice_blip': voice_blip, 'ui_click': ui_click, 'ui_next': ui_next, 'ui_buy': ui_buy, 'ui_deny': ui_deny, 'ui_tree_open': ui_tree_open, 'shade_rise': shade_rise}
+SOUNDS = {'dash_swish': dash, 'enemy_hit': hit, 'voice_blip': voice_blip, 'ui_click': ui_click, 'ui_next': ui_next, 'ui_buy': ui_buy, 'ui_deny': ui_deny, 'ui_tree_open': ui_tree_open}
 
 if __name__ == '__main__':
     # Names on the command line make just those (python3 scripts/make-placeholder-sounds.py voice_blip), so sounds

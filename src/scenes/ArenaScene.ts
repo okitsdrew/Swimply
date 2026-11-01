@@ -232,10 +232,7 @@ export class ArenaScene extends Phaser.Scene {
       this.fx.addShake(camera.shakeOnHit);
       this.sfx.play('hit');
     };
-    this.shades.onRisen = (s) => {
-      this.shadesView.onRisen(s);
-      this.sfx.play('shadeRise');
-    };
+    this.shades.onRisen = (s) => this.shadesView.onRisen(s);
     this.shades.onKilled = (x, y) => {
       if (this.run.state === 'fighting') {
         this.run.kills++;

@@ -23,7 +23,6 @@
     { "id": "ui_buy", "file": "ui_buy.wav", "volume": 0.5 },
     { "id": "ui_deny", "file": "ui_deny.wav", "volume": 0.4 },
     { "id": "ui_tree_open", "file": "ui_tree_open.wav", "volume": 0.5 },
-    { "id": "shade_rise", "file": "shade_rise.wav", "volume": 0.25 },
     { "id": "door", "file": "door.ogg" },
     { "id": "werewolf_initiate", "file": "werewolf_initiate.ogg" },
     { "id": "werewolf_smash", "file": "werewolf_smash.ogg" },
@@ -43,7 +42,6 @@
     "deny": "ui_deny",
     "treeOpen": "ui_tree_open",
     "door": "door",
-    "shadeRise": "shade_rise",
     "wolfLeap": "werewolf_initiate",
     "wolfSmash": "werewolf_smash"
   },
