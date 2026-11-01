@@ -34,6 +34,9 @@ export interface Speaker {
 //   { "control": false }                                     the player cannot move (true gives it back)
 //   { "pose": "asleep" }                                     the hero lies on the ground
 //   { "pose": "stand", "time": 3 }                           he gets up; the script carries on meanwhile
+//   { "pose": "stand", "frames": [{ "frame": 0, "time": 0.5 }, { "frame": 1, "time": 1 }] }
+//                                                            ...showing hero_getup_0, _1... in this order, each
+//                                                            for its own time (a frame can come back, to hold a struggle)
 //   { "timo": "bow_pedestal" }                               Timo floats over beside the first placed thing of
 //                                                            that asset id; "hero" to follow the hero again
 //   { "shake": 6 }                                           shakes the screen (an explosion nearby)
@@ -45,9 +48,15 @@ export type Step =
   | { kind: 'flag'; flag: string }
   | { kind: 'eyes'; open: boolean; seconds: number }
   | { kind: 'control'; on: boolean }
-  | { kind: 'pose'; pose: 'asleep' | 'stand'; seconds: number }
+  | { kind: 'pose'; pose: 'asleep' | 'stand'; seconds: number; frames: PoseFrame[] }
   | { kind: 'timo'; target: string }
   | { kind: 'shake'; amount: number };
+
+// One getting-up frame (hero_getup_<frame>) and how long it shows.
+export interface PoseFrame {
+  frame: number;
+  seconds: number;
+}
 
 export interface Script {
   id: string;
@@ -100,7 +109,12 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
   if (e.pose !== undefined) {
     const pose = str(e.pose, '', `${where}.pose`, problems);
     if (pose !== 'asleep' && pose !== 'stand') return problems.push(`${where}: pose must be "asleep" or "stand", skipped`), null;
-    return { kind: 'pose', pose, seconds: num(e.time, 3, `${where}.time`, problems) };
+    const frames = list(e.frames, `${where}.frames`, problems).map((f, i): PoseFrame => {
+      const o = obj(f);
+      return { frame: Math.max(0, Math.round(num(o.frame, 0, `${where}.frames ${i}.frame`, problems))), seconds: Math.max(0, num(o.time, 0.5, `${where}.frames ${i}.time`, problems)) };
+    });
+    const total = frames.reduce((t, f) => t + f.seconds, 0);
+    return { kind: 'pose', pose, seconds: frames.length ? total : num(e.time, 3, `${where}.time`, problems), frames };
   }
   if (e.timo !== undefined) return { kind: 'timo', target: str(e.timo, 'hero', `${where}.timo`, problems) };
   if (e.shake !== undefined) return { kind: 'shake', amount: num(e.shake, 6, `${where}.shake`, problems) };

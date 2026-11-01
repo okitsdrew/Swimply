@@ -211,7 +211,7 @@ export class ArenaScene extends Phaser.Scene {
       onLine: (speaker, face) => (speaker === 'timo' ? this.timo.setFace(face) : speaker === null && this.timo.setFace('')),
       setControl: (on) => (this.control = on),
       eyes: (open, seconds) => (open ? this.lids.wakeUp(seconds) : this.lids.close()),
-      pose: (pose, seconds) => (pose === 'asleep' ? this.pose.asleep() : this.pose.standUp(seconds)),
+      pose: (pose, seconds, frames) => (pose === 'asleep' ? this.pose.asleep() : this.pose.standUp(seconds, frames)),
       moveTimo: (target) => this.moveTimo(target),
       shake: (amount) => this.fx.addShake(amount),
     });

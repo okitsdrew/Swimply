@@ -1,5 +1,5 @@
 import { save, writeSave } from '../core/save';
-import { Script } from '../data/story';
+import { PoseFrame, Script } from '../data/story';
 import { DialogueBox } from '../render/DialogueBox';
 import { GhostText } from '../render/GhostText';
 
@@ -9,7 +9,7 @@ export interface Stage {
   onLine(speaker: string | null, face: string): void;
   setControl(on: boolean): void;
   eyes(open: boolean, seconds: number): void;
-  pose(pose: 'asleep' | 'stand', seconds: number): void;
+  pose(pose: 'asleep' | 'stand', seconds: number, frames: PoseFrame[]): void;
   moveTimo(target: string): void;
   shake(amount: number): void;
 }
@@ -96,7 +96,7 @@ export class StoryRunner {
       writeSave();
     } else if (step.kind === 'eyes') this.stage.eyes(step.open, step.seconds);
     else if (step.kind === 'control') this.stage.setControl(step.on);
-    else if (step.kind === 'pose') this.stage.pose(step.pose, step.seconds);
+    else if (step.kind === 'pose') this.stage.pose(step.pose, step.seconds, step.frames);
     else if (step.kind === 'timo') this.stage.moveTimo(step.target);
     else if (step.kind === 'shake') this.stage.shake(step.amount);
     // Steps that finish at once move on in the next update.

@@ -2384,6 +2384,149 @@
         "...wkkw..wkkwkkw..wkkwkkkkkkw",
         "...wwww..wwwwwww..wwwwwwwwwww"
       ]
+    },
+    {
+      "id": "hero_getup_0",
+      "name": "hero_getup_0",
+      "palette": {
+        "a": "#0b0910",
+        "r": "#2a2140",
+        "h": "#1c1826",
+        "b": "#9a50ff",
+        "f": "#5a2a9a",
+        "d": "#949494",
+        "e": "#b4b4c6",
+        "s": "#5e5e70",
+        "g": "#07070a"
+      },
+      "rows": [
+        "..................",
+        "..................",
+        "..................",
+        "..................",
+        ".............aaa..",
+        "............ahhra.",
+        "............aaaara",
+        "...........aaaaah.",
+        ".........eeeaaaaha",
+        "s.......dddaaaaaaa",
+        "sdeaaagbdfdaaaaaa.",
+        "ssdahagbdfdsaaaaaa",
+        "....eeebdddaaaaaa.",
+        "....dddbsss..aaa..",
+        "sdeaaagbs.bf......",
+        "ssdaaagf..bb......",
+        "s.........ff......",
+        "..........hh......"
+      ]
+    },
+    {
+      "id": "hero_getup_1",
+      "name": "hero_getup_1",
+      "palette": {
+        "a": "#0b0910",
+        "r": "#2a2140",
+        "h": "#1c1826",
+        "b": "#9a50ff",
+        "c": "#f0e0ff",
+        "f": "#5a2a9a",
+        "d": "#949494",
+        "e": "#b4b4c6",
+        "s": "#5e5e70",
+        "g": "#07070a"
+      },
+      "rows": [
+        "............",
+        "............",
+        "............",
+        "............",
+        "...a.aa.a...",
+        "..arhhaaaa..",
+        ".arhaaaaaaa.",
+        ".ahbcaacbaa.",
+        ".ahbbaabbaa.",
+        "..aaaaaaaa..",
+        "...aeaasa...",
+        "...edddds...",
+        "...edffds...",
+        "...ddddss...",
+        "...bbbbbf...",
+        "...ggedgg...",
+        "...aaedaa...",
+        "..sssa.dss.."
+      ]
+    },
+    {
+      "id": "hero_getup_2",
+      "name": "hero_getup_2",
+      "palette": {
+        "a": "#0b0910",
+        "r": "#2a2140",
+        "h": "#1c1826",
+        "b": "#9a50ff",
+        "c": "#f0e0ff",
+        "f": "#5a2a9a",
+        "d": "#949494",
+        "e": "#b4b4c6",
+        "s": "#5e5e70",
+        "g": "#07070a"
+      },
+      "rows": [
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...a.aa.a...",
+        "..arhhaaaa..",
+        ".arhaaaaaaa.",
+        ".ahbcaacbaa.",
+        ".ahbbaabbaa.",
+        "..aaaeaasa..",
+        "...edddds...",
+        "...edffds...",
+        "...ddddss...",
+        "...bbbbbf...",
+        "...ggedgg...",
+        "...aaedaa...",
+        "..sssa.dss.."
+      ]
+    },
+    {
+      "id": "hero_getup_3",
+      "name": "hero_getup_3",
+      "palette": {
+        "a": "#0b0910",
+        "r": "#2a2140",
+        "h": "#1c1826",
+        "b": "#9a50ff",
+        "c": "#f0e0ff",
+        "f": "#5a2a9a",
+        "d": "#949494",
+        "e": "#b4b4c6",
+        "s": "#5e5e70",
+        "g": "#07070a"
+      },
+      "rows": [
+        "............",
+        "............",
+        "...a.aa.a...",
+        "..arhhaaaa..",
+        ".arbcaacbaa.",
+        ".ahbbaabbaa.",
+        ".ahaaaaaaaa.",
+        "..aaaaaaaa..",
+        "...aeaasa...",
+        "...edddds...",
+        "...edffds...",
+        "...ddddss...",
+        "...bbbbbf...",
+        "...ggedgg...",
+        "..aa.ed.aa..",
+        "..ah.ed.aa..",
+        "..ed....ed..",
+        ".sss....sss."
+      ]
     }
   ]
 }

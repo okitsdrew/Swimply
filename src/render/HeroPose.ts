@@ -1,15 +1,18 @@
 import Phaser from 'phaser';
 import { render } from '../config/render';
 import { toScreen } from '../core/iso';
+import { PoseFrame } from '../data/story';
 
 // The hero in a story pose instead of his normal look: lying asleep (`hero_asleep`), or getting up. Getting up
-// plays `hero_getup_0`, `hero_getup_1`... if they are drawn; until then he fades from lying to a wobbly rise.
+// plays `hero_getup_0`, `hero_getup_1`... if they are drawn, evenly or in the order and times the script gives;
+// with none drawn he fades from lying to a wobbly rise.
 export class HeroPose {
   private img: Phaser.GameObjects.Image;
   private rise: Phaser.GameObjects.Image;
   private pose: 'none' | 'asleep' | 'standing' = 'none';
   private t = 0;
   private time = 1;
+  private sequence: PoseFrame[] = [];
 
   constructor(private scene: Phaser.Scene) {
     this.img = scene.add.image(0, 0, 'hero_asleep').setOrigin(0.5, 0.8).setVisible(false);
@@ -25,17 +28,28 @@ export class HeroPose {
     this.pose = 'asleep';
   }
 
-  standUp(seconds: number): void {
+  standUp(seconds: number, sequence: PoseFrame[] = []): void {
     if (this.pose === 'none') return;
     this.pose = 'standing';
     this.t = 0;
     this.time = Math.max(seconds, 0.01);
+    this.sequence = sequence;
   }
 
   private frames(): string[] {
     const out: string[] = [];
     while (this.scene.textures.exists(`hero_getup_${out.length}`)) out.push(`hero_getup_${out.length}`);
     return out;
+  }
+
+  // The frame showing now: from the script's sequence if it gave one (skipping frames not drawn), else evenly.
+  private frameAt(frames: string[]): string {
+    let left = this.t * this.time;
+    for (const f of this.sequence) {
+      if (left < f.seconds || f === this.sequence[this.sequence.length - 1]) return frames[Math.min(f.frame, frames.length - 1)];
+      left -= f.seconds;
+    }
+    return frames[Math.min(frames.length - 1, Math.floor(this.t * frames.length))];
   }
 
   update(dt: number, x: number, y: number): void {
@@ -51,7 +65,7 @@ export class HeroPose {
     this.t = Math.min(1, this.t + dt / this.time);
     const frames = this.frames();
     if (frames.length) {
-      this.img.setTexture(frames[Math.min(frames.length - 1, Math.floor(this.t * frames.length))]).setOrigin(0.5, 1);
+      this.img.setTexture(this.frameAt(frames)).setOrigin(0.5, 1);
     } else {
       // Stand-in: lying fades out as he rises, slowly and unsteadily.
       const up = Phaser.Math.Easing.Quadratic.InOut(Phaser.Math.Clamp(this.t * 1.25 - 0.25, 0, 1));

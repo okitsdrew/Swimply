@@ -20,7 +20,7 @@
         { "shake": 3 },
         { "eyes": "open", "time": 3.5 },
         { "say": "timo", "face": "timo_happy", "text": "holy shit! it actually worked!" },
-        { "pose": "stand", "time": 4 },
+        { "pose": "stand", "frames": [{ "frame": 0, "time": 0.7 }, { "frame": 1, "time": 0.9 }, { "frame": 2, "time": 0.8 }, { "frame": 1, "time": 0.7 }, { "frame": 3, "time": 0.6 }] },
         { "say": "timo", "face": "timo_happy", "text": "im unstoppable!" },
         { "say": "timo", "face": "timo_happy", "text": "it is I, Timo the wise! and who might you be?" },
         { "say": "swimply", "text": "..." },
