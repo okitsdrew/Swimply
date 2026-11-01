@@ -50,18 +50,20 @@
         "d": "#949494",
         "e": "#b4b4c6",
         "s": "#5e5e70",
-        "g": "#07070a"
+        "g": "#07070a",
+        "v": "#7a46c8",
+        "n": "#1a0c30"
       },
       "rows": [
         ".............aaa..",
-        "s...........ahhra.",
+        "s....nnvvvvvahhra.",
         "sdeaaagbdeeaaaaara",
         "ssdahagbdddeaaaah.",
         "....eeebdfdaaaaaha",
         "....dddbdfdaaaaaaa",
         "sdeaaagbsddsaaaaa.",
         "ssdaaagfsssaaaaaaa",
-        "s...........aaaaa.",
+        "s....nnvvvvvaaaaa.",
         ".............aaa.."
       ]
     },
@@ -2386,9 +2388,19 @@
       ]
     },
     {
-      "id": "getup_draft_0",
-      "name": "getup_draft_0",
-      "palette": { "a": "#0b0910", "r": "#2a2140", "h": "#1c1826", "b": "#9a50ff", "f": "#5a2a9a", "d": "#949494", "e": "#b4b4c6", "s": "#5e5e70", "g": "#07070a" },
+      "id": "hero_getup_0",
+      "name": "hero_getup_0",
+      "palette": {
+        "a": "#0b0910",
+        "r": "#2a2140",
+        "h": "#1c1826",
+        "b": "#9a50ff",
+        "f": "#5a2a9a",
+        "d": "#949494",
+        "e": "#b4b4c6",
+        "s": "#5e5e70",
+        "g": "#07070a"
+      },
       "rows": [
         "..................",
         "..................",
@@ -2404,16 +2416,29 @@
         "ssdahagbdfdsaaaaaa",
         "....eeebdddaaaaaa.",
         "....dddbsss..aaa..",
-        "sdeaaagbs..a......",
-        "ssdaaagf...a......",
-        "s..........a......",
-        "..........ss......"
+        "sdeaaagbs.bf......",
+        "ssdaaagf..bb......",
+        "s.........ff......",
+        "..........hh......"
       ]
     },
     {
-      "id": "getup_draft_1",
-      "name": "getup_draft_1",
-      "palette": { "a": "#0b0910", "r": "#2a2140", "h": "#1c1826", "b": "#9a50ff", "c": "#f0e0ff", "f": "#5a2a9a", "d": "#949494", "e": "#b4b4c6", "s": "#5e5e70", "g": "#07070a" },
+      "id": "hero_getup_1",
+      "name": "hero_getup_1",
+      "palette": {
+        "a": "#0b0910",
+        "r": "#2a2140",
+        "h": "#1c1826",
+        "b": "#9a50ff",
+        "c": "#f0e0ff",
+        "f": "#5a2a9a",
+        "d": "#949494",
+        "e": "#b4b4c6",
+        "s": "#5e5e70",
+        "g": "#07070a",
+        "v": "#7a46c8",
+        "n": "#1a0c30"
+      },
       "rows": [
         "............",
         "............",
@@ -2426,19 +2451,32 @@
         ".ahbbaabbaa.",
         "..aaaaaaaa..",
         "...aeaasa...",
-        "...edddds...",
-        "...edffds...",
-        "...ddddss...",
-        "...bbbbbf...",
-        "...ggedgg...",
-        "...aaedaa...",
+        ".vveddddsvv.",
+        ".vvedffdsvv.",
+        ".vvddddssvv.",
+        ".vvbbbbbfvv.",
+        ".nnggedggnn.",
+        ".nnaaedaann.",
         "..sssa.dss.."
       ]
     },
     {
-      "id": "getup_draft_2",
-      "name": "getup_draft_2",
-      "palette": { "a": "#0b0910", "r": "#2a2140", "h": "#1c1826", "b": "#9a50ff", "c": "#f0e0ff", "f": "#5a2a9a", "d": "#949494", "e": "#b4b4c6", "s": "#5e5e70", "g": "#07070a" },
+      "id": "hero_getup_2",
+      "name": "hero_getup_2",
+      "palette": {
+        "a": "#0b0910",
+        "r": "#2a2140",
+        "h": "#1c1826",
+        "b": "#9a50ff",
+        "c": "#f0e0ff",
+        "f": "#5a2a9a",
+        "d": "#949494",
+        "e": "#b4b4c6",
+        "s": "#5e5e70",
+        "g": "#07070a",
+        "v": "#7a46c8",
+        "n": "#1a0c30"
+      },
       "rows": [
         "............",
         "............",
@@ -2451,19 +2489,32 @@
         ".ahbcaacbaa.",
         ".ahbbaabbaa.",
         "..aaaeaasa..",
-        "...edddds...",
-        "...edffds...",
-        "...ddddss...",
-        "...bbbbbf...",
-        "...ggedgg...",
-        "...aaedaa...",
+        ".vveddddsvv.",
+        ".vvedffdsvv.",
+        ".vvddddssvv.",
+        ".vvbbbbbfvv.",
+        ".nnggedggnn.",
+        ".nnaaedaann.",
         "..sssa.dss.."
       ]
     },
     {
-      "id": "getup_draft_3",
-      "name": "getup_draft_3",
-      "palette": { "a": "#0b0910", "r": "#2a2140", "h": "#1c1826", "b": "#9a50ff", "c": "#f0e0ff", "f": "#5a2a9a", "d": "#949494", "e": "#b4b4c6", "s": "#5e5e70", "g": "#07070a" },
+      "id": "hero_getup_3",
+      "name": "hero_getup_3",
+      "palette": {
+        "a": "#0b0910",
+        "r": "#2a2140",
+        "h": "#1c1826",
+        "b": "#9a50ff",
+        "c": "#f0e0ff",
+        "f": "#5a2a9a",
+        "d": "#949494",
+        "e": "#b4b4c6",
+        "s": "#5e5e70",
+        "g": "#07070a",
+        "v": "#7a46c8",
+        "n": "#1a0c30"
+      },
       "rows": [
         "............",
         "............",
@@ -2474,13 +2525,13 @@
         ".ahaaaaaaaa.",
         "..aaaaaaaa..",
         "...aeaasa...",
-        "...edddds...",
-        "...edffds...",
-        "...ddddss...",
-        "...bbbbbf...",
-        "...ggedgg...",
-        "..aaed.daa..",
-        "..ahd...aa..",
+        ".vveddddsvv.",
+        ".vvedffdsvv.",
+        ".vvddddssvv.",
+        ".vvbbbbbfvv.",
+        ".nnggedggnn.",
+        ".nna.ed.ann.",
+        "..ah.ed.aa..",
         "..ed....ed..",
         ".sss....sss."
       ]
