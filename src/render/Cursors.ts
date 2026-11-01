@@ -2,7 +2,7 @@ import { render } from '../config/render';
 import { rgba, sprites } from '../data/sprites';
 
 // The mouse cursors, drawn from the `cursor` and `crosshair` sprites and handed to the browser as CSS cursors, so
-// they move with no lag. `cursor` points with the middle of its top-left pixel; `crosshair` aims with its middle pixel.
+// they move with no lag. `cursor` clicks at render.pointerHotX/Y; `crosshair` aims with its middle pixel.
 // A missing sprite falls back to the browser's own cursor.
 export type CursorKind = 'pointer' | 'crosshair';
 
@@ -15,7 +15,7 @@ const made = new Map<string, string>();
 
 export function cursorCss(kind: CursorKind): string {
   const scale = Math.max(1, Math.round(render.cursorScale));
-  const key = `${kind}@${scale}`;
+  const key = `${kind}@${scale}:${render.pointerHotX},${render.pointerHotY}`;
   let css = made.get(key);
   if (css === undefined) {
     css = draw(kind, scale);
@@ -41,8 +41,9 @@ function draw(kind: CursorKind, wanted: number): string {
     ctx.fillStyle = colors[j];
     ctx.fillRect((i % sprite.width) * scale, Math.floor(i / sprite.width) * scale, scale, scale);
   });
-  // The click lands in the middle of the aiming pixel, not on its corner.
-  const at = kind === 'pointer' ? { x: 0, y: 0 } : { x: Math.floor(sprite.width / 2), y: Math.floor(sprite.height / 2) };
-  const hot = { x: at.x * scale + Math.floor(scale / 2), y: at.y * scale + Math.floor(scale / 2) };
+  const mid = Math.floor(scale / 2);
+  const hot = kind === 'pointer'
+    ? { x: Math.round(render.pointerHotX), y: Math.round(render.pointerHotY) }
+    : { x: Math.floor(sprite.width / 2) * scale + mid, y: Math.floor(sprite.height / 2) * scale + mid };
   return `url(${canvas.toDataURL()}) ${hot.x} ${hot.y}, ${FALLBACK[kind]}`;
 }
