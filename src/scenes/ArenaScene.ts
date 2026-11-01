@@ -21,6 +21,7 @@ import { LoopSounds } from '../render/LoopSounds';
 import { SoundFx } from '../render/SoundFx';
 import { ArrowsView } from '../render/ArrowsView';
 import { makeArt } from '../render/art';
+import { cursorCss } from '../render/Cursors';
 import { DialogueBox } from '../render/DialogueBox';
 import { Eyelids } from '../render/Eyelids';
 import { Fx } from '../render/Fx';
@@ -121,6 +122,7 @@ export class ArenaScene extends Phaser.Scene {
   private stepsQueued = 0;
   private aim: Vec2 | null = null;
   private treeOpen = false;
+  private cursor = '';
 
   constructor() {
     super('arena');
@@ -576,6 +578,16 @@ export class ArenaScene extends Phaser.Scene {
     const notes = [this.showHitboxes && this.wolf.present && `WEREWOLF ${this.wolf.state.toUpperCase()}`, this.paused && !this.treeOpen && 'PAUSED', this.run.holdSpawns && !this.calm && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
     this.drawDebug();
+    this.updateCursor();
+  }
+
+  // A crosshair while the bow can fire; the pointer in menus, during dialogue and before he can shoot.
+  private updateCursor(): void {
+    const aiming = this.run.state === 'fighting' && this.control && !this.leaving && !this.treeOpen && !this.story.talking && stats.canFire();
+    const css = cursorCss(aiming ? 'crosshair' : 'pointer');
+    if (css === this.cursor) return;
+    this.cursor = css;
+    this.input.setDefaultCursor(css);
   }
 
   // One fixed step of the whole simulation, in the order things happen.

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { save } from '../core/save';
+import { cursorCss } from '../render/Cursors';
 import { SoundFx } from '../render/SoundFx';
 import { buy, canBuy, cost, describe, isOpen, level, maxed, shown, TreeNode, treeComplete, treeNodes } from '../data/tree';
 
@@ -69,7 +70,7 @@ export class TreeScene extends Phaser.Scene {
     for (const node of treeNodes.list()) {
       const x = cx + node.x;
       const y = cy + node.y;
-      const ring = this.add.circle(x, y, NODE_RADIUS, colors.open).setInteractive({ useHandCursor: true });
+      const ring = this.add.circle(x, y, NODE_RADIUS, colors.open).setInteractive({ cursor: cursorCss('pointer') });
       const price = this.add.text(x, y, '', { ...font, fontSize: '15px', strokeThickness: 3 }).setOrigin(0.5);
       const label = this.add.text(x, y + NODE_RADIUS + 12, node.name, { ...font, fontSize: '13px', strokeThickness: 3 }).setOrigin(0.5, 0);
       const pips = this.add.graphics();
@@ -84,7 +85,7 @@ export class TreeScene extends Phaser.Scene {
     }
 
     const button = this.add.text(cx, height - 36, '', { ...font, fontSize: '20px', backgroundColor: '#2a2538', padding: { x: 14, y: 8 } })
-      .setOrigin(0.5).setInteractive({ useHandCursor: true });
+      .setOrigin(0.5).setInteractive({ cursor: cursorCss('pointer') });
     button.setText(`${this.opts.closeLabel}  [space]`);
     button.on('pointerover', () => button.setColor('#ffffff'));
     button.on('pointerout', () => button.setColor('#f2d7a6'));

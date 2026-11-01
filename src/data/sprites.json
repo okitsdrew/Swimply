@@ -2334,6 +2334,39 @@
         "........kkkkkkkkk.............",
         ".............................."
       ]
+    },
+    {
+      "id": "cursor",
+      "name": "cursor",
+      "palette": { "w": "#4a1a7a", "d": "#2a0a4a", "k": "#07000d", "p": "#7a2fd0", "P": "#e0c8ff" },
+      "rows": [
+        "PPPPPP....",
+        "PppppdP...",
+        "PpPPpP....",
+        "PpPkdP....",
+        "PppdkdP...",
+        "PdPPdkdP..",
+        ".P..PdkdP.",
+        ".....PdkpP",
+        "......PpkP",
+        ".......PP."
+      ]
+    },
+    {
+      "id": "crosshair",
+      "name": "crosshair",
+      "palette": { "w": "#4a1a7a", "d": "#2a0a4a", "k": "#07000d", "p": "#7a2fd0", "P": "#e0c8ff" },
+      "rows": [
+        "...pkp...",
+        "...pkp...",
+        "...pkp...",
+        "ppppkpppp",
+        "kkkk.kkkk",
+        "ppppkpppp",
+        "...pkp...",
+        "...pkp...",
+        "...pkp..."
+      ]
     }
   ]
 }
