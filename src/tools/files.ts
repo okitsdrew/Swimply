@@ -67,13 +67,14 @@ export function assetsText(list: Asset[]): string {
     parts: a.parts.map((p) => compact({ ...p, fps: p.frames?.length ? p.fps : 8 }, { x: 0, y: 0, scale: 1, originX: 0.5, originY: 1, ground: false, fps: 8 })),
     collision: a.collision.map((c) => compact({ ...c }, { x: 0, y: 0 })),
     light: a.light ? compact({ ...a.light }, { x: 0, y: 0, flicker: 0 }) : null,
-  }, { marker: '', light: null })));
+    sound: a.sound ?? '',
+  }, { marker: '', light: null, sound: '' })));
 }
 
 export const hex = (c: number): string => '#' + c.toString(16).padStart(6, '0');
 
 export function floorsText(list: Floor[]): string {
-  return fileText({}, 'floors', list.map((f) => compact({ id: f.id, name: f.name, colors: f.colors.map(hex), blocks: f.blocks, hurts: f.hurts }, { blocks: false, hurts: false })));
+  return fileText({}, 'floors', list.map((f) => compact({ id: f.id, name: f.name, colors: f.colors.map(hex), blocks: f.blocks, hurts: f.hurts, sound: f.sound ?? '' }, { blocks: false, hurts: false, sound: '' })));
 }
 
 export function spritesText(list: Sprite[]): string {

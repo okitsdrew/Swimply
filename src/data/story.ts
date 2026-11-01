@@ -14,6 +14,10 @@ export interface Speaker {
   face: string;
   // Speaks in a small bubble over the hero's head instead of the box at the top.
   bubble: boolean;
+  // Their "voice": a sound id (sounds.json) played every few letters as a line types out, and how high it is
+  // (1 as recorded, 2 an octave up). Empty for silent.
+  voice: string;
+  pitch: number;
 }
 
 // One step of a script. Exactly one kind per step:
@@ -65,7 +69,7 @@ function parseSpeakers(data: unknown, problems: Problems): Speaker[] {
       problems.push(`${id}.color is ${JSON.stringify(color)}, expected a colour like "#c58cff"`);
       color = '#f2d7a6';
     }
-    return [{ id, name: str(e.name, id, `${id}.name`, problems), color, face: str(e.face, '', `${id}.face`, problems), bubble: bool(e.bubble, false, `${id}.bubble`, problems) }];
+    return [{ id, name: str(e.name, id, `${id}.name`, problems), color, face: str(e.face, '', `${id}.face`, problems), bubble: bool(e.bubble, false, `${id}.bubble`, problems), voice: str(e.voice, '', `${id}.voice`, problems), pitch: num(e.pitch, 1, `${id}.pitch`, problems) }];
   });
 }
 
