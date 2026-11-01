@@ -18,8 +18,8 @@ export const render = defineConfig(
     // Each pixel of the mouse cursor sprites is this many screen pixels.
     cursorScale: 3,
     // Where the pointer clicks, in screen pixels from its top-left corner.
-    pointerHotX: 1,
-    pointerHotY: 1,
+    pointerHotX: 0,
+    pointerHotY: 0,
   },
   {
     isoScale: { min: 0.3, max: 1.5, step: 0.01 },
