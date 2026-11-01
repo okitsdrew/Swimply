@@ -91,6 +91,8 @@ export class Werewolf implements Target {
   }
 
   onRisen: () => void = () => {};
+  // He commits to an attack: the dash's windup begins, or he leaves the ground for the jump.
+  onAttack: () => void = () => {};
   onSlam: () => void = () => {};
   onLand: () => void = () => {};
   onKilled: (x: number, y: number) => void = () => {};
@@ -341,6 +343,7 @@ export class Werewolf implements Target {
     this.jx = this.x + dx * k;
     this.jy = this.y + dy * k;
     this.enter('jump');
+    this.onAttack();
   }
 
   private startWindup(target: Vec2): void {
@@ -358,6 +361,7 @@ export class Werewolf implements Target {
     this.vy = 0;
     this.facing = toScreen(dx, dy, off).x < 0 ? -1 : 1;
     this.enter('windup');
+    this.onAttack();
   }
 
   private walk(dt: number, world: CollisionWorld, nav: Navigator, target: Vec2): void {

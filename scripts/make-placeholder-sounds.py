@@ -146,7 +146,20 @@ def ui_deny():
     return out
 
 
-SOUNDS = {'dash_swish': dash, 'enemy_hit': hit, 'voice_blip': voice_blip, 'ui_click': ui_click, 'ui_next': ui_next, 'ui_buy': ui_buy, 'ui_deny': ui_deny}
+def ui_tree_open():
+    # The tree screen opening: a low, airy swell that rises into a soft bell.
+    n = int(RATE * 0.7)
+    bp = BandPass(3)
+    out = []
+    for i in range(n):
+        t = i / RATE
+        air = bp(random.uniform(-1, 1), 400 + 1400 * min(1, t / 0.4)) * env(t, 0.35, 0.7, 2) * 0.8
+        bell = (math.sin(2 * math.pi * 659 * t) + 0.4 * math.sin(2 * math.pi * 988 * t)) * (env(t - 0.3, 0.005, 0.4, 3) if t >= 0.3 else 0.0)
+        out.append(air + bell * 0.5)
+    return out
+
+
+SOUNDS = {'dash_swish': dash, 'enemy_hit': hit, 'voice_blip': voice_blip, 'ui_click': ui_click, 'ui_next': ui_next, 'ui_buy': ui_buy, 'ui_deny': ui_deny, 'ui_tree_open': ui_tree_open}
 
 if __name__ == '__main__':
     # Names on the command line make just those (python3 scripts/make-placeholder-sounds.py voice_blip), so sounds

@@ -9,7 +9,7 @@
     { "id": "enemy_hit", "file": "enemy_hit.wav", "volume": 0.3 },
     { "id": "voice_blip", "file": "voice_blip.wav", "volume": 0.5 },
     { "id": "fire_ambience", "file": "fire_ambience.ogg" },
-    { "id": "bow_shot", "file": "bow_shot_4.ogg" },
+    { "id": "bow_shot", "file": "bow_shot_4.ogg", "volume": 0.5 },
     { "id": "teleport", "file": "teleport_4.ogg" },
     { "id": "swimply_dots_a", "file": "boop_conversation_a.ogg" },
     { "id": "swimply_dots_b", "file": "boop_conversation_b.ogg" },
@@ -21,7 +21,12 @@
     { "id": "ui_click", "file": "ui_click.wav", "volume": 0.5 },
     { "id": "ui_next", "file": "ui_next.wav", "volume": 0.4 },
     { "id": "ui_buy", "file": "ui_buy.wav", "volume": 0.5 },
-    { "id": "ui_deny", "file": "ui_deny.wav", "volume": 0.4 }
+    { "id": "ui_deny", "file": "ui_deny.wav", "volume": 0.4 },
+    { "id": "ui_tree_open", "file": "ui_tree_open.wav", "volume": 0.5 },
+    { "id": "door", "file": "door.ogg" },
+    { "id": "werewolf_initiate", "file": "werewolf_initiate.ogg" },
+    { "id": "werewolf_smash", "file": "werewolf_smash.ogg" },
+    { "id": "werewolf_swipe", "file": "werewolf_swipe_attack.ogg" }
   ],
   "effects": {
     "teleport": "teleport",
@@ -34,7 +39,11 @@
     "click": "ui_click",
     "next": "ui_next",
     "buy": "ui_buy",
-    "deny": "ui_deny"
+    "deny": "ui_deny",
+    "treeOpen": "ui_tree_open",
+    "door": "door",
+    "wolfAttack": "werewolf_initiate",
+    "wolfSmash": "werewolf_smash"
   },
   "ambience": [
     { "map": "spawn", "sounds": ["boom_distant", "rumble_tail"], "every": 4, "jitter": 1 }

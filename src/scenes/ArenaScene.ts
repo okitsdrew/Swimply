@@ -243,8 +243,15 @@ export class ArenaScene extends Phaser.Scene {
       this.freeze(run.killHitStop);
     };
     this.wolf.onRisen = () => this.wolfView.onRisen();
-    this.wolf.onSlam = () => this.onSlam();
-    this.wolf.onLand = () => this.wolfView.onLand();
+    this.wolf.onAttack = () => this.sfx.play('wolfAttack');
+    this.wolf.onSlam = () => {
+      this.sfx.play('wolfSmash');
+      this.onSlam();
+    };
+    this.wolf.onLand = () => {
+      this.sfx.play('wolfSmash');
+      this.wolfView.onLand();
+    };
     this.wolf.onKilled = (x, y) => this.onWolfKilled(x, y);
     this.run.spawnPoint = () => this.spawnPoint();
 
@@ -297,8 +304,9 @@ export class ArenaScene extends Phaser.Scene {
     this.leaving = true;
     leftFrom.set(this.mapId, { x: this.player.x, y: this.player.y });
     cameFrom = this.mapId;
-    // Into the Mindscape (a map Shades spawn in) from somewhere calm.
-    if (this.calm && next.objects.some((o) => o.asset.marker === 'shadeSpawn')) this.sfx.play('portal');
+    // Into the Mindscape (a map Shades spawn in) from somewhere calm, or through a door from one calm map to another.
+    const intoRun = next.objects.some((o) => o.asset.marker === 'shadeSpawn');
+    if (this.calm) this.sfx.play(intoRun ? 'portal' : 'door');
     const cam = this.cameras.main;
     cam.fadeOut(story.fadeTime * 1000);
     cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.restart({ map: next.id, at: leftFrom.get(next.id) }));
@@ -368,6 +376,7 @@ export class ArenaScene extends Phaser.Scene {
     if (this.treeOpen) return;
     this.treeOpen = true;
     this.hud.treeOpen = true;
+    this.sfx.play('treeOpen');
     const r = this.run;
     const dead = r.state === 'dead' && !this.calm;
     if (!dead) this.paused = true;
