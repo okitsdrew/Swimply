@@ -248,6 +248,10 @@ export class ArenaScene extends Phaser.Scene {
       this.sfx.play('wolfSmash');
       this.onSlam();
     };
+    this.wolf.onSwipe = () => {
+      this.sfx.play('wolfSwipe');
+      this.wolfView.onSwipe();
+    };
     this.wolf.onLand = () => {
       this.sfx.play('wolfSmash');
       this.wolfView.onLand();
@@ -417,12 +421,12 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   // The werewolf's attacks: the dash hurts along his path as he passes and at the far end where he slams; the
-  // jump hurts the landing circle.
+  // jump hurts the landing circle; the swipe hurts its cone for as long as he lunges.
   private checkWolfAttack(): void {
     const p = this.player;
     const w = this.wolf;
     const r = cfgPlayer.hitRadius;
-    const hit = w.inDash(p.x, p.y, r) || (w.slammed && w.inSlam(p.x, p.y, r)) || (w.landed && w.inLanding(p.x, p.y, r));
+    const hit = w.inDash(p.x, p.y, r) || (w.slammed && w.inSlam(p.x, p.y, r)) || (w.landed && w.inLanding(p.x, p.y, r)) || (w.state === 'swipe' && w.inSwipe(p.x, p.y, r));
     if (!hit || this.run.state !== 'fighting' || (p.safe && !werewolf.slamPiercesInvuln)) return;
     // Counted even in god mode, so his attack choice can be tested.
     w.struck = true;
