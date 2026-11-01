@@ -1,7 +1,8 @@
 import { Floor } from '../data/floors';
+import { sounds } from '../data/sounds';
 import { hex } from './files';
 import { Preview } from './Preview';
-import { button, checkbox, colorInput, el, ID_PATTERN, row, textInput, uniqueId } from './ui';
+import { button, checkbox, colorInput, el, ID_PATTERN, row, select, textInput, uniqueId } from './ui';
 import { Workspace } from './Workspace';
 
 // Edits floors.json: the kinds of ground a map is painted with. The asset tab's preview stands on the floor
@@ -68,6 +69,8 @@ export class FloorTab {
       row('kills the player', checkbox(!!f.hurts, (v) => { f.hurts = v; this.edit(); })),
       el('p', { class: 'hint', text: 'Standing on it kills the player, unless they are dashing or teleporting (or in the short grace after). Enemies ignore it.' }),
       el('p', { class: 'hint', text: 'A blocking floor (water, a cliff) cannot be walked on or teleported onto. Arrows and teleports pass over it.' }),
+      row('sound', select(['', ...sounds.list().map((s) => s.id)], f.sound ?? '', (v) => { f.sound = v; this.edit(); })),
+      el('p', { class: 'hint', text: 'A looping sound, louder the nearer the player is to this floor (the crackle of a fire). Range and volume are in the dev menu\'s sound section.' }),
       el('h3', { text: 'Colours' }),
       el('div', { class: 'chips' }, ...colors),
       el('div', { class: 'bar' }, button('Add colour', () => { f.colors.push(f.colors[f.colors.length - 1] ?? 0x1b1822); this.edit(); this.buildProps(); })),
@@ -83,7 +86,7 @@ export class FloorTab {
 
   private create(): void {
     const id = uniqueId('floor', this.taken);
-    const f: Floor = { id, name: id, colors: [...(this.current?.colors ?? [0x1b1822])], blocks: false, hurts: false };
+    const f: Floor = { id, name: id, colors: [...(this.current?.colors ?? [0x1b1822])], blocks: false, hurts: false, sound: '' };
     this.ws.floors.push(f);
     this.ws.touch('floors');
     this.open(f);

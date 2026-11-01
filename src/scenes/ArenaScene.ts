@@ -17,6 +17,7 @@ import { addShards, maxTree, resetTree } from '../data/tree';
 import { save, writeSave } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
 import { AmbienceView } from '../render/AmbienceView';
+import { LoopSounds } from '../render/LoopSounds';
 import { SoundFx } from '../render/SoundFx';
 import { ArrowsView } from '../render/ArrowsView';
 import { makeArt } from '../render/art';
@@ -88,6 +89,7 @@ export class ArenaScene extends Phaser.Scene {
   private posed = false;
   private ambience!: AmbienceView;
   private sfx!: SoundFx;
+  private loops!: LoopSounds;
   // A script can take control away (the hero lying down, a scene playing out).
   private control = true;
   private world!: MapWorld;
@@ -188,6 +190,7 @@ export class ArenaScene extends Phaser.Scene {
     this.timo.setVisible(this.calm);
     this.lids = new Eyelids(this);
     this.ambience = new AmbienceView(this, ambienceFor(this.mapId));
+    this.loops = new LoopSounds(this, this.map);
     this.pose = new HeroPose(this);
     this.posed = false;
     this.control = true;
@@ -547,6 +550,7 @@ export class ArenaScene extends Phaser.Scene {
     this.timo.update(frameDt, this.player.x, this.player.y);
     this.lids.update(frameDt, cam.width, cam.height);
     this.ambience.update(frameDt);
+    this.loops.update(this.player.x, this.player.y);
     this.box.update(frameDt, cam.width, this.player.x, this.player.y);
     this.ghost.update(frameDt, cam.width, cam.height);
     this.hint.update(frameDt, this.player.x, this.player.y, !!this.near && !this.leaving && this.control && this.run.state === 'fighting');

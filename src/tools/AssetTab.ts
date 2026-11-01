@@ -1,6 +1,7 @@
 import { player } from '../config/character';
 import Phaser from 'phaser';
 import { Asset, AssetPart, Light } from '../data/assets';
+import { sounds } from '../data/sounds';
 import { Preview } from './Preview';
 import { button, checkbox, colorInput, el, ID_PATTERN, numberInput, row, select, suggestInput, textInput, uniqueId } from './ui';
 import { Workspace } from './Workspace';
@@ -108,6 +109,10 @@ export class AssetTab {
         this.edit(true);
       })),
       ...(a.light ? this.lightRows(a.light) : []),
+
+      el('h3', { text: 'Sound' }),
+      row('loops', select(['', ...sounds.list().map((s) => s.id)], a.sound ?? '', (v) => { a.sound = v; this.edit(); })),
+      el('p', { class: 'hint', text: 'A looping sound, louder the nearer the player is to one of these (a fire\'s crackle). Range and volume are in the dev menu\'s sound section.' }),
     );
   }
 
@@ -157,7 +162,7 @@ export class AssetTab {
 
   private create(): void {
     const id = uniqueId('asset', this.taken);
-    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], marker: '', light: null };
+    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], marker: '', light: null, sound: '' };
     this.ws.assets.push(a);
     this.ws.touch('assets');
     this.open(a);

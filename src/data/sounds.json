@@ -8,7 +8,8 @@
     { "id": "teleport_whoosh", "file": "teleport_whoosh.wav", "volume": 0.7 },
     { "id": "dash_swish", "file": "dash_swish.wav", "volume": 0.6 },
     { "id": "bow_shot", "file": "bow_shot.wav", "volume": 0.5 },
-    { "id": "enemy_hit", "file": "enemy_hit.wav", "volume": 0.6 }
+    { "id": "enemy_hit", "file": "enemy_hit.wav", "volume": 0.6 },
+    { "id": "fire_crackle", "file": "fire_crackle.wav", "volume": 0.8 }
   ],
   "effects": {
     "teleport": "teleport_whoosh",

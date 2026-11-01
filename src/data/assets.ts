@@ -51,6 +51,8 @@ export interface Asset {
   // (a zone Shades appear in) and "door" (walking into it goes to the map in its `to`).
   marker: string;
   light: Light | null;
+  // A looping sound id (sounds.json), heard louder the nearer the player is to one of these (a fire's crackle).
+  sound: string;
 }
 
 function parseAssets(data: unknown): Asset[] {
@@ -107,6 +109,7 @@ function parseAssets(data: unknown): Asset[] {
       parts,
       collision,
       marker: str(e.marker, '', `${id}.marker`, problems),
+      sound: str(e.sound, '', `${id}.sound`, problems),
       light,
     });
   });

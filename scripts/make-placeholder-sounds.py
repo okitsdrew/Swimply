@@ -102,8 +102,30 @@ def hit():
     return out
 
 
+def fire_crackle():
+    # A loop of burning: a soft low roar, plus pops and snaps at random. The roar's extra tail is blended into its
+    # start, and pops that run past the end wrap round, so the loop joins without a seam.
+    length = 4.0
+    n = int(RATE * length)
+    fade = int(RATE * 0.5)
+    roar, lp = [], 0.0
+    for _ in range(n + fade):
+        lp += (random.uniform(-1, 1) - lp) * 0.04
+        roar.append(lp * 0.9)
+    out = [roar[i] * (i / fade) + roar[n + i] * (1 - i / fade) if i < fade else roar[i] for i in range(n)]
+    for _ in range(int(length * 14)):
+        start = random.randint(0, n - 1)
+        size = random.uniform(0.2, 1.0) ** 2
+        bp = BandPass(random.uniform(1.5, 4))
+        freq = random.uniform(1500, 5000)
+        decay = random.uniform(80, 260)
+        for j in range(int(RATE * 0.08)):
+            out[(start + j) % n] += bp(random.uniform(-1, 1), freq) * math.exp(-j / RATE * decay) * size * 2.2
+    return out
+
+
 if __name__ == '__main__':
     random.seed(7)
-    for name, make in [('teleport_whoosh', teleport), ('dash_swish', dash), ('bow_shot', bow_shot), ('enemy_hit', hit)]:
+    for name, make in [('teleport_whoosh', teleport), ('dash_swish', dash), ('bow_shot', bow_shot), ('enemy_hit', hit), ('fire_crackle', fire_crackle)]:
         write(name, make())
         print(f'wrote {name}.wav')

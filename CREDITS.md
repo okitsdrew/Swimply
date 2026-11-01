@@ -11,4 +11,4 @@ Sounds and art from other people, where each came from and its license. Add a li
 | explosion_large_01.ogg | [Reeboo Labs: Explosions & Destruction SFX (free sample)](https://reeboolabs.itch.io/explosions-destruction-sfx-free-sample) | Free to use; credit appreciated, not required |
 | explosion_medium_01.ogg | [Reeboo Labs: Explosions & Destruction SFX (free sample)](https://reeboolabs.itch.io/explosions-destruction-sfx-free-sample) | Free to use; credit appreciated, not required |
 | fireball_01.ogg | [Reeboo Labs: Explosions & Destruction SFX (free sample)](https://reeboolabs.itch.io/explosions-destruction-sfx-free-sample) | Free to use; credit appreciated, not required |
-| teleport_whoosh.wav, dash_swish.wav, bow_shot.wav, enemy_hit.wav | Placeholders made for Swimply by `scripts/make-placeholder-sounds.py` | Ours |
+| teleport_whoosh.wav, dash_swish.wav, bow_shot.wav, enemy_hit.wav, fire_crackle.wav | Placeholders made for Swimply by `scripts/make-placeholder-sounds.py` | Ours |

@@ -11,6 +11,8 @@ export interface Floor {
   blocks: boolean;
   // Standing on it kills the player, unless a dash or teleport is keeping them safe (lava, fire).
   hurts: boolean;
+  // A looping sound id (sounds.json), heard louder the nearer the player is to this floor. Empty for none.
+  sound: string;
 }
 
 function parseFloors(data: unknown): Floor[] {
@@ -23,7 +25,7 @@ function parseFloors(data: unknown): Floor[] {
     if (!id) return problems.push(`${where}: has no id, skipped`);
     const colors = list(e.colors, `${where} (${id})`, problems).map((c, j) => color(c, `${id} colour ${j}`, problems));
     if (!colors.length) colors.push(0xff00ff);
-    out.push({ id, name: str(e.name, id, where, problems), colors, blocks: bool(e.blocks, false, `${id}.blocks`, problems), hurts: bool(e.hurts, false, `${id}.hurts`, problems) });
+    out.push({ id, name: str(e.name, id, where, problems), colors, blocks: bool(e.blocks, false, `${id}.blocks`, problems), hurts: bool(e.hurts, false, `${id}.hurts`, problems), sound: str(e.sound, '', `${id}.sound`, problems) });
   });
   report('floors', problems);
   return out;
