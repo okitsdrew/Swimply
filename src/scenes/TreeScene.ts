@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { save } from '../core/save';
 import { cursorCss } from '../render/Cursors';
 import { SoundFx } from '../render/SoundFx';
+import { ui, uiText } from '../render/ui';
 import { buy, canBuy, cost, describe, isOpen, level, maxed, shown, TreeNode, treeComplete, treeNodes } from '../data/tree';
 
 export interface TreeSceneData {
@@ -12,16 +13,19 @@ export interface TreeSceneData {
   onClose: () => void;
 }
 
-const font = { fontFamily: 'monospace', fontStyle: 'bold', color: '#f2d7a6', stroke: '#1a1020', strokeThickness: 4 };
 const NODE_RADIUS = 26;
 // The tree sits a little above the screen's centre, to leave room for the info lines and the button below it.
 const TREE_RAISE = 20;
+// The bow arrow's palette: deep purples for what is out of reach, bright violet for what can be taken, lilac for
+// what is already remembered.
 const colors = {
-  gold: 0xf2d7a6,
-  ready: 0x7a46c8,
-  open: 0x2a2538,
-  locked: 0x15121d,
-  line: 0x3a3350,
+  lit: ui.lilac,
+  full: ui.violet,
+  ready: ui.purple,
+  open: ui.dark,
+  locked: ui.deep,
+  line: ui.mid,
+  edge: 0x6a4a9a,
 };
 
 interface NodeView {
@@ -61,18 +65,18 @@ export class TreeScene extends Phaser.Scene {
     this.views = [];
     this.hovered = null;
     const sfx = new SoundFx(this);
-    this.add.rectangle(0, 0, width, height, 0x07060b, 0.86).setOrigin(0).setInteractive();
-    this.header = this.add.text(cx, 34, '', { ...font, fontSize: '20px', align: 'center' }).setOrigin(0.5, 0);
-    this.shards = this.add.text(cx, 100, '', { ...font, fontSize: '18px', color: '#c9b6ff' }).setOrigin(0.5, 0);
+    this.add.rectangle(0, 0, width, height, 0x0a0612, 0.9).setOrigin(0).setInteractive();
+    this.header = this.add.text(cx, 30, '', uiText(16, { align: 'center', lineSpacing: 10 })).setOrigin(0.5, 0);
+    this.shards = this.add.text(cx, 96, '', uiText(16, { color: ui.shard })).setOrigin(0.5, 0);
     this.lines = this.add.graphics();
-    this.info = this.add.text(cx, height - 160, '', { ...font, fontSize: '16px', align: 'center' }).setOrigin(0.5, 0);
+    this.info = this.add.text(cx, height - 160, '', uiText(8, { align: 'center', lineSpacing: 8, strokeThickness: 3 })).setOrigin(0.5, 0);
 
     for (const node of treeNodes.list()) {
       const x = cx + node.x;
       const y = cy + node.y;
       const ring = this.add.circle(x, y, NODE_RADIUS, colors.open).setInteractive({ cursor: cursorCss('pointer') });
-      const price = this.add.text(x, y, '', { ...font, fontSize: '15px', strokeThickness: 3 }).setOrigin(0.5);
-      const label = this.add.text(x, y + NODE_RADIUS + 12, node.name, { ...font, fontSize: '13px', strokeThickness: 3 }).setOrigin(0.5, 0);
+      const price = this.add.text(x, y + 1, '', uiText(16, { strokeThickness: 4 })).setOrigin(0.5);
+      const label = this.add.text(x, y + NODE_RADIUS + 10, node.name, uiText(8, { strokeThickness: 3 })).setOrigin(0.5, 0);
       const pips = this.add.graphics();
       ring.on('pointerover', () => (this.hovered = node));
       ring.on('pointerout', () => { if (this.hovered === node) this.hovered = null; });
@@ -84,11 +88,11 @@ export class TreeScene extends Phaser.Scene {
       this.views.push({ node, ring, label, price, pips, was: shown(node) });
     }
 
-    const button = this.add.text(cx, height - 36, '', { ...font, fontSize: '20px', backgroundColor: '#2a2538', padding: { x: 14, y: 8 } })
-      .setOrigin(0.5).setInteractive({ cursor: cursorCss('pointer') });
-    button.setText(`${this.opts.closeLabel}  [space]`);
-    button.on('pointerover', () => button.setColor('#ffffff'));
-    button.on('pointerout', () => button.setColor('#f2d7a6'));
+    const text = this.add.text(cx, height - 44, `${this.opts.closeLabel}  [space]`, uiText(16)).setOrigin(0.5).setDepth(1);
+    const button = this.add.rectangle(cx, height - 44, text.width + 40, text.height + 24, colors.open)
+      .setStrokeStyle(3, colors.edge).setInteractive({ cursor: cursorCss('pointer') });
+    button.on('pointerover', () => { button.setFillStyle(colors.ready).setStrokeStyle(3, colors.lit); text.setColor(ui.bright); });
+    button.on('pointerout', () => { button.setFillStyle(colors.open).setStrokeStyle(3, colors.edge); text.setColor(ui.text); });
     button.on('pointerdown', () => this.opts.onClose());
     this.refresh();
   }
@@ -99,7 +103,7 @@ export class TreeScene extends Phaser.Scene {
     const pulse = 0.5 + 0.5 * Math.sin(this.time0 * 5);
     // Redrawn every frame (it is only a handful of nodes), so dev menu changes to shards or the tree show at once.
     this.refresh();
-    for (const v of this.views) if (canBuy(v.node)) v.ring.setStrokeStyle(2 + pulse * 2, 0xc9b6ff, 0.6 + pulse * 0.4);
+    for (const v of this.views) if (canBuy(v.node)) v.ring.setStrokeStyle(2 + pulse * 2, colors.lit, 0.6 + pulse * 0.4);
   }
 
   private refresh(): void {
@@ -117,7 +121,7 @@ export class TreeScene extends Phaser.Scene {
         const parent = treeNodes.get(p);
         if (!parent) continue;
         const lit = level(v.node) > 0;
-        this.lines.lineStyle(lit ? 4 : 2, lit ? colors.gold : colors.line, lit ? 0.9 : 0.7);
+        this.lines.lineStyle(lit ? 4 : 2, lit ? colors.lit : colors.line, lit ? 0.9 : 0.8);
         this.lines.lineBetween(cx + parent.x, cy + parent.y, cx + v.node.x, cy + v.node.y);
       }
     }
@@ -131,10 +135,10 @@ export class TreeScene extends Phaser.Scene {
       if (!visible) continue;
       const open = isOpen(n);
       const full = maxed(n);
-      const fill = full ? colors.gold : !open ? colors.locked : canBuy(n) ? colors.ready : colors.open;
-      v.ring.setFillStyle(fill, 1).setStrokeStyle(2, full ? 0xffffff : open ? 0x7a6a9a : 0x2a2538, 1);
+      const fill = full ? colors.full : !open ? colors.locked : canBuy(n) ? colors.ready : colors.open;
+      v.ring.setFillStyle(fill, 1).setStrokeStyle(2, full ? colors.lit : open ? colors.edge : colors.open, 1);
       v.price.setText(full ? '' : open ? `${cost(n)}` : '?');
-      v.price.setColor(canBuy(n) ? '#ffffff' : open ? '#8a83a0' : '#4a4458');
+      v.price.setColor(canBuy(n) ? ui.bright : open ? ui.dim : ui.faint);
       v.label.setAlpha(open ? 1 : 0.4);
       // One pip per level, filled for each one bought.
       const g = v.pips.clear();
@@ -142,8 +146,8 @@ export class TreeScene extends Phaser.Scene {
       const x0 = cx + n.x - (count - 1) * 5;
       const y = cy + n.y - NODE_RADIUS - 9;
       for (let i = 0; i < count; i++) {
-        if (i < level(n)) g.fillStyle(colors.gold, 1).fillCircle(x0 + i * 10, y, 3.5);
-        else g.lineStyle(1.5, open ? 0x7a6a9a : 0x2a2538, 1).strokeCircle(x0 + i * 10, y, 3.5);
+        if (i < level(n)) g.fillStyle(colors.lit, 1).fillRect(x0 + i * 10 - 3, y - 3, 6, 6);
+        else g.lineStyle(2, open ? colors.edge : colors.open, 1).strokeRect(x0 + i * 10 - 3, y - 3, 6, 6);
       }
     }
 

@@ -15,3 +15,9 @@ Sounds and art from other people, where each came from and its license. Add a li
 | fire_ambience.ogg, bow_shot_4.ogg, teleport_4.ogg | Made for Swimply with Claude | Ours |
 | boop_conversation_a.ogg, boop_conversation_b.ogg, boop_death_v4c.ogg, boop_cast_strain_2_short.ogg, mindscape_portal.ogg, death_powder_2.ogg, footstep_grit_2_quiet.ogg | Made for Swimply with Claude | Ours |
 | door.ogg, werewolf_initiate.ogg, werewolf_smash.ogg, werewolf_swipe_attack.ogg | Made for Swimply with Claude | Ours |
+
+## Fonts (`src/data/fonts/`)
+
+| File | Source | License |
+|---|---|---|
+| PressStart2P-Regular.ttf | [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) by CodeMan38 | SIL Open Font License 1.1 (`PressStart2P-OFL.txt`) |
