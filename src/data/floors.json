@@ -40,8 +40,7 @@
       "id": "flaming_floor",
       "name": "flaming_floor",
       "colors": ["#ff7029", "#e22c09", "#ffd119"],
-      "hurts": true,
-      "sound": "fire_crackle"
+      "hurts": true
     },
     {
       "id": "void",

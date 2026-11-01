@@ -53,8 +53,7 @@
       "name": "Fire",
       "category": "decor",
       "parts": [{ "texture": "fire", "originY": 0.86, "frames": ["fire", "fire_1", "fire_2"] }],
-      "light": { "color": "#ff9a3a", "y": -6, "radius": 30, "intensity": 0.3, "flicker": 0.4 },
-      "sound": "fire_crackle"
+      "light": { "color": "#ff9a3a", "y": -6, "radius": 30, "intensity": 0.3, "flicker": 0.4 }
     },
     {
       "id": "column",
@@ -243,8 +242,7 @@
         { "y": 11, "radius": 12 },
         { "y": 33, "radius": 12 }
       ],
-      "light": { "color": "#ff9a3a", "x": 4, "y": -8, "radius": 30, "intensity": 0.3, "flicker": 0.4 },
-      "sound": "fire_crackle"
+      "light": { "color": "#ff9a3a", "x": 4, "y": -8, "radius": 30, "intensity": 0.3, "flicker": 0.4 }
     },
     {
       "id": "bow_pedestal",

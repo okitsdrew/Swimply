@@ -13,6 +13,8 @@ export const sound = defineConfig(
     loopVolume: 0.6,
     // How far (world units, a tile is 64) a looping sound carries; it fades to nothing at this distance.
     loopRange: 400,
+    // Dialogue voices (the blips as a line types out), on top of volume.
+    voiceVolume: 0.7,
     // Effects (teleport, dash, shots, hits), on top of volume.
     effectsVolume: 0.8,
     // Each effect plays a little higher or lower at random, by up to this fraction, so repeats do not grate.
@@ -25,6 +27,7 @@ export const sound = defineConfig(
     volume: { min: 0, max: 1, step: 0.05 },
     ambientVolume: { min: 0, max: 1, step: 0.05 },
     effectsVolume: { min: 0, max: 1, step: 0.05 },
+    voiceVolume: { min: 0, max: 1, step: 0.05 },
     loopVolume: { min: 0, max: 1, step: 0.05 },
     loopRange: { min: 50, max: 2000, step: 25 },
     pitchJitter: { min: 0, max: 0.5, step: 0.01 },

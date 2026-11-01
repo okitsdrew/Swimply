@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { render } from '../config/render';
+import { sound } from '../config/sound';
 import { dialogue } from '../config/story';
+import { sounds } from '../data/sounds';
 import { toScreen } from '../core/iso';
 
 const BOX_W = 640;
@@ -32,6 +34,10 @@ export class DialogueBox {
   private shown = 0;
   private wait = 0;
   private k = 1;
+  private voice = '';
+  private pitch = 1;
+  // Letters spoken since the last blip.
+  private letters = 0;
   private open = 0;
   private inBubble = false;
   private visible = false;
@@ -49,10 +55,13 @@ export class DialogueBox {
   }
 
   // `face` is a texture key; a missing one leaves the face empty rather than showing a broken image.
-  show(name: string, color: string, face: string, text: string, bubble: boolean): void {
+  show(name: string, color: string, face: string, text: string, bubble: boolean, voice = '', pitch = 1): void {
     this.text = text;
     this.shown = 0;
     this.wait = 0;
+    this.voice = voice;
+    this.pitch = pitch;
+    this.letters = dialogue.blipEvery - 1;
     // Sizes follow dialogue.scale, read as each line starts.
     const k = (this.k = dialogue.scale);
     this.name.setFontSize(13 * k);
@@ -91,8 +100,13 @@ export class DialogueBox {
     if (this.visible) {
       this.wait -= dt;
       while (this.wait <= 0 && this.shown < this.text.length) {
-        this.wait += this.text[this.shown] === '.' ? dialogue.dotTime : 1 / Math.max(dialogue.typeSpeed, 1);
+        const ch = this.text[this.shown];
+        this.wait += ch === '.' ? dialogue.dotTime : 1 / Math.max(dialogue.typeSpeed, 1);
         this.shown++;
+        if (/[a-z0-9]/i.test(ch) && ++this.letters >= dialogue.blipEvery) {
+          this.letters = 0;
+          this.blip();
+        }
       }
     }
     const typed = this.text.slice(0, this.shown);
@@ -127,6 +141,14 @@ export class DialogueBox {
       this.bubble.fillTriangle(s.x - 6, by + bh / 2, s.x + 6, by + bh / 2, s.x, by + bh / 2 + 7);
       this.bubble.lineStyle(2, 0x6a3fa0, bubbleA).strokeRoundedRect(s.x - bw / 2, by - bh / 2, bw, bh, 8);
     }
+  }
+
+  // One syllable of the speaker's voice.
+  private blip(): void {
+    const s = sounds.get(this.voice);
+    if (!s || sound.mute || !this.scene.cache.audio.exists(s.id)) return;
+    const rate = this.pitch * (1 + (Math.random() * 2 - 1) * dialogue.blipJitter);
+    this.scene.sound.play(s.id, { volume: sound.volume * sound.voiceVolume * s.volume, rate });
   }
 
   private setAlpha(a: number): void {
