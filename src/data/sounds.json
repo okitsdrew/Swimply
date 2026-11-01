@@ -1,0 +1,12 @@
+{
+  "sounds": [
+    { "id": "boom_distant", "file": "boom_distant_01.ogg" },
+    { "id": "rumble_tail", "file": "rumble_tail_01.ogg" },
+    { "id": "explosion_large", "file": "explosion_large_01.ogg" },
+    { "id": "explosion_medium", "file": "explosion_medium_01.ogg" },
+    { "id": "fireball", "file": "fireball_01.ogg" }
+  ],
+  "ambience": [
+    { "map": "spawn", "sounds": ["boom_distant", "rumble_tail"], "every": 4, "jitter": 1 }
+  ]
+}

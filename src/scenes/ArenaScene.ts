@@ -11,10 +11,12 @@ import { werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
+import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
 import { save, writeSave } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
+import { AmbienceView } from '../render/AmbienceView';
 import { ArrowsView } from '../render/ArrowsView';
 import { makeArt } from '../render/art';
 import { DialogueBox } from '../render/DialogueBox';
@@ -83,6 +85,7 @@ export class ArenaScene extends Phaser.Scene {
   private pose!: HeroPose;
   // Whether the hero's own look was hidden for a pose last frame.
   private posed = false;
+  private ambience!: AmbienceView;
   // A script can take control away (the hero lying down, a scene playing out).
   private control = true;
   private world!: MapWorld;
@@ -117,6 +120,11 @@ export class ArenaScene extends Phaser.Scene {
 
   constructor() {
     super('arena');
+  }
+
+  // Sounds load once; a restart finds them already in the cache.
+  preload(): void {
+    for (const s of sounds.list()) if (!this.cache.audio.exists(s.id)) this.load.audio(s.id, s.url);
   }
 
   init(data: { map?: string; at?: Vec2 }): void {
@@ -176,6 +184,7 @@ export class ArenaScene extends Phaser.Scene {
     this.timo = new TimoView(this);
     this.timo.setVisible(this.calm);
     this.lids = new Eyelids(this);
+    this.ambience = new AmbienceView(this, ambienceFor(this.mapId));
     this.pose = new HeroPose(this);
     this.posed = false;
     this.control = true;
@@ -530,6 +539,7 @@ export class ArenaScene extends Phaser.Scene {
     this.posed = this.pose.active;
     this.timo.update(frameDt, this.player.x, this.player.y);
     this.lids.update(frameDt, cam.width, cam.height);
+    this.ambience.update(frameDt);
     this.box.update(frameDt, cam.width, this.player.x, this.player.y);
     this.ghost.update(frameDt, cam.width, cam.height);
     this.hint.update(frameDt, this.player.x, this.player.y, !!this.near && !this.leaving && this.control && this.run.state === 'fighting');
