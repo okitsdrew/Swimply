@@ -6,7 +6,7 @@
     { "id": "explosion_medium", "file": "explosion_medium_01.ogg" },
     { "id": "fireball", "file": "fireball_01.ogg" },
     { "id": "dash_swish", "file": "dash_swish.wav", "volume": 0.6 },
-    { "id": "enemy_hit", "file": "enemy_hit.wav", "volume": 0.6 },
+    { "id": "enemy_hit", "file": "enemy_hit.wav", "volume": 0.3 },
     { "id": "voice_blip", "file": "voice_blip.wav", "volume": 0.5 },
     { "id": "fire_ambience", "file": "fire_ambience.ogg" },
     { "id": "bow_shot", "file": "bow_shot_4.ogg" },
