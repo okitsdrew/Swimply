@@ -5,18 +5,36 @@
     { "id": "explosion_large", "file": "explosion_large_01.ogg" },
     { "id": "explosion_medium", "file": "explosion_medium_01.ogg" },
     { "id": "fireball", "file": "fireball_01.ogg" },
-    { "id": "dash_swish", "file": "dash_swish.wav", "volume": 0.6 },
-    { "id": "enemy_hit", "file": "enemy_hit.wav", "volume": 0.6 },
+    { "id": "dash_swish", "file": "dash_swish.wav", "volume": 0.2 },
+    { "id": "enemy_hit", "file": "enemy_hit.wav", "volume": 0.3 },
     { "id": "voice_blip", "file": "voice_blip.wav", "volume": 0.5 },
     { "id": "fire_ambience", "file": "fire_ambience.ogg" },
     { "id": "bow_shot", "file": "bow_shot_4.ogg" },
-    { "id": "teleport", "file": "teleport_4.ogg" }
+    { "id": "teleport", "file": "teleport_4.ogg" },
+    { "id": "swimply_dots_a", "file": "boop_conversation_a.ogg" },
+    { "id": "swimply_dots_b", "file": "boop_conversation_b.ogg" },
+    { "id": "swimply_death", "file": "boop_death_v4c.ogg" },
+    { "id": "swimply_cast", "file": "boop_cast_strain_2_short.ogg" },
+    { "id": "mindscape_portal", "file": "mindscape_portal.ogg" },
+    { "id": "death_powder", "file": "death_powder_2.ogg" },
+    { "id": "footstep", "file": "footstep_grit_2_quiet.ogg", "volume": 0.5 },
+    { "id": "ui_click", "file": "ui_click.wav", "volume": 0.5 },
+    { "id": "ui_next", "file": "ui_next.wav", "volume": 0.4 },
+    { "id": "ui_buy", "file": "ui_buy.wav", "volume": 0.5 },
+    { "id": "ui_deny", "file": "ui_deny.wav", "volume": 0.4 }
   ],
   "effects": {
     "teleport": "teleport",
     "dash": "dash_swish",
     "fire": "bow_shot",
-    "hit": "enemy_hit"
+    "hit": "enemy_hit",
+    "death": ["swimply_death", "death_powder"],
+    "portal": "mindscape_portal",
+    "step": "footstep",
+    "click": "ui_click",
+    "next": "ui_next",
+    "buy": "ui_buy",
+    "deny": "ui_deny"
   },
   "ambience": [
     { "map": "spawn", "sounds": ["boom_distant", "rumble_tail"], "every": 4, "jitter": 1 }

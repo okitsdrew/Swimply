@@ -179,6 +179,7 @@ export class ArenaScene extends Phaser.Scene {
     this.wolf = new Werewolf(werewolf);
     this.wolfView = new WerewolfView(this, this.wolf, this.fx);
     this.sfx = new SoundFx(this);
+    this.view.onStep = () => this.sfx.play('step');
     this.run = new Run(this.shades);
     this.run.holdSpawns = this.calm || params.has('calm');
     this.hud = new RunHud(this, this.run);
@@ -238,7 +239,7 @@ export class ArenaScene extends Phaser.Scene {
         this.earn(tree.shardsPerKill);
       }
       this.shadesView.onKilled(x, y);
-      this.fx.addShake(run.killShake);
+            this.fx.addShake(run.killShake);
       this.freeze(run.killHitStop);
     };
     this.wolf.onRisen = () => this.wolfView.onRisen();
@@ -296,6 +297,8 @@ export class ArenaScene extends Phaser.Scene {
     this.leaving = true;
     leftFrom.set(this.mapId, { x: this.player.x, y: this.player.y });
     cameFrom = this.mapId;
+    // Into the Mindscape (a map Shades spawn in) from somewhere calm.
+    if (this.calm && next.objects.some((o) => o.asset.marker === 'shadeSpawn')) this.sfx.play('portal');
     const cam = this.cameras.main;
     cam.fadeOut(story.fadeTime * 1000);
     cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.restart({ map: next.id, at: leftFrom.get(next.id) }));
@@ -380,6 +383,7 @@ export class ArenaScene extends Phaser.Scene {
     if (!this.treeOpen) return;
     this.treeOpen = false;
     this.hud.treeOpen = false;
+    this.sfx.play('click');
     this.scene.stop('tree');
     // Clicks on the tree screen also reached the game's input; drop them so they don't fire an arrow.
     this.input2.endFrame();
@@ -432,7 +436,7 @@ export class ArenaScene extends Phaser.Scene {
 
   private onWolfKilled(x: number, y: number): void {
     this.wolfView.onKilled(x, y);
-    if (this.run.state !== 'fighting') return;
+        if (this.run.state !== 'fighting') return;
     this.earn(werewolf.shards);
     this.freeze(0.15, true);
     // Beating him wins the Mindscape, full tree or not: the Shades fade, then he wakes back where he touched the bow.
@@ -572,6 +576,7 @@ export class ArenaScene extends Phaser.Scene {
     // While a line is up, click and F move the dialogue on instead of shooting or interacting. The bow stays held
     // back until the button that skipped the last line is let go.
     if (this.story.talking && (this.input2.justPressed('interact') || this.input2.justPressed('fire'))) {
+      this.sfx.play('next');
       this.story.skip();
       this.input2.consume('interact');
       this.input2.consume('fire');
@@ -601,6 +606,7 @@ export class ArenaScene extends Phaser.Scene {
   private die(): void {
     this.run.die();
     this.view.setVisible(false);
+    this.sfx.play('death');
     const px = render.pixelScale;
     const s = toScreen(this.player.x, this.player.y);
     this.fx.smoke(s.x, s.y - 10 * px, run.deathSmoke, 8 * px);

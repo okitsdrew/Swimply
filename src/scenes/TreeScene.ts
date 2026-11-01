@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { save } from '../core/save';
+import { SoundFx } from '../render/SoundFx';
 import { buy, canBuy, cost, describe, isOpen, level, maxed, shown, TreeNode, treeComplete, treeNodes } from '../data/tree';
 
 export interface TreeSceneData {
@@ -58,6 +59,7 @@ export class TreeScene extends Phaser.Scene {
     const cy = height / 2 - TREE_RAISE;
     this.views = [];
     this.hovered = null;
+    const sfx = new SoundFx(this);
     this.add.rectangle(0, 0, width, height, 0x07060b, 0.86).setOrigin(0).setInteractive();
     this.header = this.add.text(cx, 34, '', { ...font, fontSize: '20px', align: 'center' }).setOrigin(0.5, 0);
     this.shards = this.add.text(cx, 100, '', { ...font, fontSize: '18px', color: '#c9b6ff' }).setOrigin(0.5, 0);
@@ -74,7 +76,8 @@ export class TreeScene extends Phaser.Scene {
       ring.on('pointerover', () => (this.hovered = node));
       ring.on('pointerout', () => { if (this.hovered === node) this.hovered = null; });
       ring.on('pointerdown', () => {
-        if (!buy(node)) return;
+        if (!buy(node)) return sfx.play('deny');
+        sfx.play('buy');
         this.tweens.add({ targets: ring, scale: { from: 1.25, to: 1 }, duration: 180, ease: 'Back.Out' });
       });
       this.views.push({ node, ring, label, price, pips, was: shown(node) });

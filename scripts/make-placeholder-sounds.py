@@ -86,7 +86,67 @@ def voice_blip():
     return out
 
 
-SOUNDS = {'dash_swish': dash, 'enemy_hit': hit, 'voice_blip': voice_blip}
+def tone(freq, t, shape=0.5):
+    # A soft square-ish wave: `shape` near 0.5 is hollow, lower is thinner and brighter.
+    return 1.0 if (freq * t) % 1 < shape else -1.0
+
+
+def ui_click():
+    # A small wooden tick for menu buttons.
+    n = int(RATE * 0.05)
+    bp = BandPass(6)
+    out = []
+    for i in range(n):
+        t = i / RATE
+        knock = math.sin(2 * math.pi * 900 * t) * env(t, 0.001, 0.035, 3)
+        snap = bp(random.uniform(-1, 1), 3200) * env(t, 0.0005, 0.012, 2)
+        out.append(knock + snap * 1.5)
+    return out
+
+
+def ui_next():
+    # Moving on to the next line of dialogue: a soft, low pop that rises a little.
+    n = int(RATE * 0.07)
+    out = []
+    phase = 0.0
+    lp = 0.0
+    for i in range(n):
+        t = i / RATE
+        phase += (300 + 260 * t / 0.07) / RATE
+        lp += ((1.0 if phase % 1 < 0.5 else -1.0) - lp) * 0.12
+        out.append(lp * env(t, 0.003, 0.07, 2))
+    return out
+
+
+def ui_buy():
+    # Taking a memory on the tree: two rising notes, a fifth apart, with a shimmer.
+    n = int(RATE * 0.45)
+    out = []
+    lp = 0.0
+    for i in range(n):
+        t = i / RATE
+        a = tone(523, t, 0.3) * env(t, 0.004, 0.18, 2) if t < 0.18 else 0.0
+        b = tone(784, t - 0.07, 0.3) * env(t - 0.07, 0.004, 0.38, 2) if t >= 0.07 else 0.0
+        shimmer = math.sin(2 * math.pi * 1568 * t) * math.sin(2 * math.pi * 7 * t) * env(t, 0.05, 0.45, 2) * 0.3
+        lp += ((a + b) * 0.6 - lp) * 0.25
+        out.append(lp + shimmer)
+    return out
+
+
+def ui_deny():
+    # Can't take it: two quick low buzzes.
+    n = int(RATE * 0.2)
+    out = []
+    lp = 0.0
+    for i in range(n):
+        t = i / RATE
+        u = t % 0.1
+        lp += (tone(140, t, 0.4) * env(u, 0.003, 0.08, 1.5) - lp) * 0.2
+        out.append(lp)
+    return out
+
+
+SOUNDS = {'dash_swish': dash, 'enemy_hit': hit, 'voice_blip': voice_blip, 'ui_click': ui_click, 'ui_next': ui_next, 'ui_buy': ui_buy, 'ui_deny': ui_deny}
 
 if __name__ == '__main__':
     # Names on the command line make just those (python3 scripts/make-placeholder-sounds.py voice_blip), so sounds
