@@ -9,7 +9,7 @@
     { "id": "enemy_hit", "file": "enemy_hit.wav", "volume": 0.3 },
     { "id": "voice_blip", "file": "voice_blip.wav", "volume": 0.5 },
     { "id": "fire_ambience", "file": "fire_ambience.ogg" },
-    { "id": "bow_shot", "file": "bow_shot_4.ogg" },
+    { "id": "bow_shot", "file": "bow_shot_4.ogg", "volume": 0.5 },
     { "id": "teleport", "file": "teleport_4.ogg" },
     { "id": "swimply_dots_a", "file": "boop_conversation_a.ogg" },
     { "id": "swimply_dots_b", "file": "boop_conversation_b.ogg" },
