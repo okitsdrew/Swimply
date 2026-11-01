@@ -28,7 +28,10 @@ export class DialogueBox {
   private bubble: Phaser.GameObjects.Graphics;
   private bubbleWords: Phaser.GameObjects.Text;
   private text = '';
+  // Letters typed so far, and seconds until the next one.
   private shown = 0;
+  private wait = 0;
+  private k = 1;
   private open = 0;
   private inBubble = false;
   private visible = false;
@@ -49,6 +52,12 @@ export class DialogueBox {
   show(name: string, color: string, face: string, text: string, bubble: boolean): void {
     this.text = text;
     this.shown = 0;
+    this.wait = 0;
+    // Sizes follow dialogue.scale, read as each line starts.
+    const k = (this.k = dialogue.scale);
+    this.name.setFontSize(13 * k);
+    this.more.setFontSize(14 * k);
+    this.words.setFontSize(18 * k).setWordWrapWidth((BOX_W - FACE - PAD * 3) * k);
     this.inBubble = bubble;
     this.visible = true;
     this.name.setText(name.toUpperCase()).setColor(color);
@@ -58,7 +67,7 @@ export class DialogueBox {
     this.face.setVisible(hasFace);
     if (hasFace) {
       this.face.setTexture(face);
-      const scale = Math.floor((FACE - 8) / Math.max(this.face.width, this.face.height));
+      const scale = Math.floor(((FACE - 8) * k) / Math.max(this.face.width, this.face.height));
       this.face.setScale(Math.max(1, scale));
     }
   }
@@ -79,36 +88,44 @@ export class DialogueBox {
   // `heroX`/`heroY` are the hero's world position, for the bubble.
   update(dt: number, width: number, heroX: number, heroY: number): void {
     this.open = Phaser.Math.Clamp(this.open + (this.visible ? dt : -dt) * 8, 0, 1);
-    if (this.visible) this.shown = Math.min(this.text.length, this.shown + dialogue.typeSpeed * dt);
-    const typed = this.text.slice(0, Math.floor(this.shown));
+    if (this.visible) {
+      this.wait -= dt;
+      while (this.wait <= 0 && this.shown < this.text.length) {
+        this.wait += this.text[this.shown] === '.' ? dialogue.dotTime : 1 / Math.max(dialogue.typeSpeed, 1);
+        this.shown++;
+      }
+    }
+    const typed = this.text.slice(0, this.shown);
     const boxA = this.inBubble ? 0 : this.open;
     const bubbleA = this.inBubble ? this.open : 0;
 
-    const x = (width - BOX_W) / 2;
+    const k = this.k;
+    const [w, h, face, pad] = [BOX_W * k, BOX_H * k, FACE * k, PAD * k];
+    const x = (width - w) / 2;
     const y = 16 - (1 - boxA) * 12;
     this.panel.clear();
     if (boxA > 0) {
-      this.panel.fillStyle(0x0d0814, 0.85).fillRoundedRect(x, y, BOX_W, BOX_H, 8);
-      this.panel.lineStyle(2, 0x6a3fa0, 1).strokeRoundedRect(x, y, BOX_W, BOX_H, 8);
-      this.panel.fillStyle(0x1d1230, 1).fillRoundedRect(x + PAD, y + (BOX_H - FACE) / 2, FACE, FACE, 6);
+      this.panel.fillStyle(0x0d0814, 0.85).fillRoundedRect(x, y, w, h, 8 * k);
+      this.panel.lineStyle(2, 0x6a3fa0, 1).strokeRoundedRect(x, y, w, h, 8 * k);
+      this.panel.fillStyle(0x1d1230, 1).fillRoundedRect(x + pad, y + (h - face) / 2, face, face, 6 * k);
     }
-    this.face.setPosition(x + PAD + FACE / 2, y + BOX_H / 2);
-    this.name.setPosition(x + FACE + PAD * 2, y + PAD);
-    this.words.setPosition(x + FACE + PAD * 2, y + PAD + 20).setText(boxA > 0 ? typed : '');
+    this.face.setPosition(x + pad + face / 2, y + h / 2);
+    this.name.setPosition(x + face + pad * 2, y + pad);
+    this.words.setPosition(x + face + pad * 2, y + pad + 20 * k).setText(boxA > 0 ? typed : '');
     for (const o of [this.panel, this.face, this.name, this.words]) o.setAlpha(boxA);
     const blink = this.typed && this.visible && Math.sin(performance.now() / 180) > -0.3 ? 1 : 0;
-    this.more.setPosition(x + BOX_W - PAD, y + BOX_H - PAD + Math.sin(performance.now() / 180) * 2).setAlpha(boxA * blink);
+    this.more.setPosition(x + w - pad, y + h - pad + Math.sin(performance.now() / 180) * 2).setAlpha(boxA * blink);
 
     const s = toScreen(heroX, heroY);
     const by = s.y - 40 * render.pixelScale;
     this.bubbleWords.setText(bubbleA > 0 ? (typed || ' ') + (blink ? ' ▼' : '  ') : '').setPosition(s.x, by).setAlpha(bubbleA);
     this.bubble.clear();
     if (bubbleA > 0) {
-      const w = Math.max(36, this.bubbleWords.width + 16);
-      const h = 28;
-      this.bubble.fillStyle(0x0d0814, 0.85 * bubbleA).fillRoundedRect(s.x - w / 2, by - h / 2, w, h, 8);
-      this.bubble.fillTriangle(s.x - 6, by + h / 2, s.x + 6, by + h / 2, s.x, by + h / 2 + 7);
-      this.bubble.lineStyle(2, 0x6a3fa0, bubbleA).strokeRoundedRect(s.x - w / 2, by - h / 2, w, h, 8);
+      const bw = Math.max(36, this.bubbleWords.width + 16);
+      const bh = 28;
+      this.bubble.fillStyle(0x0d0814, 0.85 * bubbleA).fillRoundedRect(s.x - bw / 2, by - bh / 2, bw, bh, 8);
+      this.bubble.fillTriangle(s.x - 6, by + bh / 2, s.x + 6, by + bh / 2, s.x, by + bh / 2 + 7);
+      this.bubble.lineStyle(2, 0x6a3fa0, bubbleA).strokeRoundedRect(s.x - bw / 2, by - bh / 2, bw, bh, 8);
     }
   }
 

@@ -63,7 +63,6 @@ Do it deliberately: change this file and `scripts/check-layers.mjs` together, an
 - **Ids used in maps cannot be renamed in the asset maker**, because the maps would lose the thing. The level editor's "In every map" panel renames, swaps or removes them across every map.
 - **The level editor has no rotation, flip, multi-select or copy and paste between maps.** Assets cannot store rotation or flip yet (see above); add them together when a wall piece needs them.
 - **Flags are read when a map starts.** An object's `if`/`unless` is checked as the map loads, so a flag that changes mid-map shows on the next visit. Fine while story moments end in a map change.
-- **The level editor shows every object, whatever its flags,** so before and after versions overlap there. A switch to preview one set of flags would fix it.
 - **Where the player left each map is kept only while the page is open.** A reload starts at the map's player start.
 - **No sound yet.** `PlayerView.onStep` and the fire, dash and teleport callbacks are the hooks for it.
 - **Deploy workflow not added yet.** Pushing a workflow file needs the GitHub login to have the `workflow` permission, and GitHub Pages on a private repo needs a paid GitHub plan. Until both are sorted, play with `npm run dev` (or `npm run preview`) on the Deck. The ready-made workflow is Heaven's `deploy.yml`.
