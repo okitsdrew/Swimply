@@ -1028,6 +1028,7 @@
     { "asset": "granite-doorway-se", "x": 3552, "y": 2688 },
     { "asset": "fallen-column-se", "x": 1856, "y": 2720 },
     { "asset": "fallen-column-sw", "x": 1920, "y": 2720 },
-    { "asset": "fallen-column-sw", "x": 1856, "y": 2688 }
+    { "asset": "fallen-column-sw", "x": 1856, "y": 2688 },
+    { "asset": "shade-spawner", "x": 576, "y": 1728 }
   ]
 }

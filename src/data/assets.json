@@ -417,7 +417,6 @@
       "parts": [
         {
           "texture": "cauldron",
-          "originX": 0.5,
           "originY": 0.75,
           "frames": ["cauldron", "cauldron_1", "cauldron_2"]
         }
@@ -722,14 +721,16 @@
       "name": "Wooden bench (SE/NW)",
       "category": "props",
       "parts": [{ "texture": "wooden_bench_se", "originY": 0.8 }],
-      "collision": [{ "x": -14, "radius": 8 }, { "radius": 8 }, { "x": 14, "radius": 8 }]
+      "collision": [{ "x": -17, "radius": 12 }, { "radius": 12 }, { "x": 17, "radius": 12 }],
+      "health": 100
     },
     {
       "id": "wooden-bench-sw",
       "name": "Wooden bench (SW/NE)",
       "category": "props",
       "parts": [{ "texture": "wooden_bench_sw", "originY": 0.8 }],
-      "collision": [{ "y": -14, "radius": 8 }, { "radius": 8 }, { "y": 14, "radius": 8 }]
+      "collision": [{ "y": -17, "radius": 12 }, { "radius": 12 }, { "y": 16, "radius": 12 }],
+      "health": 100
     },
     {
       "id": "fountain",
@@ -872,9 +873,26 @@
     {
       "id": "shade-spawner",
       "name": "Shade spawner",
-      "category": "props",
-      "parts": [{ "texture": "shade_spawner_0", "originY": 0.95, "frames": ["shade_spawner_0", "shade_spawner_1", "shade_spawner_2", "shade_spawner_3", "shade_spawner_4", "shade_spawner_5", "shade_spawner_6", "shade_spawner_7"] }],
-      "collision": [{ "radius": 14 }]
+      "category": "markers",
+      "parts": [
+        {
+          "texture": "shade_spawner_0",
+          "y": -1,
+          "originY": 0.95,
+          "frames": [
+            "shade_spawner_0",
+            "shade_spawner_1",
+            "shade_spawner_2",
+            "shade_spawner_3",
+            "shade_spawner_4",
+            "shade_spawner_5",
+            "shade_spawner_6",
+            "shade_spawner_7"
+          ]
+        }
+      ],
+      "hit": [{ "box": true, "w": 40, "h": 40 }],
+      "health": 500
     }
   ]
 }
