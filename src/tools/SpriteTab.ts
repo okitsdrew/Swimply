@@ -1,6 +1,6 @@
 import { rgba, Sprite } from '../data/sprites';
 import { Preview } from './Preview';
-import { button, colorInput, el, ID_PATTERN, numberInput, row, select, textInput, uniqueId } from './ui';
+import { button, byName, colorInput, el, ID_PATTERN, numberInput, row, select, textInput, uniqueId } from './ui';
 import { Workspace } from './Workspace';
 
 // Characters handed out to new palette colours, in order. "." is see-through, so it is never one of them.
@@ -59,6 +59,8 @@ export class SpriteTab {
   private drag: { from: [number, number]; start: [number, number] } | null = null;
   private status = el('div', { class: 'hint' });
   private list = el('div', {});
+  // What the find box above the sprite list holds, kept when the list is rebuilt.
+  private find = '';
   private props = el('div', {});
   private center = el('div', { class: 'canvas-wrap' }, this.canvas);
 
@@ -158,14 +160,24 @@ export class SpriteTab {
     this.draw();
   }
 
+  // Sprites by name, with a box that hides the ones whose name does not have what is typed in it.
   private buildList(): void {
-    const items = this.ws.sprites.map((s) =>
+    const items = [...this.ws.sprites].sort((a, b) => byName(a.name, b.name)).map((s) =>
       button(`${s.name}  (${s.width}×${s.height})`, () => this.open(s), { class: s === this.current ? 'item on' : 'item' }),
     );
+    const find = el('input', { type: 'text', class: 'find', placeholder: 'find (e.g. wall se)', value: this.find });
+    const filter = () => {
+      this.find = find.value;
+      const words = this.find.toLowerCase().split(/\s+/).filter(Boolean);
+      for (const b of items) b.hidden = !words.every((w) => b.textContent!.toLowerCase().includes(w));
+    };
+    find.addEventListener('input', filter);
+    filter();
     const codeArt = this.preview.textureKeys().filter((k) => !this.ws.sprite(k));
     let pick = codeArt[0] ?? '';
     this.list.replaceChildren(
       el('h2', { text: 'Sprites' }),
+      find,
       ...items,
       el('div', { class: 'bar' },
         button('New', () => this.create()),

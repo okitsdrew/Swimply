@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import { Asset, AssetPart, Light } from '../data/assets';
 import { sounds } from '../data/sounds';
 import { Preview } from './Preview';
-import { button, checkbox, colorInput, el, ID_PATTERN, numberInput, row, select, suggestInput, textInput, uniqueId } from './ui';
+import { button, byName, checkbox, colorInput, el, ID_PATTERN, numberInput, row, select, suggestInput, textInput, uniqueId } from './ui';
 import { Workspace } from './Workspace';
 
 // Markers the game knows about.
@@ -55,8 +55,8 @@ export class AssetTab {
   // category moves the list to its new tab.
   private buildList(): void {
     const byCategory = new Map<string, Asset[]>();
-    for (const a of this.ws.assets) byCategory.set(a.category, [...(byCategory.get(a.category) ?? []), a]);
-    const cats = [...byCategory.keys()].sort((a, b) => a.localeCompare(b));
+    for (const a of [...this.ws.assets].sort((a, b) => byName(a.name, b.name))) byCategory.set(a.category, [...(byCategory.get(a.category) ?? []), a]);
+    const cats = [...byCategory.keys()].sort(byName);
     const shown = this.current?.category ?? cats[0];
     this.list.replaceChildren(
       el('h2', { text: 'Assets' }),

@@ -59,6 +59,11 @@
       "name": "Slate roof",
       "colors": ["#000000"],
       "roof": true
+    },
+    {
+      "id": "light_floor",
+      "name": "Light stone",
+      "colors": ["#5f5d65", "#615e67", "#63606a", "#5d5b62"]
     }
   ]
 }

@@ -24,6 +24,11 @@ export function button(label: string, run: () => void, attrs: Attrs = {}): HTMLB
   return b;
 }
 
+// Sorts names as people read them: case does not matter, and "wall 2" comes before "wall 10".
+export function byName(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+}
+
 // A labelled row: "label [input]".
 export function row(label: string, ...inputs: Node[]): HTMLElement {
   return el('div', { class: 'row' }, el('label', { text: label }), ...inputs);

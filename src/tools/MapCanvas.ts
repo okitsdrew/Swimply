@@ -100,9 +100,12 @@ class EditorScene extends Phaser.Scene {
   }
 
   setMap(map: AreaMap): void {
-    this.view?.destroy();
-    this.view = new MapView(this, map);
-    this.view.render();
+    // The same map changed: redraw only what changed. Another map, or a new size: start over.
+    if (!this.view?.update(map)) {
+      this.view?.destroy();
+      this.view = new MapView(this, map);
+      this.view.render();
+    }
     // Markers have no art in play; here they show as a see-through stand-in so they can be found and grabbed.
     this.marks.forEach((m) => m.destroy());
     this.marks = [];
@@ -205,6 +208,11 @@ export class MapCanvas {
 
   get zoom(): number {
     return this.scene.cameras.main.zoom;
+  }
+
+  // The part of the map on screen, in screen pixels of the world.
+  get view(): Phaser.Geom.Rectangle {
+    return this.scene.cameras.main.worldView;
   }
 
   // A texture's size in art pixels, for working out what the cursor is over.

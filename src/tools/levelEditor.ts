@@ -11,7 +11,7 @@ import { Problems, report } from '../data/registry';
 import { deleteFile, hex, readFile, readMapFiles, renameInDataFile, saveFile } from './files';
 import { MapCanvas } from './MapCanvas';
 import { EditMap, EditObject, fromAreaMap, MapDoc, MAX_TILES, Side } from './MapDoc';
-import { button, checkbox, el, ID_PATTERN, numberInput, round, row, select, textInput, uniqueId } from './ui';
+import { button, byName, checkbox, el, ID_PATTERN, numberInput, round, row, select, textInput, uniqueId } from './ui';
 
 // The level editor page (level-editor.html, dev server only). Paints floors and places assets and markers in the
 // area maps under src/data/maps, and writes them back in the hand-written style. It also renames or replaces a
@@ -652,7 +652,7 @@ class LevelEditor {
     const ring = (x: number, y: number, r: number, color: number, alpha = 1) => {
       const s = toScreen(x, y);
       const e = ellipseHalfSize(r);
-      g.lineStyle(1 / this.canvas.zoom, color, alpha).strokeEllipse(s.x, s.y, e.x * 2, e.y * 2);
+      g.lineStyle(1 / this.canvas.zoom, color, alpha).strokeEllipse(s.x, s.y, e.x * 2, e.y * 2, 16);
     };
 
     if (this.grid) {
@@ -661,9 +661,14 @@ class LevelEditor {
       for (let r = 1; r < m.rows; r++) line(0, r * t, w, r * t);
     }
 
+    // Only things near the view: drawing every ring on a big map each frame made the editor lag.
+    const v = this.canvas.view;
     m.objects.forEach((o, i) => {
       const a = assets.get(o.asset);
       if (!a || !this.shown(o)) return;
+      const s = toScreen(o.x, o.y);
+      const reach = (a.marker ? Math.max(run.spawnZoneRadius, story.doorRadius, 20) : 150) * o.size * 1.5;
+      if (s.x < v.x - reach || s.x > v.right + reach || s.y < v.y - reach || s.y > v.bottom + reach) return;
       if (this.collision) for (const c of a.collision) ring(o.x + c.x * o.size, o.y + c.y * o.size, c.radius * o.size, 0x66ffaa, 0.8);
       if (a.marker) {
         ring(o.x, o.y, 12, 0xf2d7a6);
@@ -1084,11 +1089,12 @@ class LevelEditor {
   // Which category tab the asset palette shows. Starts on the category of the asset being placed.
   private assetCategory = '';
 
-  // One tab per asset category (set in the asset maker), so the list stays short however many assets there are.
+  // One tab per asset category (set in the asset maker), so the list stays short however many assets there are. Each
+  // tab lists its assets by name.
   private assetPalette(): HTMLElement[] {
     const byCategory = new Map<string, Asset[]>();
-    for (const a of assets.list()) byCategory.set(a.category, [...(byCategory.get(a.category) ?? []), a]);
-    const cats = [...byCategory.keys()].sort((a, b) => a.localeCompare(b));
+    for (const a of [...assets.list()].sort((a, b) => byName(a.name, b.name))) byCategory.set(a.category, [...(byCategory.get(a.category) ?? []), a]);
+    const cats = [...byCategory.keys()].sort(byName);
     if (!byCategory.has(this.assetCategory)) this.assetCategory = assets.get(this.asset)?.category ?? cats[0] ?? '';
     return [
       el('h3', { text: 'Assets (click, then click the map)' }),
