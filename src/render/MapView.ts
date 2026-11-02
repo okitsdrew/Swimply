@@ -20,6 +20,10 @@ const CHUNK = 512;
 const STRIP = 4;
 // Roofs sit over everything standing in the world (they are as high as the walls), under the lights and darkness.
 const ROOF_DEPTH = DARK_DEPTH - 2;
+// Map sprites are filed in squares this many screen pixels across. Only squares near the view are drawn and sorted.
+const CELL = 256;
+// How far past the view a square still counts as near, in screen pixels, so the camera never outruns it.
+const CELL_MARGIN = 64;
 // How fast the see-through fades in and out, per second.
 const FADE_SPEED = 6;
 
@@ -30,6 +34,28 @@ interface Fader {
   y0: number;
   x1: number;
   y1: number;
+}
+
+// The map sprites in one square of the screen, and the box round all of them.
+interface Cell {
+  sprites: Phaser.GameObjects.Sprite[];
+  faders: Fader[];
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  shown: boolean;
+}
+
+// A number for each asset as loaded, so an asset changed in the asset maker counts as a different thing.
+const assetNumbers = new WeakMap<object, number>();
+let assetCount = 0;
+
+// One placed thing's sprites and light, and what it was drawn from.
+interface Placement {
+  sig: string;
+  sprites: Phaser.GameObjects.Sprite[];
+  light: PlacedLight | null;
 }
 
 interface PlacedLight {
@@ -48,16 +74,17 @@ interface PlacedLight {
 export class MapView {
   // Draws tiles for baking only; it is never shown.
   private floor: Phaser.GameObjects.Graphics;
-  private floorChunks: Phaser.GameObjects.RenderTexture[] = [];
+  private floorChunks = new Map<string, Phaser.GameObjects.RenderTexture>();
   // Roof tiles baked like the floor, lifted to the wall tops. Touching roof tiles make one building, which fades as
   // a whole while the hero is under it. `building` holds each tile's building number, or -1 where there is no roof.
-  private roofs: { chunks: Phaser.GameObjects.RenderTexture[]; alpha: number }[] = [];
+  private roofs: { chunks: Map<string, Phaser.GameObjects.RenderTexture>; alpha: number }[] = [];
   private building = new Int32Array(0);
-  private faders: Fader[] = [];
+  private cells = new Map<string, Cell>();
   // The hero, in world units, when a game is showing this map (the tools leave it null: nothing fades there).
   private viewer: Vec2 | null = null;
   private edgeLine: Phaser.GameObjects.Graphics;
-  private sprites: Phaser.GameObjects.Sprite[] = [];
+  // What each placed thing is drawn with, so a change to one thing (in the level editor) redraws only that thing.
+  private placed: Placement[] = [];
   private lights: PlacedLight[] = [];
   private dark: Phaser.GameObjects.RenderTexture | null = null;
   private stamp: Phaser.GameObjects.Image;
@@ -82,6 +109,7 @@ export class MapView {
       this.placeSprites();
     }
     this.time += Math.min(dt, 0.25);
+    this.cull();
     this.seeThrough(Math.min(dt, 0.25));
     this.drawLights();
   }
@@ -96,15 +124,59 @@ export class MapView {
     this.key = '';
   }
 
+  // Shows a changed copy of the same map (the level editor, after a paint or a move). Only the floor squares with
+  // changed tiles are baked again, and only the things that were added, moved or removed are redrawn: on a big map,
+  // redrawing everything took over a second per change.
+  update(map: AreaMap): boolean {
+    const old = this.map;
+    if (map.cols !== old.cols || map.rows !== old.rows || map.tileSize !== old.tileSize || this.key === '') return false;
+    this.map = map;
+    const changed: number[] = [];
+    let roofs = false;
+    map.tiles.forEach((f, i) => {
+      if (f === old.tiles[i]) return;
+      changed.push(i);
+      if (f.roof || old.tiles[i].roof) roofs = true;
+    });
+    if (changed.length) {
+      const keys = new Set(changed.flatMap((i) => this.tileCells(i, 0)));
+      this.drawFloor(keys);
+      if (roofs && this.edge) {
+        // The tools never fade roofs, so all roofs there are one set of pictures, and only the squares round the
+        // changed tiles (whose neighbours' rims may change too) are baked again.
+        const lift = Math.round(render.roofHeight);
+        const near = changed.flatMap((i) => [i, i - 1, i + 1, i - map.cols, i + map.cols]).filter((i) => i >= 0 && i < map.tiles.length);
+        this.bakeRoofs(new Set(near.flatMap((i) => this.tileCells(i, lift))));
+      } else if (roofs) this.bakeRoofs();
+    }
+    // Things are matched by what they are and where; whatever has no match is drawn new, and the rest is reused.
+    const free = new Map<string, Placement[]>();
+    for (const g of this.placed) {
+      if (!free.has(g.sig)) free.set(g.sig, []);
+      free.get(g.sig)!.push(g);
+    }
+    this.placed = map.objects.map((o) => free.get(this.sig(o))?.pop() ?? this.place(o));
+    const gone = [...free.values()].flat();
+    if (gone.length) {
+      gone.forEach((g) => this.unplace(g));
+      const dead = new Set(gone.flatMap((g) => g.sprites));
+      for (const c of this.cells.values()) {
+        c.sprites = c.sprites.filter((x) => !dead.has(x));
+        c.faders = c.faders.filter((f) => !dead.has(f.spr));
+      }
+    }
+    this.lights = this.placed.flatMap((g) => (g.light ? [g.light] : []));
+    return true;
+  }
+
   destroy(): void {
     this.floor.destroy();
     this.floorChunks.forEach((c) => c.destroy());
-    this.floorChunks.length = 0;
+    this.floorChunks.clear();
     this.clearRoofs();
     this.edgeLine.destroy();
-    this.sprites.forEach((s) => s.destroy());
-    this.sprites.length = 0;
-    this.lights.forEach((l) => l.glow.destroy());
+    this.placed.forEach((g) => this.unplace(g));
+    this.placed.length = 0;
     this.lights.length = 0;
     this.dark?.destroy();
     this.stamp.destroy();
@@ -113,15 +185,23 @@ export class MapView {
   // A 64 by 64 map has 4,096 tiles, far too many to draw shape by shape every frame. So the floor is drawn once into
   // pictures at art-pixel size (one texture pixel per art pixel, scaled up like the sprites), and only the pictures
   // are drawn after that, which costs the same however big the map is.
-  private drawFloor(): void {
+  // `only` bakes just those squares again, keeping the rest.
+  private drawFloor(only?: Set<string>): void {
     const m = this.map;
-    this.floorChunks.forEach((c) => c.destroy());
-    this.floorChunks = this.bake(
+    for (const [key, c] of this.floorChunks) {
+      if (only && !only.has(key)) continue;
+      c.destroy();
+      this.floorChunks.delete(key);
+    }
+    const baked = this.bake(
       m.tiles.map((_, i) => i),
       0,
       FLOOR_DEPTH,
       (g, f, col, row) => g.fillStyle(f.roof ? 0x000000 : f.colors[(col * 7 + row * 13) % f.colors.length], 1).fillPoints(this.p, true),
+      only,
     );
+    baked.forEach((c, key) => this.floorChunks.set(key, c));
+    if (only) return;
     this.bakeRoofs();
     const w = m.cols * m.tileSize;
     const h = m.rows * m.tileSize;
@@ -136,7 +216,8 @@ export class MapView {
     lift: number,
     depth: number,
     paint: (g: Phaser.GameObjects.Graphics, f: AreaMap['tiles'][number], col: number, row: number) => void,
-  ): Phaser.GameObjects.RenderTexture[] {
+    only?: Set<string>,
+  ): Map<string, Phaser.GameObjects.RenderTexture> {
     const m = this.map;
     const t = m.tileSize;
     const px = render.pixelScale;
@@ -152,6 +233,7 @@ export class MapView {
       for (let cy = Math.floor(y0 / CHUNK); cy <= Math.floor(y1 / CHUNK); cy++) {
         for (let cx = Math.floor(x0 / CHUNK); cx <= Math.floor(x1 / CHUNK); cx++) {
           const key = `${cx},${cy}`;
+          if (only && !only.has(key)) continue;
           let c = cells.get(key);
           if (!c) cells.set(key, (c = { cx, cy, tiles: [], x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }));
           c.tiles.push(i);
@@ -163,8 +245,8 @@ export class MapView {
       }
     }
     const g = this.floor;
-    const out: Phaser.GameObjects.RenderTexture[] = [];
-    for (const c of cells.values()) {
+    const out = new Map<string, Phaser.GameObjects.RenderTexture>();
+    for (const [key, c] of cells) {
       // The picture covers only its own square (so pictures never overlap), trimmed to the tiles in it. Its sides are
       // kept to even numbers, because Phaser stretches an odd-sized picture to even, which would overlap its neighbour.
       const even = (v: number, up: boolean) => (up ? Math.ceil(v / 2) : Math.floor(v / 2)) * 2;
@@ -188,9 +270,27 @@ export class MapView {
         .setScale(px)
         .setDepth(depth);
       rt.draw(g);
-      out.push(rt);
+      out.set(key, rt);
     }
     return out;
+  }
+
+  // The keys of the squares a tile's picture touches, as bake() files them.
+  private tileCells(i: number, lift: number): string[] {
+    const m = this.map;
+    const t = m.tileSize;
+    const px = render.pixelScale;
+    const col = i % m.cols;
+    const row = (i - col) / m.cols;
+    const x0 = toScreen(col * t, (row + 1) * t).x / px - 1;
+    const x1 = toScreen((col + 1) * t, row * t).x / px + 1;
+    const y0 = toScreen(col * t, row * t).y / px - lift - 1;
+    const y1 = toScreen((col + 1) * t, (row + 1) * t).y / px - lift + 1;
+    const keys: string[] = [];
+    for (let cy = Math.floor(y0 / CHUNK); cy <= Math.floor(y1 / CHUNK); cy++) {
+      for (let cx = Math.floor(x0 / CHUNK); cx <= Math.floor(x1 / CHUNK); cx++) keys.push(`${cx},${cy}`);
+    }
+    return keys;
   }
 
   private isRoof(col: number, row: number): boolean {
@@ -230,13 +330,24 @@ export class MapView {
 
   // Roof tiles, baked like the floor but lifted by roofHeight, with a dark rim on every edge that is not against more
   // roof, so each building's top reads as one slab. Each building gets its own pictures, so it can fade on its own.
-  private bakeRoofs(): void {
-    this.clearRoofs();
+  // In the tools (no fading), all roofs are baked as one, and `only` bakes just those squares again.
+  private bakeRoofs(only?: Set<string>): void {
     const count = this.findBuildings();
-    const tiles: number[][] = Array.from({ length: count }, () => []);
+    let tiles: number[][] = Array.from({ length: count }, () => []);
     this.building.forEach((n, i) => n !== -1 && tiles[n].push(i));
+    if (this.edge) tiles = [tiles.flat()];
+    if (only && this.roofs.length === 1) {
+      for (const [key, c] of this.roofs[0].chunks) {
+        if (!only.has(key)) continue;
+        c.destroy();
+        this.roofs[0].chunks.delete(key);
+      }
+    } else {
+      this.clearRoofs();
+      only = undefined;
+    }
     for (const list of tiles) {
-      const chunks = this.bake(list, Math.round(render.roofHeight), ROOF_DEPTH, (g, f, col, row) => {
+      const baked = this.bake(list, Math.round(render.roofHeight), ROOF_DEPTH, (g, f, col, row) => {
         const c = f.colors[(col * 7 + row * 13) % f.colors.length];
         g.fillStyle(c, 1).fillPoints(this.p, true);
         g.lineStyle(1, Phaser.Display.Color.IntegerToColor(c).darken(45).color, 1);
@@ -245,8 +356,9 @@ export class MapView {
         if (!this.isRoof(col + 1, row)) edge(1, 2);
         if (!this.isRoof(col, row + 1)) edge(2, 3);
         if (!this.isRoof(col - 1, row)) edge(3, 0);
-      });
-      this.roofs.push({ chunks, alpha: 1 });
+      }, only);
+      if (only) baked.forEach((c, key) => this.roofs[0].chunks.set(key, c));
+      else this.roofs.push({ chunks: baked, alpha: 1 });
     }
   }
 
@@ -271,10 +383,13 @@ export class MapView {
     const y0 = s.y - 40;
     const y1 = s.y;
     const fade = (alpha: number, want: number) => (Math.abs(alpha - want) < 0.01 ? want : alpha + (want - alpha) * k);
-    for (const f of this.faders) {
-      const over = f.spr.depth > s.y && f.x1 > x0 && f.x0 < x1 && f.y1 > y0 && f.y0 < y1;
-      const want = over ? render.seeThrough : 1;
-      if (f.spr.alpha !== want) f.spr.setAlpha(fade(f.spr.alpha, want));
+    for (const c of this.cells.values()) {
+      if (!c.shown) continue;
+      for (const f of c.faders) {
+        const over = f.spr.depth > s.y && f.x1 > x0 && f.x0 < x1 && f.y1 > y0 && f.y0 < y1;
+        const want = over ? render.seeThrough : 1;
+        if (f.spr.alpha !== want) f.spr.setAlpha(fade(f.spr.alpha, want));
+      }
     }
     const under = [this.roofAt(s.x, s.y - 6), this.roofAt(s.x, s.y - 34)];
     this.roofs.forEach((r, n) => {
@@ -294,60 +409,111 @@ export class MapView {
   }
 
   private placeSprites(): void {
-    this.sprites.forEach((s) => s.destroy());
-    this.sprites.length = 0;
-    this.lights.forEach((l) => l.glow.destroy());
-    this.lights.length = 0;
-    this.faders.length = 0;
+    this.placed.forEach((g) => this.unplace(g));
+    this.cells.clear();
+    this.placed = this.map.objects.map((o) => this.place(o));
+    this.lights = this.placed.flatMap((g) => (g.light ? [g.light] : []));
+  }
+
+  // What a placed thing is drawn from: two things with the same one look exactly the same.
+  private sig(o: AreaMap['objects'][number]): string {
+    let n = assetNumbers.get(o.asset);
+    if (n === undefined) assetNumbers.set(o.asset, (n = ++assetCount));
+    return `${n},${o.x},${o.y},${o.size}`;
+  }
+
+  private unplace(g: Placement): void {
+    g.sprites.forEach((x) => x.destroy());
+    g.light?.glow.destroy();
+  }
+
+  // Draws one placed thing.
+  private place(o: AreaMap['objects'][number]): Placement {
     const px = render.pixelScale;
-    for (const o of this.map.objects) {
-      const s = toScreen(o.x, o.y);
-      const line = this.groundLine(o.x, o.y, o.asset.collision, o.size);
-      o.asset.parts.forEach((part, i) => {
-        // Parts of one asset keep their order: a later part (flowers in a planter) is drawn over an earlier one.
-        const order = i * 0.001;
-        const make = () =>
-          this.scene.add
-            .sprite(s.x + part.x * px * o.size, s.y + part.y * px * o.size, part.texture)
-            .setOrigin(part.originX, part.originY)
-            .setScale(px * part.scale * o.size);
-        const spr = make().setDepth(part.ground ? FLOOR_DEPTH + 1 + order : s.y + order);
-        const fw = spr.frame.width * spr.scaleX;
-        const fh = spr.frame.height * spr.scaleY;
-        const fx = spr.x - part.originX * fw;
-        const fy = spr.y - part.originY * fh;
-        let full = !part.ground;
-        const anim = this.animation(part.frames ?? [], part.fps);
-        if (anim) {
-          // Each copy starts on a different frame, so a row of torches does not flicker in step.
-          spr.play({ key: anim, startFrame: Math.floor(Math.random() * part.frames.length) });
-        } else if (line && !part.ground) {
-          // One depth for a long wall is wrong at its ends: something just behind its far end is lower on screen than
-          // the wall's middle, so it was drawn in front. Each strip is sorted by the wall's base where it stands.
-          const w = spr.frame.width;
-          const h = spr.frame.height;
-          const scale = spr.scaleX;
-          const left = spr.x - part.originX * w * scale;
-          for (let x = 0; x < w; x += STRIP) {
-            const strip = x === 0 ? spr : make();
-            const mid = left + (x + Math.min(STRIP, w - x) / 2) * scale;
-            strip.setCrop(x, 0, Math.min(STRIP, w - x), h).setDepth(this.lineDepth(line, mid) + order);
-            if (strip !== spr) this.sprites.push(strip);
-            this.faders.push({ spr: strip, x0: left + x * scale, y0: fy, x1: left + (x + Math.min(STRIP, w - x)) * scale, y1: fy + fh });
-          }
-          full = false;
+    const sprites: Phaser.GameObjects.Sprite[] = [];
+    const s = toScreen(o.x, o.y);
+    const line = this.groundLine(o.x, o.y, o.asset.collision, o.size);
+    o.asset.parts.forEach((part, i) => {
+      // Parts of one asset keep their order: a later part (flowers in a planter) is drawn over an earlier one.
+      const order = i * 0.001;
+      const make = () =>
+        this.scene.add
+          .sprite(s.x + part.x * px * o.size, s.y + part.y * px * o.size, part.texture)
+          .setOrigin(part.originX, part.originY)
+          .setScale(px * part.scale * o.size);
+      const spr = make().setDepth(part.ground ? FLOOR_DEPTH + 1 + order : s.y + order);
+      const fw = spr.frame.width * spr.scaleX;
+      const fh = spr.frame.height * spr.scaleY;
+      const fx = spr.x - part.originX * fw;
+      const fy = spr.y - part.originY * fh;
+      let full = !part.ground;
+      const anim = this.animation(part.frames ?? [], part.fps);
+      if (anim) {
+        // Each copy starts on a different frame, so a row of torches does not flicker in step.
+        spr.play({ key: anim, startFrame: Math.floor(Math.random() * part.frames.length) });
+      } else if (line && !part.ground) {
+        // One depth for a long wall is wrong at its ends: something just behind its far end is lower on screen than
+        // the wall's middle, so it was drawn in front. Each strip is sorted by the wall's base where it stands.
+        const w = spr.frame.width;
+        const h = spr.frame.height;
+        const scale = spr.scaleX;
+        const left = spr.x - part.originX * w * scale;
+        for (let x = 0; x < w; x += STRIP) {
+          const strip = x === 0 ? spr : make();
+          const mid = left + (x + Math.min(STRIP, w - x) / 2) * scale;
+          strip.setCrop(x, 0, Math.min(STRIP, w - x), h).setDepth(this.lineDepth(line, mid) + order);
+          if (strip !== spr) sprites.push(strip);
+          this.file({ spr: strip, x0: left + x * scale, y0: fy, x1: left + (x + Math.min(STRIP, w - x)) * scale, y1: fy + fh }, true);
         }
-        if (full) this.faders.push({ spr, x0: fx, y0: fy, x1: fx + fw, y1: fy + fh });
-        this.sprites.push(spr);
-      });
-      const l = o.asset.light;
-      if (!l) continue;
-      const x = s.x + l.x * px * o.size;
-      const y = s.y + l.y * px * o.size;
-      const glow = this.scene.add.image(x, y, Tex.light).setTint(parseInt(l.color.slice(1), 16)).setBlendMode(Phaser.BlendModes.ADD);
-      // Over the whole world, so it lights the walls beside it and anyone who walks up to it.
-      glow.setDepth(DARK_DEPTH - 1);
-      this.lights.push({ x, y, radius: l.radius * px * o.size, light: l, glow, seed: this.lights.length * 7.3 + o.x * 0.01 });
+        full = false;
+      }
+      // Most parts never change, so they are taken off the list of things updated every frame.
+      if (!anim) spr.removeFromUpdateList();
+      if (full || !line || part.ground) this.file({ spr, x0: fx, y0: fy, x1: fx + fw, y1: fy + fh }, full);
+      sprites.push(spr);
+    });
+    const l = o.asset.light;
+    if (!l) return { sig: this.sig(o), sprites, light: null };
+    const x = s.x + l.x * px * o.size;
+    const y = s.y + l.y * px * o.size;
+    const glow = this.scene.add.image(x, y, Tex.light).setTint(parseInt(l.color.slice(1), 16)).setBlendMode(Phaser.BlendModes.ADD);
+    // Over the whole world, so it lights the walls beside it and anyone who walks up to it.
+    glow.setDepth(DARK_DEPTH - 1);
+    const light = { x, y, radius: l.radius * px * o.size, light: l, glow, seed: o.x * 0.013 + o.y * 0.007 };
+    return { sig: this.sig(o), sprites, light };
+  }
+
+  // Files a sprite in the square its middle is in. `fades` is whether it turns see-through in front of the hero.
+  private file(f: Fader, fades: boolean): void {
+    const key = `${Math.floor((f.x0 + f.x1) / 2 / CELL)},${Math.floor((f.y0 + f.y1) / 2 / CELL)}`;
+    let c = this.cells.get(key);
+    if (!c) this.cells.set(key, (c = { sprites: [], faders: [], x0: f.x0, y0: f.y0, x1: f.x1, y1: f.y1, shown: true }));
+    c.sprites.push(f.spr);
+    if (!c.shown) f.spr.removeFromDisplayList();
+    if (fades) c.faders.push(f);
+    c.x0 = Math.min(c.x0, f.x0);
+    c.y0 = Math.min(c.y0, f.y0);
+    c.x1 = Math.max(c.x1, f.x1);
+    c.y1 = Math.max(c.y1, f.y1);
+  }
+
+  // A big map has thousands of sprites (each wall is cut into strips), and the game would sort and draw every one of
+  // them each frame, even far off screen. So squares away from the view are taken out of the scene's list until the
+  // view comes near them again.
+  private cull(): void {
+    const v = this.scene.cameras.main.worldView;
+    const x0 = v.x - CELL_MARGIN;
+    const y0 = v.y - CELL_MARGIN;
+    const x1 = v.right + CELL_MARGIN;
+    const y1 = v.bottom + CELL_MARGIN;
+    for (const c of this.cells.values()) {
+      const near = c.x1 > x0 && c.x0 < x1 && c.y1 > y0 && c.y0 < y1;
+      if (near === c.shown) continue;
+      c.shown = near;
+      for (const spr of c.sprites) {
+        if (near) spr.addToDisplayList();
+        else spr.removeFromDisplayList();
+      }
     }
   }
 

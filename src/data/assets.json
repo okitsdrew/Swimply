@@ -379,6 +379,75 @@
       "sound": "fire_ambience"
     },
     {
+      "id": "brick-oven-se",
+      "name": "Brick oven (SE/NW)",
+      "category": "props",
+      "parts": [
+        {
+          "texture": "brick_oven_se",
+          "originX": 0.51,
+          "originY": 0.76,
+          "frames": ["brick_oven_se", "brick_oven_se_1", "brick_oven_se_2"]
+        }
+      ],
+      "collision": [{ "radius": 24 }],
+      "light": { "color": "#ff9a3a", "x": -8, "y": -4, "radius": 26, "intensity": 0.3, "flicker": 0.4 },
+      "sound": "fire_ambience"
+    },
+    {
+      "id": "brick-oven-sw",
+      "name": "Brick oven (SW/NE)",
+      "category": "props",
+      "parts": [
+        {
+          "texture": "brick_oven_sw",
+          "originX": 0.49,
+          "originY": 0.76,
+          "frames": ["brick_oven_sw", "brick_oven_sw_1", "brick_oven_sw_2"]
+        }
+      ],
+      "collision": [{ "radius": 24 }],
+      "light": { "color": "#ff9a3a", "x": 8, "y": -4, "radius": 26, "intensity": 0.3, "flicker": 0.4 },
+      "sound": "fire_ambience"
+    },
+    {
+      "id": "cauldron",
+      "name": "Cauldron",
+      "category": "props",
+      "parts": [
+        {
+          "texture": "cauldron",
+          "originX": 0.5,
+          "originY": 0.75,
+          "frames": ["cauldron", "cauldron_1", "cauldron_2"]
+        }
+      ],
+      "collision": [{ "radius": 18 }],
+      "light": { "color": "#ff9a3a", "y": 4, "radius": 26, "intensity": 0.3, "flicker": 0.4 },
+      "sound": "fire_ambience"
+    },
+    {
+      "id": "barrel",
+      "name": "Barrel",
+      "category": "props",
+      "parts": [{ "texture": "barrel", "originY": 0.87 }],
+      "collision": [{ "radius": 12 }]
+    },
+    {
+      "id": "long-table-se",
+      "name": "Long table (SE/NW)",
+      "category": "props",
+      "parts": [{ "texture": "long_table_se", "originX": 0.49, "originY": 0.64 }],
+      "collision": [{ "x": -28, "radius": 14 }, { "radius": 14 }, { "x": 28, "radius": 14 }]
+    },
+    {
+      "id": "long-table-sw",
+      "name": "Long table (SW/NE)",
+      "category": "props",
+      "parts": [{ "texture": "long_table_sw", "originX": 0.51, "originY": 0.64 }],
+      "collision": [{ "y": -28, "radius": 14 }, { "radius": 14 }, { "y": 28, "radius": 14 }]
+    },
+    {
       "id": "bow_pedestal",
       "name": "bow_pedestal",
       "category": "props",
@@ -710,10 +779,24 @@
       "collision": [{ "x": -24, "radius": 10 }, { "x": 24, "radius": 10 }]
     },
     {
+      "id": "short-granite-doorway-se",
+      "name": "Short granite doorway (SE/NW)",
+      "category": "walls",
+      "parts": [{ "texture": "short_granite_doorway_se", "originY": 0.87 }],
+      "collision": [{ "x": -24, "radius": 10 }, { "x": 24, "radius": 10 }]
+    },
+    {
       "id": "granite-doorway-sw",
       "name": "Granite doorway (SW/NE)",
       "category": "walls",
       "parts": [{ "texture": "granite_doorway_sw", "originY": 0.924 }],
+      "collision": [{ "y": -24, "radius": 10 }, { "y": 24, "radius": 10 }]
+    },
+    {
+      "id": "short-granite-doorway-sw",
+      "name": "Short granite doorway (SW/NE)",
+      "category": "walls",
+      "parts": [{ "texture": "short_granite_doorway_sw", "originY": 0.87 }],
       "collision": [{ "y": -24, "radius": 10 }, { "y": 24, "radius": 10 }]
     },
     {
@@ -756,6 +839,34 @@
         { "texture": "granite_wall_sw", "originY": 2.05 }
       ],
       "collision": [{ "y": 20, "radius": 12 }, { "radius": 12 }, { "y": -20, "radius": 12 }]
+    },
+    {
+      "id": "tuft",
+      "name": "tuft",
+      "category": "plants",
+      "parts": [{ "texture": "tuft" }]
+    },
+    {
+      "id": "cafe_table",
+      "name": "cafe_table",
+      "category": "props",
+      "parts": [
+        { "texture": "wooden_table_cafe", "x": 44, "y": -14 },
+        { "texture": "wooden_table_cafe", "x": 29, "y": -6 },
+        { "texture": "wooden_table_cafe", "x": 14, "y": 2 },
+        { "texture": "wooden_table_cafe", "y": 10 },
+        { "texture": "wooden_table_cafe", "x": -15, "y": 18 },
+        { "texture": "wooden_table_cafe", "x": -31, "y": 26 }
+      ],
+      "collision": [
+        { "x": 4, "y": 104, "radius": 20 },
+        { "x": 1, "y": 63, "radius": 20 },
+        { "y": 21, "radius": 20 },
+        { "x": -2, "y": -21, "radius": 20 },
+        { "x": -4, "y": -62, "radius": 20 },
+        { "x": -4, "y": -102, "radius": 20 },
+        { "x": -10, "y": -142, "radius": 20 }
+      ]
     }
   ]
 }
