@@ -431,7 +431,8 @@
       "name": "Barrel",
       "category": "props",
       "parts": [{ "texture": "barrel", "originY": 0.87 }],
-      "collision": [{ "radius": 12 }]
+      "collision": [{ "radius": 12 }],
+      "health": 80
     },
     {
       "id": "long-table-se",
@@ -867,6 +868,13 @@
         { "x": -4, "y": -102, "radius": 20 },
         { "x": -10, "y": -142, "radius": 20 }
       ]
+    },
+    {
+      "id": "shade-spawner",
+      "name": "Shade spawner",
+      "category": "props",
+      "parts": [{ "texture": "shade_spawner_0", "originY": 0.95, "frames": ["shade_spawner_0", "shade_spawner_1", "shade_spawner_2", "shade_spawner_3", "shade_spawner_4", "shade_spawner_5", "shade_spawner_6", "shade_spawner_7"] }],
+      "collision": [{ "radius": 14 }]
     }
   ]
 }
