@@ -6,6 +6,7 @@ import { run } from '../config/run';
 import { shade } from '../config/shade';
 import { sim } from '../config/sim';
 import { story } from '../config/story';
+import { breakables as cfgBreakables } from '../config/breakables';
 import { pickups as cfgPickups } from '../config/pickups';
 import { tree } from '../config/tree';
 import { werewolfMiniboss as werewolf } from '../config/werewolf';
@@ -23,6 +24,7 @@ import { AmbienceView } from '../render/AmbienceView';
 import { LoopSounds } from '../render/LoopSounds';
 import { SoundFx } from '../render/SoundFx';
 import { ArrowsView } from '../render/ArrowsView';
+import { BreakablesView } from '../render/BreakablesView';
 import { makeArt } from '../render/art';
 import { cursorCss } from '../render/Cursors';
 import { DialogueBox } from '../render/DialogueBox';
@@ -39,6 +41,7 @@ import { ShadesView } from '../render/ShadesView';
 import { TimoView } from '../render/TimoView';
 import { WerewolfView } from '../render/WerewolfView';
 import { Arrows } from '../sim/Arrows';
+import { Breakables } from '../sim/Breakables';
 import { Pickups } from '../sim/Pickups';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
@@ -74,8 +77,17 @@ let cameFrom = '';
 export class ArenaScene extends Phaser.Scene {
   private input2!: Input;
   private mapId = params.get('map') ?? DEFAULT_MAP;
-  // The map as the save's flags show it (see withFlags).
+  // The map as the save's flags show it (see withFlags), less anything broken this visit.
   private map!: AreaMap;
+  // The map as its file has it, everything in it, for showing it again as flags change.
+  private baseMap!: AreaMap;
+  // Flags turned on by breaking things this visit. They only reach the save when he leaves through a door alive; a
+  // death starts the map over without them, so whatever he broke is back.
+  private areaFlags: Record<string, boolean> = {};
+  // Things broken this visit that set no flag: gone until he comes back.
+  private broken = new Set<Placed>();
+  private breakables!: Breakables;
+  private breakablesView!: BreakablesView;
   // No spawn zones: no Shades, no run, no tree.
   private calm = false;
   // Where he comes in, when another map sent him here.
@@ -155,6 +167,9 @@ export class ArenaScene extends Phaser.Scene {
     // A missing map (renamed or deleted file) falls back to any map rather than a blank screen.
     const map = maps.get(this.mapId) ?? maps.get(DEFAULT_MAP) ?? maps.list()[0];
     if (!map) throw new Error('No maps in src/data/maps');
+    this.baseMap = map;
+    this.areaFlags = {};
+    this.broken = new Set();
     this.map = withFlags(map, save.flags);
     this.mapId = map.id;
     this.calm = !this.map.objects.some((o) => o.asset.marker === 'shadeSpawn');
@@ -190,6 +205,8 @@ export class ArenaScene extends Phaser.Scene {
     this.view = new PlayerView(this, this.player, this.fx);
     this.arrows = new Arrows();
     this.arrowsView = new ArrowsView(this, this.arrows, this.fx);
+    this.breakables = new Breakables();
+    this.breakablesView = new BreakablesView(this.mapView, this.fx);
     this.shades = new Shades();
     this.shadesView = new ShadesView(this, this.shades, this.fx);
     this.pickups = new Pickups();
@@ -251,6 +268,15 @@ export class ArenaScene extends Phaser.Scene {
       this.fx.addShake(camera.shakeOnHit);
       this.sfx.play('hit');
     };
+    this.arrows.onBlocked = (x, y, thing, damage) => {
+      if (!thing || !this.breakables.canBreak(thing)) return;
+      const s = toScreen(x, y);
+      this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
+      this.sfx.play('hit');
+      this.breakables.damage(thing, damage);
+    };
+    this.breakables.onHit = (thing) => this.breakablesView.onHit(thing);
+    this.breakables.onBroken = (thing) => this.onBroken(thing);
     this.shades.onRisen = (s) => this.shadesView.onRisen(s);
     this.shades.onKilled = (x, y) => {
       if (this.run.state === 'fighting') {
@@ -326,6 +352,11 @@ export class ArenaScene extends Phaser.Scene {
       return;
     }
     this.leaving = true;
+    // He got out alive, so what he broke here stays broken.
+    if (Object.keys(this.areaFlags).length) {
+      Object.assign(save.flags, this.areaFlags);
+      writeSave();
+    }
     leftFrom.set(this.mapId, { x: this.player.x, y: this.player.y });
     cameFrom = this.mapId;
     // Into the Mindscape (a map Shades spawn in) from somewhere calm, or through a door from one calm map to another.
@@ -509,6 +540,32 @@ export class ArenaScene extends Phaser.Scene {
     addShards(n);
   }
 
+  // Something gave way: its flag turns on for this visit (or it is just gone, with none), and the map is shown again
+  // with the flags as they are now, so other things that wait on that flag come or go too.
+  private onBroken(thing: Placed): void {
+    this.breakablesView.onBroken(thing);
+    this.freeze(cfgBreakables.breakHitStop, true);
+    if (thing.onBreak) this.areaFlags[thing.onBreak] = true;
+    else this.broken.add(thing);
+    this.showMap();
+  }
+
+  // Updates the map to the save's flags plus this visit's, less what broke: the drawing, what is solid, and the routes
+  // walkers take. Only what changed is redone.
+  private showMap(): void {
+    const next = withFlags(this.baseMap, { ...save.flags, ...this.areaFlags });
+    next.objects = next.objects.filter((o) => !this.broken.has(o));
+    const now = new Set(next.objects);
+    const was = new Set(this.map.objects);
+    const removed = this.map.objects.filter((o) => !now.has(o));
+    const added = next.objects.filter((o) => !was.has(o));
+    if (!removed.length && !added.length) return;
+    this.nav.refresh(this.world.change(removed, added));
+    this.mapView.update(next);
+    this.map = next;
+    this.near = null;
+  }
+
   private onWolfKilled(x: number, y: number): void {
     this.wolfView.onKilled(x, y);
         if (this.run.state !== 'fighting') return;
@@ -533,6 +590,14 @@ export class ArenaScene extends Phaser.Scene {
     this.wolfView.clear();
     this.wolfCame = false;
     this.arrows.clear();
+    this.breakables.clear();
+    this.breakablesView.clear();
+    // A new run puts back what the last one broke.
+    if (this.broken.size || Object.keys(this.areaFlags).length) {
+      this.broken.clear();
+      this.areaFlags = {};
+      this.showMap();
+    }
     // Where the address says, else the map's player start marker, else the middle of the map.
     const at = params.get('at')?.split(',').map(Number);
     const start = (this.arriveDoor && this.besideDoor(this.arriveDoor)) ?? this.arriveAt ?? (at?.length === 2 && at.every(Number.isFinite) ? { x: at[0], y: at[1] }
@@ -628,6 +693,7 @@ export class ArenaScene extends Phaser.Scene {
     this.shadesView.render(this.player.x, this.player.y);
     this.pickupsView.render(frameDt);
     this.wolfView.render(frameDt, cam.width);
+    this.breakablesView.update(frameDt);
     // A story pose (lying, getting up) stands in for his normal look.
     this.pose.update(frameDt, this.player.x, this.player.y);
     if (this.pose.active !== this.posed && this.run.state === 'fighting') this.view.setVisible(!this.pose.active);
@@ -657,10 +723,11 @@ export class ArenaScene extends Phaser.Scene {
   // One fixed step of the whole simulation, in the order things happen.
   private step(dt: number): void {
     const r = this.run;
-    // A death in a calm map just puts him back where he came in.
-    if (this.calm && r.state === 'dead' && r.deadTime >= story.respawnDelay) {
-      this.startRun();
-      this.cameras.main.fadeIn(story.fadeTime * 1000);
+    // A death in a calm map starts it over from where he came in: everything he broke or cleared here is back.
+    if (this.calm && r.state === 'dead' && r.deadTime >= story.respawnDelay && !this.leaving) {
+      this.leaving = true;
+      this.scene.restart({ map: this.mapId, at: this.arriveAt ?? undefined, door: this.arriveDoor ?? undefined });
+      return;
     }
     if (!this.calm && !this.treeOpen && r.state === 'dead' && r.canRestart) this.openTree();
     this.story.update(dt);
@@ -736,6 +803,11 @@ export class ArenaScene extends Phaser.Scene {
       ring(this.wolf.x, this.wolf.y, this.wolf.radius * werewolf.contactScale, 0xff4466);
     }
     for (const c of this.world.circles) ring(c.x, c.y, c.radius, 0x66ffaa);
+    // Things arrows can break, in orange.
+    for (const o of this.map.objects) {
+      if (!this.breakables.canBreak(o)) continue;
+      for (const c of o.asset.collision) ring(o.x + c.x * o.size, o.y + c.y * o.size, c.radius * o.size, 0xff9933);
+    }
     for (const b of this.world.floorBoxes) {
       g.lineStyle(1, 0x66ffaa, 0.8).strokePoints([toScreen(b.x0, b.y0), toScreen(b.x1, b.y0), toScreen(b.x1, b.y1), toScreen(b.x0, b.y1)], true);
     }

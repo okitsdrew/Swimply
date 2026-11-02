@@ -6,7 +6,7 @@ import { story } from '../config/story';
 import { ellipseHalfSize, toScreen, Vec2 } from '../core/iso';
 import { Asset, assets } from '../data/assets';
 import { floors } from '../data/floors';
-import { AreaMap, parseMap, withFlags } from '../data/maps';
+import { AreaMap, parseMap, showsWith, withFlags } from '../data/maps';
 import { Problems, report } from '../data/registry';
 import { deleteFile, hex, readFile, readMapFiles, renameInDataFile, saveFile } from './files';
 import { MapCanvas } from './MapCanvas';
@@ -297,13 +297,13 @@ class LevelEditor {
   // Whether a placed thing shows under the flag preview (always, with the preview off).
   private shown(o: EditObject): boolean {
     const f = this.flagView;
-    return !f || ((!o.if || !!f[o.if]) && (!o.unless || !f[o.unless]));
+    return !f || showsWith(o, f);
   }
 
   // Every save flag the open map's things depend on.
   private mapFlags(): string[] {
     const out = new Set<string>();
-    for (const o of this.doc?.map.objects ?? []) for (const f of [o.if, o.unless]) if (f) out.add(f);
+    for (const o of this.doc?.map.objects ?? []) for (const f of [o.if, o.unless, o.onBreak]) if (f) out.add(f);
     return [...out].sort();
   }
 
@@ -360,7 +360,7 @@ class LevelEditor {
     const map: EditMap = {
       name: id, tileSize: t, cols: n, rows: n, legend: {}, darkness: 0,
       tiles: Array.from({ length: n * n }, () => this.floor),
-      objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1, if: '', unless: '', to: '' }] : [],
+      objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1, if: '', unless: '', to: '', onBreak: '' }] : [],
     };
     const d = new MapDoc(id, map, null, true);
     this.docs.push(d);
@@ -485,7 +485,7 @@ class LevelEditor {
         const a = assets.get(this.asset);
         if (!a) return;
         const at = this.place(p);
-        d.change((m) => m.objects.push({ asset: a.id, x: at.x, y: at.y, size: 1, if: '', unless: '', to: '' }));
+        d.change((m) => m.objects.push({ asset: a.id, x: at.x, y: at.y, size: 1, if: '', unless: '', to: '', onBreak: '' }));
         this.selection = [d.map.objects.length - 1];
         this.changed();
         break;
@@ -1062,6 +1062,12 @@ class LevelEditor {
       row('only if', textInput(o.if ?? '', (v) => edit(() => (d.map.objects[sel].if = v)))),
       row('only unless', textInput(o.unless ?? '', (v) => edit(() => (d.map.objects[sel].unless = v)))),
       el('p', { class: 'hint', text: 'Save flags, such as mindscapeCleared. "Only if" shows it while the flag is on, "only unless" while it is off. Leave empty for always.' }),
+      ...(asset?.health
+        ? [
+            row('broken sets', textInput(o.onBreak ?? '', (v) => edit(() => (d.map.objects[sel].onBreak = v)))),
+            el('p', { class: 'hint', text: `Arrows break this after ${asset.health} damage. A flag here (such as gate_open) turns on when it breaks, and it stays broken for good once he leaves the map alive. Empty: it is back next visit. Other things' "only if" / "only unless" can use the same flag.` }),
+          ]
+        : []),
       el('div', { class: 'bar' },
         button('Copy (Ctrl+C)', () => this.copySelected()),
         button('Duplicate (Ctrl+D)', () => this.duplicateSelected()),

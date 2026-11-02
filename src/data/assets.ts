@@ -53,6 +53,8 @@ export interface Asset {
   light: Light | null;
   // A looping sound id (sounds.json), heard louder the nearer the player is to one of these (a fire's crackle).
   sound: string;
+  // How much arrow damage breaks it. 0 can't be broken. Only its collision circles can be hit, so it needs some.
+  health: number;
 }
 
 function parseAssets(data: unknown): Asset[] {
@@ -110,6 +112,7 @@ function parseAssets(data: unknown): Asset[] {
       collision,
       marker: str(e.marker, '', `${id}.marker`, problems),
       sound: str(e.sound, '', `${id}.sound`, problems),
+      health: Math.max(0, num(e.health, 0, `${id}.health`, problems)),
       light,
     });
   });

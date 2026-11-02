@@ -1,5 +1,5 @@
 import { Box, Circle, pushOut, pushOutOfBoxes, segmentBox, segmentCircle } from '../core/geometry';
-import { AreaMap, tileAt } from '../data/maps';
+import { AreaMap, Placed, tileAt } from '../data/maps';
 
 // What every moving thing asks about solid ground. Systems hold a CollisionWorld, never the list of shapes
 // behind it, so how the world is built from map data can change without touching them.
@@ -15,6 +15,8 @@ export interface CollisionWorld {
   onHurtingFloor(x: number, y: number): boolean;
   // Distance along a ray (unit direction) to the first solid thing within len, or -1.
   raycast(x: number, y: number, dirX: number, dirY: number, len: number): number;
+  // The placed thing whose circle the last raycast stopped at, or null (the map's edge, or nothing).
+  readonly lastHit: Placed | null;
   // Solid circles near a point, for steering round them.
   near(x: number, y: number, range: number, out: Circle[]): Circle[];
 }
@@ -24,6 +26,9 @@ export interface CollisionWorld {
 // blocking floors such as water.
 export class MapWorld implements CollisionWorld {
   readonly circles: Circle[] = [];
+  // The placed thing each circle belongs to, in the same order.
+  private owners: Placed[] = [];
+  lastHit: Placed | null = null;
   // Blocking floor, merged into one box per run of tiles along a row so there are few boxes to test.
   readonly floorBoxes: Box[] = [];
   readonly frame: Box[] = [];
@@ -34,11 +39,7 @@ export class MapWorld implements CollisionWorld {
     const t = map.tileSize;
     this.width = map.cols * t;
     this.height = map.rows * t;
-    for (const o of map.objects) {
-      for (const c of o.asset.collision) {
-        this.circles.push({ x: o.x + c.x * o.size, y: o.y + c.y * o.size, radius: c.radius * o.size });
-      }
-    }
+    this.addCircles(map.objects);
     for (let row = 0; row < map.rows; row++) {
       let start = -1;
       for (let col = 0; col <= map.cols; col++) {
@@ -55,6 +56,34 @@ export class MapWorld implements CollisionWorld {
     const k = 1e4;
     this.frame.push({ x0: -k, y0: -k, x1: w + k, y1: 0 }, { x0: -k, y0: h, x1: w + k, y1: h + k });
     this.frame.push({ x0: -k, y0: 0, x1: 0, y1: h }, { x0: w, y0: 0, x1: w + k, y1: h });
+  }
+
+  // Takes these things' circles away (they broke) and adds those things' (they appeared, as a flag changed). Returns
+  // every circle that came or went, so pathfinding can look at those spots again.
+  change(removed: readonly Placed[], added: readonly Placed[]): Circle[] {
+    const changed: Circle[] = [];
+    if (removed.length) {
+      const gone = new Set(removed);
+      for (let i = this.circles.length - 1; i >= 0; i--) {
+        if (!gone.has(this.owners[i])) continue;
+        changed.push(this.circles[i]);
+        this.circles.splice(i, 1);
+        this.owners.splice(i, 1);
+      }
+    }
+    const before = this.circles.length;
+    this.addCircles(added);
+    changed.push(...this.circles.slice(before));
+    return changed;
+  }
+
+  private addCircles(objects: readonly Placed[]): void {
+    for (const o of objects) {
+      for (const c of o.asset.collision) {
+        this.circles.push({ x: o.x + c.x * o.size, y: o.y + c.y * o.size, radius: c.radius * o.size });
+        this.owners.push(o);
+      }
+    }
   }
 
   onHurtingFloor(x: number, y: number): boolean {
@@ -96,11 +125,22 @@ export class MapWorld implements CollisionWorld {
 
   raycast(x: number, y: number, dirX: number, dirY: number, len: number): number {
     let best = -1;
-    const take = (t: number) => {
-      if (t >= 0 && (best < 0 || t < best)) best = t;
-    };
-    for (const o of this.circles) take(segmentCircle(x, y, dirX, dirY, len, o.x, o.y, o.radius));
-    for (const b of this.frame) take(segmentBox(x, y, dirX, dirY, len, b, 0));
+    this.lastHit = null;
+    for (let i = 0; i < this.circles.length; i++) {
+      const o = this.circles[i];
+      const t = segmentCircle(x, y, dirX, dirY, len, o.x, o.y, o.radius);
+      if (t >= 0 && (best < 0 || t < best)) {
+        best = t;
+        this.lastHit = this.owners[i];
+      }
+    }
+    for (const b of this.frame) {
+      const t = segmentBox(x, y, dirX, dirY, len, b, 0);
+      if (t >= 0 && (best < 0 || t < best)) {
+        best = t;
+        this.lastHit = null;
+      }
+    }
     return best;
   }
 

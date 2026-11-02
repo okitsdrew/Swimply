@@ -30,26 +30,44 @@ export class FlowField implements Navigator {
   private readonly cols: number;
   private readonly rows: number;
   private readonly walkable: boolean[];
-  private readonly hasBlocks: boolean;
+  private hasBlocks: boolean;
   private readonly dist: Float32Array;
   private goalTile = -1;
   private gx = 0;
   private gy = 0;
   private nearby: Circle[] = [];
 
-  constructor(map: AreaMap, private world: CollisionWorld) {
+  constructor(private map: AreaMap, private world: CollisionWorld) {
     this.t = map.tileSize / CELLS_PER_TILE;
     this.cols = map.cols * CELLS_PER_TILE;
     this.rows = map.rows * CELLS_PER_TILE;
     this.walkable = [];
     for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.cols; c++) {
-        const floor = map.tiles[Math.floor(r / CELLS_PER_TILE) * map.cols + Math.floor(c / CELLS_PER_TILE)];
-        this.walkable.push(!floor?.blocks && !this.touchesSolid(c, r));
-      }
+      for (let c = 0; c < this.cols; c++) this.walkable.push(this.open(c, r));
     }
     this.hasBlocks = this.walkable.includes(false);
     this.dist = new Float32Array(this.cols * this.rows);
+  }
+
+  // Looks again at the cells under these circles, after the solid things there changed (something broke). Only those
+  // cells are checked, so a break costs little however big the map is.
+  refresh(changed: readonly Circle[]): void {
+    if (!changed.length) return;
+    for (const o of changed) {
+      const c0 = Math.max(0, Math.floor((o.x - o.radius) / this.t));
+      const c1 = Math.min(this.cols - 1, Math.floor((o.x + o.radius) / this.t));
+      const r0 = Math.max(0, Math.floor((o.y - o.radius) / this.t));
+      const r1 = Math.min(this.rows - 1, Math.floor((o.y + o.radius) / this.t));
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) this.walkable[r * this.cols + c] = this.open(c, r);
+    }
+    this.hasBlocks = this.walkable.includes(false);
+    this.goalTile = -1;
+  }
+
+  // Not blocking floor, and nothing solid touches it.
+  private open(c: number, r: number): boolean {
+    const floor = this.map.tiles[Math.floor(r / CELLS_PER_TILE) * this.map.cols + Math.floor(c / CELLS_PER_TILE)];
+    return !floor?.blocks && !this.touchesSolid(c, r);
   }
 
   setGoal(x: number, y: number): void {

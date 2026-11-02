@@ -26,6 +26,9 @@ export interface Placed {
   unless: string;
   // A map id: walking into a door marker, or pressing interact next to anything else, goes there. Empty for none.
   to: string;
+  // A save flag turned on when this is broken (its asset needs health). It is gone while the flag is on, so it stays
+  // broken. Empty: it breaks for this visit only.
+  onBreak: string;
 }
 
 export interface AreaMap {
@@ -54,9 +57,13 @@ export function findMarker(map: AreaMap, marker: string): Placed | undefined {
 }
 
 // The map with only the things the save's flags allow, which is how one map serves before and after a story
-// moment (the bow leaves its pedestal once the Mindscape is cleared).
+// moment (the bow leaves its pedestal once the Mindscape is cleared). Something broken with its flag on is gone too.
 export function withFlags(map: AreaMap, flags: Record<string, boolean>): AreaMap {
-  return { ...map, objects: map.objects.filter((o) => (!o.if || flags[o.if]) && (!o.unless || !flags[o.unless])) };
+  return { ...map, objects: map.objects.filter((o) => showsWith(o, flags)) };
+}
+
+export function showsWith(o: { if: string; unless: string; onBreak: string }, flags: Record<string, boolean>): boolean {
+  return (!o.if || !!flags[o.if]) && (!o.unless || !flags[o.unless]) && (!o.onBreak || !flags[o.onBreak]);
 }
 
 // migrations[n] turns a format-n map file into format n+1. Add one whenever MAP_FORMAT goes up, so every map
@@ -128,6 +135,7 @@ export function parseMap(id: string, data: unknown, problems: Problems): AreaMap
     objects.push({
       asset, x: num(e.x, 0, `${w}.x`, problems), y: num(e.y, 0, `${w}.y`, problems), size: num(e.size, 1, `${w}.size`, problems),
       if: str(e.if, '', `${w}.if`, problems), unless: str(e.unless, '', `${w}.unless`, problems), to,
+      onBreak: str(e.onBreak, '', `${w}.onBreak`, problems),
     });
   });
 

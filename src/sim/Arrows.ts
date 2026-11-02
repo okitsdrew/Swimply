@@ -2,6 +2,7 @@ import { bow } from '../config/character';
 import { segmentCircle } from '../core/geometry';
 import { toScreen, toWorld } from '../core/iso';
 import { Pool } from '../core/pool';
+import { Placed } from '../data/maps';
 import { stats } from './stats';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
@@ -29,7 +30,8 @@ export class Arrows {
   readonly pool: Pool<Arrow>;
   private contacts: { t: number; target: Target }[] = [];
 
-  onBlocked: (x: number, y: number) => void = () => {};
+  // An arrow stopped against something solid: the placed thing it hit, or null for the map's edge.
+  onBlocked: (x: number, y: number, thing: Placed | null, damage: number) => void = () => {};
   onHit: (target: Target, damage: number, arrowX: number, arrowY: number, dirX: number, dirY: number) => void = () => {};
   onRelease: (a: Arrow) => void = () => {};
   onSpawn: (a: Arrow) => void = () => {};
@@ -84,6 +86,7 @@ export class Arrows {
 
       // Terrain stops the arrow where it first touches something solid; anything behind that point is safe.
       const wall = world.raycast(a.x, a.y, a.dirX, a.dirY, step);
+      const hitThing = world.lastHit;
       // Swept test along this frame's segment so fast arrows can't tunnel through targets.
       this.contacts.length = 0;
       for (const target of targets) {
@@ -110,7 +113,7 @@ export class Arrows {
         continue;
       }
       if (wall >= 0) {
-        this.onBlocked(a.x + a.dirX * wall, a.y + a.dirY * wall);
+        this.onBlocked(a.x + a.dirX * wall, a.y + a.dirY * wall, hitThing, a.damage);
         this.release(a);
         continue;
       }

@@ -105,6 +105,10 @@ export class AssetTab {
       el('div', { class: 'bar' }, button('Add circle', () => { a.collision.push({ x: 0, y: 0, radius: 16 }); this.edit(true); })),
       el('p', { class: 'hint', text: `For scale: a floor tile is 64 across and the hero's body is a circle of radius ${player.bodyRadius}.` }),
 
+      el('h3', { text: 'Breaking' }),
+      row('health', numberInput(a.health ?? 0, 1, (v) => { a.health = Math.max(0, Math.round(v)); this.edit(); }, { min: 0 })),
+      el('p', { class: 'hint', text: `Arrow damage it takes to break. 0 can't be broken. Arrows hit its collision circles${a.collision.length ? '' : ', so give it at least one'}. After the Mindscape (full tree) an arrow does 40.` }),
+
       el('h3', { text: 'Light' }),
       row('gives light', checkbox(!!a.light, (v) => {
         a.light = v ? { color: '#ffb840', x: 0, y: -8, radius: 60, intensity: 0.5, flicker: 0 } : null;
@@ -164,7 +168,7 @@ export class AssetTab {
 
   private create(): void {
     const id = uniqueId('asset', this.taken);
-    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], marker: '', light: null, sound: '' };
+    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], marker: '', light: null, sound: '', health: 0 };
     this.ws.assets.push(a);
     this.ws.touch('assets');
     this.open(a);
