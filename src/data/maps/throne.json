@@ -168,6 +168,7 @@
     { "asset": "rock-small", "x": 352, "y": 992 },
     { "asset": "rock-small", "x": 416, "y": 992 },
     { "asset": "rock-small", "x": 512, "y": 1120 },
-    { "asset": "rock-small", "x": 320, "y": 1088 }
+    { "asset": "rock-small", "x": 320, "y": 1088 },
+    { "asset": "door", "x": 0, "y": 800, "to": "garden" }
   ]
 }

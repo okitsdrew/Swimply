@@ -74,7 +74,7 @@ export function assetsText(list: Asset[]): string {
 export const hex = (c: number): string => '#' + c.toString(16).padStart(6, '0');
 
 export function floorsText(list: Floor[]): string {
-  return fileText({}, 'floors', list.map((f) => compact({ id: f.id, name: f.name, colors: f.colors.map(hex), blocks: f.blocks, hurts: f.hurts, sound: f.sound ?? '' }, { blocks: false, hurts: false, sound: '' })));
+  return fileText({}, 'floors', list.map((f) => compact({ id: f.id, name: f.name, colors: f.colors.map(hex), blocks: f.blocks, hurts: f.hurts, sound: f.sound ?? '', roof: !!f.roof }, { blocks: false, hurts: false, sound: '', roof: false })));
 }
 
 export function spritesText(list: Sprite[]): string {

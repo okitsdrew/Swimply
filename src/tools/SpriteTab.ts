@@ -119,6 +119,7 @@ export class SpriteTab {
   }
 
   mount(list: HTMLElement, center: HTMLElement, props: HTMLElement): void {
+    this.preview.onDrag = null;
     list.replaceChildren(this.list);
     center.replaceChildren(this.center, this.status);
     props.replaceChildren(this.props);

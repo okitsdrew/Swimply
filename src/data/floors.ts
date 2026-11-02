@@ -13,6 +13,8 @@ export interface Floor {
   hurts: boolean;
   // A looping sound id (sounds.json), heard louder the nearer the player is to this floor. Empty for none.
   sound: string;
+  // Drawn lifted to the top of the walls (render.roofHeight), as the flat roof of a building; black at ground level.
+  roof: boolean;
 }
 
 function parseFloors(data: unknown): Floor[] {
@@ -25,7 +27,7 @@ function parseFloors(data: unknown): Floor[] {
     if (!id) return problems.push(`${where}: has no id, skipped`);
     const colors = list(e.colors, `${where} (${id})`, problems).map((c, j) => color(c, `${id} colour ${j}`, problems));
     if (!colors.length) colors.push(0xff00ff);
-    out.push({ id, name: str(e.name, id, where, problems), colors, blocks: bool(e.blocks, false, `${id}.blocks`, problems), hurts: bool(e.hurts, false, `${id}.hurts`, problems), sound: str(e.sound, '', `${id}.sound`, problems) });
+    out.push({ id, name: str(e.name, id, where, problems), colors, blocks: bool(e.blocks, false, `${id}.blocks`, problems), hurts: bool(e.hurts, false, `${id}.hurts`, problems), sound: str(e.sound, '', `${id}.sound`, problems), roof: bool(e.roof, false, `${id}.roof`, problems) });
   });
   report('floors', problems);
   return out;

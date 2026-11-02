@@ -9,6 +9,7 @@ import { story } from '../config/story';
 import { pickups as cfgPickups } from '../config/pickups';
 import { tree } from '../config/tree';
 import { werewolfMiniboss as werewolf } from '../config/werewolf';
+import { Circle } from '../core/geometry';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
@@ -79,8 +80,13 @@ export class ArenaScene extends Phaser.Scene {
   private calm = false;
   // Where he comes in, when another map sent him here.
   private arriveAt: Vec2 | null = null;
+  // The door here he came in through, when another map's door sent him; he appears on clear floor beside it.
+  private arriveDoor: Vec2 | null = null;
   // Fading out to another map; input is ignored meanwhile.
   private leaving = false;
+  // Doors only take him once he has stood clear of every door since arriving, so coming back to the spot by a door
+  // he left through does not send him straight out again.
+  private doorsArmed = false;
   // The thing next to him that interact would use.
   private near: Placed | null = null;
   private hint!: InteractHint;
@@ -139,9 +145,10 @@ export class ArenaScene extends Phaser.Scene {
     for (const s of sounds.list()) if (!this.cache.audio.exists(s.id)) this.load.audio(s.id, s.url);
   }
 
-  init(data: { map?: string; at?: Vec2 }): void {
+  init(data: { map?: string; at?: Vec2; door?: Vec2 }): void {
     if (data.map) this.mapId = data.map;
     this.arriveAt = data.at ?? null;
+    this.arriveDoor = data.door ?? null;
   }
 
   create(): void {
@@ -164,6 +171,7 @@ export class ArenaScene extends Phaser.Scene {
     this.world = new MapWorld(this.map);
     this.nav = new FlowField(this.map, this.world);
     this.leaving = false;
+    this.doorsArmed = false;
     this.near = null;
     this.acc = 0;
     this.paused = false;
@@ -308,7 +316,8 @@ export class ArenaScene extends Phaser.Scene {
     this.scene.restart({ map: next.id });
   }
 
-  // Fades out and goes to another map, remembering where he stood here so coming back puts him there again.
+  // Fades out and goes to another map. He arrives beside the door there that leads back here; with no such door,
+  // where he stood when he last left that map.
   private travel(to: string): void {
     if (this.leaving) return;
     const next = maps.get(to);
@@ -324,7 +333,36 @@ export class ArenaScene extends Phaser.Scene {
     if (this.calm) this.sfx.play(intoRun ? 'portal' : 'door');
     const cam = this.cameras.main;
     cam.fadeOut(story.fadeTime * 1000);
-    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.restart({ map: next.id, at: leftFrom.get(next.id) }));
+    const back = next.objects.find((o) => o.asset.marker === 'door' && o.to === this.mapId);
+    const data = back ? { map: next.id, door: { x: back.x, y: back.y } } : { map: next.id, at: leftFrom.get(next.id) };
+    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.restart(data));
+  }
+
+  // A spot beside a door where he can stand: clear of every door, inside the map, and not on blocking or killing
+  // floor or inside anything solid. It tries spots in a ring round the door, the ones towards the middle of the map
+  // first, then wider rings. If nothing fits, the door itself.
+  private besideDoor(door: Vec2): Vec2 {
+    const r = cfgPlayer.bodyRadius;
+    const w = this.world;
+    const doors = this.map.objects.filter((o) => o.asset.marker === 'door');
+    const inward = Math.atan2(w.height / 2 - door.y, w.width / 2 - door.x);
+    const turns = [0];
+    for (let i = 1; i <= 8; i++) turns.push(i, -i);
+    const solid: Circle[] = [];
+    for (const extra of [1, 1.5, 2, 3]) {
+      for (const turn of turns) {
+        const a = inward + (turn * Math.PI) / 8;
+        const d = (story.doorRadius + r) * extra + 8;
+        const x = door.x + Math.cos(a) * d;
+        const y = door.y + Math.sin(a) * d;
+        if (x < r || y < r || x > w.width - r || y > w.height - r) continue;
+        if (doors.some((o) => Math.hypot(o.x - x, o.y - y) < story.doorRadius * o.size + r)) continue;
+        if (w.onBlockingFloor(x, y, r) || w.onHurtingFloor(x, y)) continue;
+        if (w.near(x, y, r, solid).length) continue;
+        return { x, y };
+      }
+    }
+    return { x: door.x, y: door.y };
   }
 
   // Where to leave to after the Mindscape: the map he came from, else any map with a link here.
@@ -338,11 +376,14 @@ export class ArenaScene extends Phaser.Scene {
     const p = this.player;
     this.near = null;
     let best = Infinity;
+    let inDoor = false;
     for (const o of this.map.objects) {
       if (!o.to) continue;
       const d = Math.hypot(o.x - p.x, o.y - p.y);
       if (o.asset.marker === 'door') {
-        if (d < story.doorRadius * o.size) return this.travel(o.to);
+        if (d >= story.doorRadius * o.size) continue;
+        if (this.doorsArmed) return this.travel(o.to);
+        inDoor = true;
         continue;
       }
       const reach = Math.max(0, ...o.asset.collision.map((c) => Math.hypot(c.x, c.y) + c.radius)) * o.size + story.interactRange;
@@ -351,6 +392,7 @@ export class ArenaScene extends Phaser.Scene {
         this.near = o;
       }
     }
+    if (!inDoor) this.doorsArmed = true;
     if (this.near && this.input2.justPressed('interact')) this.travel(this.near.to);
   }
 
@@ -493,7 +535,7 @@ export class ArenaScene extends Phaser.Scene {
     this.arrows.clear();
     // Where the address says, else the map's player start marker, else the middle of the map.
     const at = params.get('at')?.split(',').map(Number);
-    const start = this.arriveAt ?? (at?.length === 2 && at.every(Number.isFinite) ? { x: at[0], y: at[1] }
+    const start = (this.arriveDoor && this.besideDoor(this.arriveDoor)) ?? this.arriveAt ?? (at?.length === 2 && at.every(Number.isFinite) ? { x: at[0], y: at[1] }
       : findMarker(this.map, 'playerStart') ?? { x: this.world.width / 2, y: this.world.height / 2 });
     this.player.reset(start.x, start.y);
     this.view.setVisible(true);
@@ -545,6 +587,7 @@ export class ArenaScene extends Phaser.Scene {
     input.update();
     // Checked here, not in step(), because the sim does not step while the tree pauses a run.
     if (this.treeOpen && input.justPressed('dash')) this.closeTree();
+    this.mapView.reveal(this.player.x, this.player.y);
     this.mapView.render();
     this.aim = input.aim ? toWorld(cam.scrollX + input.aim.x, cam.scrollY + input.aim.y + render.aimHeight) : null;
 

@@ -20,6 +20,10 @@ export const render = defineConfig(
     // Where the pointer clicks, in screen pixels from its top-left corner.
     pointerHotX: 0,
     pointerHotY: 0,
+    // How high roof floors are lifted, in art pixels: the height of a tall wall.
+    roofHeight: 50,
+    // How see-through roofs and walls become in front of the hero, 0 (gone) to 1 (solid).
+    seeThrough: 0.3,
   },
   {
     isoScale: { min: 0.3, max: 1.5, step: 0.01 },
@@ -31,5 +35,7 @@ export const render = defineConfig(
     cursorScale: { min: 1, max: 6, step: 1 },
     pointerHotX: { min: 0, max: 6, step: 1 },
     pointerHotY: { min: 0, max: 6, step: 1 },
+    roofHeight: { min: 0, max: 120, step: 1 },
+    seeThrough: { min: 0, max: 1, step: 0.05 },
   },
 );

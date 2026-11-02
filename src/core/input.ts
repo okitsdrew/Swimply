@@ -46,11 +46,15 @@ function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLInputElement && (target.type === 'text' || target.type === 'number');
 }
 
+// The mouse's last place on the canvas, kept between scenes: after going through a door the new scene's input knows
+// where the mouse is even if it has not moved since.
+let lastPointer: { x: number; y: number } | null = null;
+
 export class KeyboardMouseSource implements InputSource {
   readonly held = new Set<Action>();
   readonly pressed = new Set<Action>();
   readonly released = new Set<Action>();
-  private pointer: { x: number; y: number } | null = null;
+  private pointer = lastPointer;
   private cleanup: (() => void)[] = [];
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -65,6 +69,7 @@ export class KeyboardMouseSource implements InputSource {
       if (action) this.release(action);
     });
     this.listen(canvas, 'mousedown', (e: MouseEvent) => {
+      this.point(e);
       const action = mouseBindings[e.button];
       if (action) this.press(action);
     });
@@ -72,15 +77,17 @@ export class KeyboardMouseSource implements InputSource {
       const action = mouseBindings[e.button];
       if (action) this.release(action);
     });
-    this.listen(window, 'mousemove', (e: MouseEvent) => {
-      const rect = this.canvas.getBoundingClientRect();
-      this.pointer = {
-        x: (e.clientX - rect.left) * (this.canvas.width / rect.width),
-        y: (e.clientY - rect.top) * (this.canvas.height / rect.height),
-      };
-    });
+    this.listen(window, 'mousemove', (e: MouseEvent) => this.point(e));
     this.listen(canvas, 'contextmenu', (e: Event) => e.preventDefault());
     this.listen(window, 'blur', () => this.held.clear());
+  }
+
+  private point(e: MouseEvent): void {
+    const rect = this.canvas.getBoundingClientRect();
+    this.pointer = lastPointer = {
+      x: (e.clientX - rect.left) * (this.canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (this.canvas.height / rect.height),
+    };
   }
 
   private listen<E extends Event>(target: EventTarget, type: string, fn: (e: E) => void): void {

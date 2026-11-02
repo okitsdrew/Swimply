@@ -22,10 +22,12 @@ export class AssetTab {
   }
 
   mount(list: HTMLElement, center: HTMLElement, props: HTMLElement): void {
+    // Dragging in the preview moves a part or circle; the panel's numbers catch up when it is let go.
+    this.preview.onDrag = (done) => this.edit(done);
     list.replaceChildren(this.list);
     center.replaceChildren(
       this.preview.host,
-      el('p', { class: 'hint', text: 'Green rings are what is solid. The cross is the ground point: where the asset stands when placed in a map. Wheel zooms.' }),
+      el('p', { class: 'hint', text: 'Green rings are what is solid. The cross is the ground point: where the asset stands when placed in a map. Drag a ring or a part to move it. Wheel zooms.' }),
     );
     props.replaceChildren(this.props);
     this.refresh();

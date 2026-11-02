@@ -47,7 +47,7 @@ The Mindscape is all basics (Shades), plus the empowered elite mini-boss (the we
 
 ## Out of scope for now (do not plan or build)
 
-Castle, city, city and factory management, large-scale siege combat, skills and equipping, a second upgrade tree, map generation. They are listed so the ideas are safe, not so code is written for them.
+City, city and factory management, large-scale siege combat, skills and equipping, a second upgrade tree, map generation. They are listed so the ideas are safe, not so code is written for them.
 
 Large-scale combat conflicts with pillar 1 and would need its own simulation, so it must not shape the slice.
 
