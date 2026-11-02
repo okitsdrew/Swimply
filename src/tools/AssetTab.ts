@@ -105,9 +105,27 @@ export class AssetTab {
       el('div', { class: 'bar' }, button('Add circle', () => { a.collision.push({ x: 0, y: 0, radius: 16 }); this.edit(true); })),
       el('p', { class: 'hint', text: `For scale: a floor tile is 64 across and the hero's body is a circle of radius ${player.bodyRadius}.` }),
 
+      el('h3', { text: 'Hit shapes (what arrows hit, in orange)' }),
+      ...(a.hit ?? []).map((h, i) => el('div', { class: 'box' },
+        row('shape', select(['circle', 'box'], h.box ? 'box' : 'circle', (v) => { h.box = v === 'box'; this.edit(true); }),
+          button('remove', () => { a.hit.splice(i, 1); this.edit(true); })),
+        row('x, y', numberInput(h.x, 1, (v) => { h.x = v; this.edit(); }), numberInput(h.y, 1, (v) => { h.y = v; this.edit(); })),
+        ...(h.box
+          ? [
+              row('w, h', numberInput(h.w, 1, (v) => { h.w = Math.max(1, v); this.edit(); }, { min: 1 }), numberInput(h.h, 1, (v) => { h.h = Math.max(1, v); this.edit(); }, { min: 1 })),
+              row('turned', checkbox(h.turned, (v) => { h.turned = v; this.edit(); })),
+            ]
+          : [row('radius', numberInput(h.radius, 1, (v) => { h.radius = Math.max(1, v); this.edit(); }, { min: 1 }))]),
+      )),
+      el('div', { class: 'bar' },
+        button('Add hit circle', () => { (a.hit ??= []).push({ box: false, x: 0, y: 0, radius: 16, w: 32, h: 32, turned: false }); this.edit(true); }),
+        button('Add hit box', () => { (a.hit ??= []).push({ box: true, x: 0, y: 0, radius: 16, w: 64, h: 16, turned: false }); this.edit(true); }),
+      ),
+      el('p', { class: 'hint', text: 'With none, arrows hit the collision circles. With any, arrows hit only these, so a thing can be walked through and still shot, or walked round and shot higher up. A box\'s w runs down-right on screen (like an SE wall) and h down-left; turned, w runs straight across the screen and h up and down it.' }),
+
       el('h3', { text: 'Breaking' }),
       row('health', numberInput(a.health ?? 0, 1, (v) => { a.health = Math.max(0, Math.round(v)); this.edit(); }, { min: 0 })),
-      el('p', { class: 'hint', text: `Arrow damage it takes to break. 0 can't be broken. Arrows hit its collision circles${a.collision.length ? '' : ', so give it at least one'}. After the Mindscape (full tree) an arrow does 40.` }),
+      el('p', { class: 'hint', text: `Arrow damage it takes to break. 0 can't be broken. ${a.hit?.length || a.collision.length ? '' : 'Give it a hit shape or a collision circle so arrows can hit it. '}After the Mindscape (full tree) an arrow does 40.` }),
 
       el('h3', { text: 'Light' }),
       row('gives light', checkbox(!!a.light, (v) => {
@@ -168,7 +186,7 @@ export class AssetTab {
 
   private create(): void {
     const id = uniqueId('asset', this.taken);
-    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], marker: '', light: null, sound: '', health: 0 };
+    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], hit: [], marker: '', light: null, sound: '', health: 0 };
     this.ws.assets.push(a);
     this.ws.touch('assets');
     this.open(a);
@@ -178,7 +196,7 @@ export class AssetTab {
     const a = this.current;
     if (!a) return;
     const id = uniqueId(`${a.id}-copy`, this.taken);
-    const copy: Asset = { ...a, id, name: `${a.name} copy`, parts: a.parts.map((p) => ({ ...p, frames: [...(p.frames ?? [])] })), collision: a.collision.map((c) => ({ ...c })), light: a.light ? { ...a.light } : null };
+    const copy: Asset = { ...a, id, name: `${a.name} copy`, parts: a.parts.map((p) => ({ ...p, frames: [...(p.frames ?? [])] })), collision: a.collision.map((c) => ({ ...c })), hit: (a.hit ?? []).map((h) => ({ ...h })), light: a.light ? { ...a.light } : null };
     this.ws.assets.splice(this.ws.assets.indexOf(a) + 1, 0, copy);
     this.ws.touch('assets');
     this.open(copy);

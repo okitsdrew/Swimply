@@ -66,6 +66,7 @@ export function assetsText(list: Asset[]): string {
     marker: a.marker,
     parts: a.parts.map((p) => compact({ ...p, fps: p.frames?.length ? p.fps : 8 }, { x: 0, y: 0, scale: 1, originX: 0.5, originY: 1, ground: false, fps: 8 })),
     collision: a.collision.map((c) => compact({ ...c }, { x: 0, y: 0 })),
+    hit: (a.hit ?? []).map((h) => (h.box ? compact({ box: true, x: h.x, y: h.y, w: h.w, h: h.h, turned: h.turned }, { x: 0, y: 0, turned: false }) : compact({ x: h.x, y: h.y, radius: h.radius }, { x: 0, y: 0 }))),
     light: a.light ? compact({ ...a.light }, { x: 0, y: 0, flicker: 0 }) : null,
     sound: a.sound ?? '',
     health: a.health ?? 0,

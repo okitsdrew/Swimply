@@ -13,6 +13,7 @@ import { werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Circle } from '../core/geometry';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
+import { boxCorners } from '../data/assets';
 import { AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
 import { PickupKind, pickupKinds } from '../data/pickups';
 import { ambienceFor, sounds } from '../data/sounds';
@@ -803,10 +804,15 @@ export class ArenaScene extends Phaser.Scene {
       ring(this.wolf.x, this.wolf.y, this.wolf.radius * werewolf.contactScale, 0xff4466);
     }
     for (const c of this.world.circles) ring(c.x, c.y, c.radius, 0x66ffaa);
-    // Things arrows can break, in orange.
+    // What arrows hit, in orange: hit shapes, and the collision circles of things that can break but have none.
     for (const o of this.map.objects) {
-      if (!this.breakables.canBreak(o)) continue;
-      for (const c of o.asset.collision) ring(o.x + c.x * o.size, o.y + c.y * o.size, c.radius * o.size, 0xff9933);
+      const k = o.size;
+      for (const h of o.asset.hit) {
+        if (!h.box) ring(o.x + h.x * k, o.y + h.y * k, h.radius * k, 0xff9933);
+        else g.lineStyle(1, 0xff9933, 1).strokePoints(boxCorners(h).map((c) => toScreen(o.x + c.x * k, o.y + c.y * k)), true);
+      }
+      if (o.asset.hit.length || !this.breakables.canBreak(o)) continue;
+      for (const c of o.asset.collision) ring(o.x + c.x * k, o.y + c.y * k, c.radius * k, 0xff9933);
     }
     for (const b of this.world.floorBoxes) {
       g.lineStyle(1, 0x66ffaa, 0.8).strokePoints([toScreen(b.x0, b.y0), toScreen(b.x1, b.y0), toScreen(b.x1, b.y1), toScreen(b.x0, b.y1)], true);

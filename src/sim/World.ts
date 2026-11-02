@@ -28,6 +28,11 @@ export class MapWorld implements CollisionWorld {
   readonly circles: Circle[] = [];
   // The placed thing each circle belongs to, in the same order.
   private owners: Placed[] = [];
+  // What arrows stop at: an asset's hit shapes, or its collision circles when it has none.
+  readonly arrowCircles: Circle[] = [];
+  private arrowCircleOwners: Placed[] = [];
+  readonly arrowBoxes: HitBox[] = [];
+  private arrowBoxOwners: Placed[] = [];
   lastHit: Placed | null = null;
   // Blocking floor, merged into one box per run of tiles along a row so there are few boxes to test.
   readonly floorBoxes: Box[] = [];
@@ -70,6 +75,15 @@ export class MapWorld implements CollisionWorld {
         this.circles.splice(i, 1);
         this.owners.splice(i, 1);
       }
+      const drop = <T>(items: T[], owners: Placed[]) => {
+        for (let i = items.length - 1; i >= 0; i--) {
+          if (!gone.has(owners[i])) continue;
+          items.splice(i, 1);
+          owners.splice(i, 1);
+        }
+      };
+      drop(this.arrowCircles, this.arrowCircleOwners);
+      drop(this.arrowBoxes, this.arrowBoxOwners);
     }
     const before = this.circles.length;
     this.addCircles(added);
@@ -79,9 +93,23 @@ export class MapWorld implements CollisionWorld {
 
   private addCircles(objects: readonly Placed[]): void {
     for (const o of objects) {
+      const k = o.size;
       for (const c of o.asset.collision) {
-        this.circles.push({ x: o.x + c.x * o.size, y: o.y + c.y * o.size, radius: c.radius * o.size });
+        const circle = { x: o.x + c.x * k, y: o.y + c.y * k, radius: c.radius * k };
+        this.circles.push(circle);
         this.owners.push(o);
+        if (o.asset.hit.length) continue;
+        this.arrowCircles.push(circle);
+        this.arrowCircleOwners.push(o);
+      }
+      for (const h of o.asset.hit) {
+        if (h.box) {
+          this.arrowBoxes.push({ x: o.x + h.x * k, y: o.y + h.y * k, a: (h.w * k) / 2, b: (h.h * k) / 2, turned: h.turned });
+          this.arrowBoxOwners.push(o);
+        } else {
+          this.arrowCircles.push({ x: o.x + h.x * k, y: o.y + h.y * k, radius: h.radius * k });
+          this.arrowCircleOwners.push(o);
+        }
       }
     }
   }
@@ -126,12 +154,19 @@ export class MapWorld implements CollisionWorld {
   raycast(x: number, y: number, dirX: number, dirY: number, len: number): number {
     let best = -1;
     this.lastHit = null;
-    for (let i = 0; i < this.circles.length; i++) {
-      const o = this.circles[i];
+    for (let i = 0; i < this.arrowCircles.length; i++) {
+      const o = this.arrowCircles[i];
       const t = segmentCircle(x, y, dirX, dirY, len, o.x, o.y, o.radius);
       if (t >= 0 && (best < 0 || t < best)) {
         best = t;
-        this.lastHit = this.owners[i];
+        this.lastHit = this.arrowCircleOwners[i];
+      }
+    }
+    for (let i = 0; i < this.arrowBoxes.length; i++) {
+      const t = rayHitBox(x, y, dirX, dirY, len, this.arrowBoxes[i]);
+      if (t >= 0 && (best < 0 || t < best)) {
+        best = t;
+        this.lastHit = this.arrowBoxOwners[i];
       }
     }
     for (const b of this.frame) {
@@ -152,6 +187,30 @@ export class MapWorld implements CollisionWorld {
     }
     return out;
   }
+}
+
+// A box arrows hit, in world units: its middle, half its w and h, and whether it is turned (see HitShape).
+export interface HitBox {
+  x: number;
+  y: number;
+  a: number;
+  b: number;
+  turned: boolean;
+}
+
+// A ray against a hit box: the ray is turned into the box's own frame, where the box is square to the axes. Turning
+// keeps lengths, so the distance found there is the distance along the real ray.
+function rayHitBox(x: number, y: number, dx: number, dy: number, len: number, h: HitBox): number {
+  let px = x - h.x;
+  let py = y - h.y;
+  let ux = dx;
+  let uy = dy;
+  if (h.turned) {
+    const r = Math.SQRT1_2;
+    [px, py] = [(px - py) * r, (px + py) * r];
+    [ux, uy] = [(ux - uy) * r, (ux + uy) * r];
+  }
+  return segmentBox(px, py, ux, uy, len, { x0: -h.a, y0: -h.b, x1: h.a, y1: h.b }, 0);
 }
 
 // Like the circles, a circle already touching a box may move away from it, but not further into it.
