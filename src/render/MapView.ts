@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { render } from '../config/render';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { Light } from '../data/assets';
-import { AreaMap } from '../data/maps';
+import { AreaMap, Placed } from '../data/maps';
 import { Tex } from './art';
 
 const FLOOR_DEPTH = -1e9;
@@ -117,6 +117,11 @@ export class MapView {
   // Where the hero stands this frame. Roofs and walls in front of him turn see-through.
   reveal(x: number, y: number): void {
     this.viewer = { x, y };
+  }
+
+  // The sprites a placed thing is drawn with (to flash it when struck), or none if it is not in the map shown.
+  spritesOf(o: Placed): readonly Phaser.GameObjects.Sprite[] {
+    return this.placed[this.map.objects.indexOf(o)]?.sprites ?? [];
   }
 
   // Draws again on the next render(), for when the map or the art under it changed (the asset maker's preview).

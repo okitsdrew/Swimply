@@ -66,9 +66,11 @@ export function assetsText(list: Asset[]): string {
     marker: a.marker,
     parts: a.parts.map((p) => compact({ ...p, fps: p.frames?.length ? p.fps : 8 }, { x: 0, y: 0, scale: 1, originX: 0.5, originY: 1, ground: false, fps: 8 })),
     collision: a.collision.map((c) => compact({ ...c }, { x: 0, y: 0 })),
+    hit: (a.hit ?? []).map((h) => (h.box ? compact({ box: true, x: h.x, y: h.y, w: h.w, h: h.h, turned: h.turned }, { x: 0, y: 0, turned: false }) : compact({ x: h.x, y: h.y, radius: h.radius }, { x: 0, y: 0 }))),
     light: a.light ? compact({ ...a.light }, { x: 0, y: 0, flicker: 0 }) : null,
     sound: a.sound ?? '',
-  }, { marker: '', light: null, sound: '' })));
+    health: a.health ?? 0,
+  }, { marker: '', light: null, sound: '', health: 0 })));
 }
 
 export const hex = (c: number): string => '#' + c.toString(16).padStart(6, '0');
@@ -100,7 +102,7 @@ export interface MapFile {
   cols: number;
   // cols * rows floor ids, row by row.
   tiles: string[];
-  objects: { asset: string; x: number; y: number; size: number; if?: string; unless?: string; to?: string }[];
+  objects: { asset: string; x: number; y: number; size: number; if?: string; unless?: string; to?: string; onBreak?: string }[];
   legend: Record<string, string>;
   darkness: number;
 }
@@ -126,7 +128,7 @@ export function mapText(m: MapFile): string {
   }
   const rows: string[] = [];
   for (let i = 0; i < m.tiles.length; i += m.cols) rows.push(m.tiles.slice(i, i + m.cols).map((id) => charOf.get(id)).join(''));
-  const objects = m.objects.map((o) => '    ' + oneLine(compact({ asset: o.asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '' }, { size: 1, if: '', unless: '', to: '' })));
+  const objects = m.objects.map((o) => '    ' + oneLine(compact({ asset: o.asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '', onBreak: o.onBreak ?? '' }, { size: 1, if: '', unless: '', to: '', onBreak: '' })));
   const legendLines = Object.entries(legend).map(([ch, id]) => `    ${JSON.stringify(ch)}: ${JSON.stringify(id)}`);
   return `{
   "format": ${MAP_FORMAT},

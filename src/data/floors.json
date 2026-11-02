@@ -14,7 +14,7 @@
     {
       "id": "obsidian_stone",
       "name": "obsidian stone",
-      "colors": ["#010101", "#000000", "#060606"]
+      "colors": ["#010101", "#000000", "#030303"]
     },
     {
       "id": "black_stone",
@@ -39,7 +39,7 @@
     {
       "id": "flaming_floor",
       "name": "flaming_floor",
-      "colors": ["#ff7029", "#e22c09", "#ffd119"],
+      "colors": ["#b04510"],
       "hurts": true,
       "sound": "fire_ambience"
     },

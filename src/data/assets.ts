@@ -38,6 +38,29 @@ export interface CollisionCircle {
   radius: number;
 }
 
+// What arrows hit, apart from what blocks walking: a circle, or a box. A box's w runs along world x (down-right on
+// screen, like an SE wall) and h along world y (down-left), unless it is turned: then w runs straight across the
+// screen and h straight up and down it. World units, relative to where the asset is placed.
+export interface HitShape {
+  box: boolean;
+  x: number;
+  y: number;
+  radius: number;
+  w: number;
+  h: number;
+  turned: boolean;
+}
+
+// A box hit shape's four corners in world units, relative to the asset, in order round it.
+export function boxCorners(h: HitShape): { x: number; y: number }[] {
+  const a = h.w / 2;
+  const b = h.h / 2;
+  const local = [[-a, -b], [a, -b], [a, b], [-a, b]];
+  const r = Math.SQRT1_2;
+  // Turned: w along (1, -1) and h along (1, 1), both normalised.
+  return local.map(([u, v]) => (h.turned ? { x: h.x + (u + v) * r, y: h.y + (v - u) * r } : { x: h.x + u, y: h.y + v }));
+}
+
 // Something that can be placed in a map: a prop, a wall piece, or a marker. Collision belongs to the asset, so
 // every pillar in every map is solid the same way and fixing it once fixes it everywhere.
 export interface Asset {
@@ -47,12 +70,16 @@ export interface Asset {
   category: string;
   parts: AssetPart[];
   collision: CollisionCircle[];
+  // What arrows hit. Empty: its collision circles.
+  hit: HitShape[];
   // Markers are invisible in play and tell the game where things go: "playerStart" (where a map starts), "shadeSpawn"
   // (a zone Shades appear in) and "door" (walking into it goes to the map in its `to`).
   marker: string;
   light: Light | null;
   // A looping sound id (sounds.json), heard louder the nearer the player is to one of these (a fire's crackle).
   sound: string;
+  // How much arrow damage breaks it. 0 can't be broken. Only its collision circles can be hit, so it needs some.
+  health: number;
 }
 
 function parseAssets(data: unknown): Asset[] {
@@ -84,6 +111,19 @@ function parseAssets(data: unknown): Asset[] {
       const w = `${id} circle ${j}`;
       return { x: num(q.x, 0, `${w}.x`, problems), y: num(q.y, 0, `${w}.y`, problems), radius: num(q.radius, 16, `${w}.radius`, problems) };
     });
+    const hit = list(e.hit, `${id}.hit`, problems).map((c, j): HitShape => {
+      const q = obj(c);
+      const w = `${id} hit shape ${j}`;
+      return {
+        box: q.box === true,
+        x: num(q.x, 0, `${w}.x`, problems),
+        y: num(q.y, 0, `${w}.y`, problems),
+        radius: num(q.radius, 16, `${w}.radius`, problems),
+        w: num(q.w, 32, `${w}.w`, problems),
+        h: num(q.h, 32, `${w}.h`, problems),
+        turned: q.turned === true,
+      };
+    });
     let light: Light | null = null;
     if (e.light !== undefined) {
       const l = obj(e.light);
@@ -108,8 +148,10 @@ function parseAssets(data: unknown): Asset[] {
       category: str(e.category, 'misc', `${id}.category`, problems),
       parts,
       collision,
+      hit,
       marker: str(e.marker, '', `${id}.marker`, problems),
       sound: str(e.sound, '', `${id}.sound`, problems),
+      health: Math.max(0, num(e.health, 0, `${id}.health`, problems)),
       light,
     });
   });

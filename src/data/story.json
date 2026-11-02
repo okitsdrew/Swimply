@@ -68,8 +68,7 @@
         { "say": "timo", "face": "timo_shocked", "text": "those juices flowing yet?" },
         { "tutorial": "Right click to teleport" },
         { "waitFor": "teleport" },
-        { "say": "timo", "face": "timo_happy", "text": "oh heck yeah, now lets get out of this burning wing!" },
-        { "say": "timo", "text": "you should be able to teleport through the lava if you're quick enough" },
+        { "say": "timo", "face": "timo_happy", "text": "nice! if you teleport quickly enough, you should be able to go through the fire." },
         { "flag": "teleportTaught" }
       ]
     }

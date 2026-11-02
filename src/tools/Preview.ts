@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { render } from '../config/render';
 import { ellipseHalfSize, toScreen, toWorld } from '../core/iso';
-import { Asset } from '../data/assets';
+import { Asset, boxCorners } from '../data/assets';
 import { Floor } from '../data/floors';
 import { AreaMap } from '../data/maps';
 import { applySprite, makeCodeArt, Tex } from '../render/art';
@@ -91,7 +91,7 @@ class PreviewScene extends Phaser.Scene {
       rows: TILES,
       legend: {},
       tiles: Array.from({ length: TILES * TILES }, () => floor),
-      objects: asset ? [{ asset, x: mid, y: mid, size: 1, if: '', unless: '', to: '' }] : [],
+      objects: asset ? [{ asset, x: mid, y: mid, size: 1, if: '', unless: '', to: '', onBreak: '' }] : [],
       darkness: 0,
     };
     this.view?.destroy();
@@ -115,6 +115,15 @@ class PreviewScene extends Phaser.Scene {
       const s = toScreen(mid + c.x, mid + c.y);
       const e = ellipseHalfSize(c.radius);
       g.lineStyle(1, 0x66ffaa, 1).strokeEllipse(s.x, s.y, e.x * 2, e.y * 2);
+    }
+    for (const h of asset.hit ?? []) {
+      g.lineStyle(1, 0xff9933, 1);
+      if (h.box) g.strokePoints(boxCorners(h).map((c) => toScreen(mid + c.x, mid + c.y)), true);
+      else {
+        const e = ellipseHalfSize(h.radius);
+        const c = toScreen(mid + h.x, mid + h.y);
+        g.strokeEllipse(c.x, c.y, e.x * 2, e.y * 2);
+      }
     }
     const s = toScreen(mid, mid);
     g.lineStyle(1, 0xf2d7a6, 1).lineBetween(s.x - 6, s.y, s.x + 6, s.y).lineBetween(s.x, s.y - 3, s.x, s.y + 3);
