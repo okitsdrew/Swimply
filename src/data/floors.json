@@ -24,7 +24,7 @@
     {
       "id": "dirt",
       "name": "dirt floor",
-      "colors": ["#0d0b0b", "#0f0c0c"]
+      "colors": ["#151212"]
     },
     {
       "id": "purple_floor",
@@ -48,6 +48,17 @@
       "name": "Void (empty, blocks walking)",
       "colors": ["#000000"],
       "blocks": true
+    },
+    {
+      "id": "grass",
+      "name": "grass",
+      "colors": ["#1d3119"]
+    },
+    {
+      "id": "roof",
+      "name": "Slate roof",
+      "colors": ["#000000"],
+      "roof": true
     }
   ]
 }

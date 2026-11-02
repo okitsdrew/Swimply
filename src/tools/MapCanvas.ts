@@ -45,12 +45,16 @@ class EditorScene extends Phaser.Scene {
     this.overlay = this.add.graphics().setDepth(1e9);
     this.input.mouse?.disableContextMenu();
     this.input.on('wheel', (p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
+      // The camera zooms round the middle of the view, so shift it to keep the spot under the cursor in place.
+      // (getWorldPoint cannot be used for this: it only sees the new zoom after the next frame is drawn.)
       const cam = this.cameras.main;
-      const before = cam.getWorldPoint(p.x, p.y);
-      cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.85 : 1 / 0.85), 0.15, 6));
-      const after = cam.getWorldPoint(p.x, p.y);
-      cam.scrollX += before.x - after.x;
-      cam.scrollY += before.y - after.y;
+      const old = cam.zoom;
+      const zoom = Phaser.Math.Clamp(old * (dy > 0 ? 0.85 : 1 / 0.85), 0.15, 6);
+      const ox = p.x - cam.x - cam.width * cam.originX;
+      const oy = p.y - cam.y - cam.height * cam.originY;
+      cam.setZoom(zoom);
+      cam.scrollX += ox / old - ox / zoom;
+      cam.scrollY += oy / old - oy / zoom;
     });
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const e = p.event as MouseEvent;

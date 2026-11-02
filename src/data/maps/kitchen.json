@@ -1,10 +1,10 @@
 {
   "format": 1,
   "kind": "area",
-  "name": "castle_courtyard",
+  "name": "kitchen",
   "tileSize": 64,
   "legend": {
-    ".": "stone"
+    ".": "void"
   },
   "floor": [
     "................",

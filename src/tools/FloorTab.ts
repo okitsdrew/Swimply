@@ -17,6 +17,7 @@ export class FloorTab {
   }
 
   mount(list: HTMLElement, center: HTMLElement, props: HTMLElement): void {
+    this.preview.onDrag = null;
     list.replaceChildren(this.list);
     center.replaceChildren(this.preview.host, el('p', { class: 'hint', text: 'Each tile picks one of the floor\'s colours by its position, so a floor is not one flat colour.' }));
     props.replaceChildren(this.props);
@@ -69,6 +70,8 @@ export class FloorTab {
       row('kills the player', checkbox(!!f.hurts, (v) => { f.hurts = v; this.edit(); })),
       el('p', { class: 'hint', text: 'Standing on it kills the player, unless they are dashing or teleporting (or in the short grace after). Enemies ignore it.' }),
       el('p', { class: 'hint', text: 'A blocking floor (water, a cliff) cannot be walked on or teleported onto. Arrows and teleports pass over it.' }),
+      row('roof', checkbox(!!f.roof, (v) => { f.roof = v; this.edit(); })),
+      el('p', { class: 'hint', text: 'A roof is drawn lifted to the top of the walls (roof height, in the dev menu\'s render section), as the top of a building you cannot go into. Tick blocks walking too.' }),
       row('sound', select(['', ...sounds.list().map((s) => s.id)], f.sound ?? '', (v) => { f.sound = v; this.edit(); })),
       el('p', { class: 'hint', text: 'A looping sound, louder the nearer the player is to this floor (the crackle of a fire). Range and volume are in the dev menu\'s sound section.' }),
       el('h3', { text: 'Colours' }),
@@ -86,7 +89,7 @@ export class FloorTab {
 
   private create(): void {
     const id = uniqueId('floor', this.taken);
-    const f: Floor = { id, name: id, colors: [...(this.current?.colors ?? [0x1b1822])], blocks: false, hurts: false, sound: '' };
+    const f: Floor = { id, name: id, colors: [...(this.current?.colors ?? [0x1b1822])], blocks: false, hurts: false, sound: '', roof: false };
     this.ws.floors.push(f);
     this.ws.touch('floors');
     this.open(f);

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { render } from '../config/render';
-import { ellipseHalfSize, toScreen } from '../core/iso';
+import { ellipseHalfSize, toScreen, toWorld } from '../core/iso';
 import { Asset } from '../data/assets';
 import { Floor } from '../data/floors';
 import { AreaMap } from '../data/maps';
@@ -20,6 +20,11 @@ class PreviewScene extends Phaser.Scene {
   private pending: { asset: Asset | null; floor: Floor; hero: boolean } | null = null;
   ready = false;
   onReady: () => void = () => {};
+  // Called while a part or circle is dragged, and once more with done when it is let go. Null where dragging is off
+  // (only the Assets tab edits by dragging).
+  onDrag: ((done: boolean) => void) | null = null;
+  // What is being dragged, and where it and the pointer started.
+  private dragging: { x: number; y: number; px: number; py: number; set: (x: number, y: number) => void; scale: number } | null = null;
   // A copy of each code-drawn texture, kept before any drawn sprite replaces it, so it can be put back.
   readonly codeArt = new Map<string, HTMLCanvasElement>();
 
@@ -46,6 +51,24 @@ class PreviewScene extends Phaser.Scene {
     this.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) => {
       const cam = this.cameras.main;
       cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.8 : 1.25), 0.5, 6));
+    });
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.grab(p));
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      const d = this.dragging;
+      if (!d || !p.isDown) return;
+      const w = this.cameras.main.getWorldPoint(p.x, p.y);
+      if (d.scale) d.set(Math.round(d.x + (w.x - d.px) / d.scale), Math.round(d.y + (w.y - d.py) / d.scale));
+      else {
+        const a = toWorld(d.px, d.py);
+        const b = toWorld(w.x, w.y);
+        d.set(Math.round(d.x + b.x - a.x), Math.round(d.y + b.y - a.y));
+      }
+      this.onDrag?.(false);
+    });
+    this.input.on('pointerup', () => {
+      if (!this.dragging) return;
+      this.dragging = null;
+      this.onDrag?.(true);
     });
     this.ready = true;
     this.onReady();
@@ -97,6 +120,36 @@ class PreviewScene extends Phaser.Scene {
     g.lineStyle(1, 0xf2d7a6, 1).lineBetween(s.x - 6, s.y, s.x + 6, s.y).lineBetween(s.x, s.y - 3, s.x, s.y + 3);
   }
 
+  // Picks up the collision circle under the pointer, else the topmost part under it. Circles move in world units,
+  // parts in art pixels, as their numbers in the panel are.
+  private grab(p: Phaser.Input.Pointer): void {
+    const asset = this.pending?.asset;
+    if (!asset || !this.onDrag) return;
+    const mid = (TILES * TILE) / 2;
+    const w = this.cameras.main.getWorldPoint(p.x, p.y);
+    const at = toWorld(w.x, w.y);
+    let best = Infinity;
+    for (const c of asset.collision) {
+      const d = Math.hypot(mid + c.x - at.x, mid + c.y - at.y);
+      if (d > Math.max(c.radius, 6) || d >= best) continue;
+      best = d;
+      this.dragging = { x: c.x, y: c.y, px: w.x, py: w.y, scale: 0, set: (x, y) => { c.x = x; c.y = y; } };
+    }
+    if (best < Infinity) return;
+    const px = render.pixelScale;
+    const s = toScreen(mid, mid);
+    for (const part of [...asset.parts].reverse()) {
+      if (!this.textures.exists(part.texture)) continue;
+      const f = this.textures.getFrame(part.texture);
+      const k = px * part.scale;
+      const left = s.x + part.x * px - part.originX * f.width * k;
+      const top = s.y + part.y * px - part.originY * f.height * k;
+      if (w.x < left || w.y < top || w.x > left + f.width * k || w.y > top + f.height * k) continue;
+      this.dragging = { x: part.x, y: part.y, px: w.x, py: w.y, scale: px, set: (x, y) => { part.x = x; part.y = y; } };
+      return;
+    }
+  }
+
   setSprite(sprite: Sprite): void {
     if (!this.ready) return;
     applySprite(this, sprite);
@@ -140,6 +193,11 @@ export class Preview {
 
   show(asset: Asset | null, floor: Floor, hero = true): void {
     this.scene.show(asset, floor, hero);
+  }
+
+  // Lets the asset maker hear about parts and circles dragged in the preview.
+  set onDrag(fn: ((done: boolean) => void) | null) {
+    this.scene.onDrag = fn;
   }
 
   // Updates the texture for a sprite just drawn, and re-makes the preview so it shows.
