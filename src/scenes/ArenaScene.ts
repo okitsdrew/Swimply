@@ -9,7 +9,7 @@ import { story } from '../config/story';
 import { breakables as cfgBreakables } from '../config/breakables';
 import { pickups as cfgPickups } from '../config/pickups';
 import { tree } from '../config/tree';
-import { werewolfMiniboss as werewolf } from '../config/werewolf';
+import { werewolf as cfgElite, werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Circle } from '../core/geometry';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
@@ -128,8 +128,11 @@ export class ArenaScene extends Phaser.Scene {
   private pickups!: Pickups;
   private pickupsView!: PickupsView;
   private shadesView!: ShadesView;
+  // The Mindscape's mini-boss.
   private wolf!: Werewolf;
   private wolfView!: WerewolfView;
+  // Plain werewolves, elites met in the world.
+  private elites: { wolf: Werewolf; view: WerewolfView }[] = [];
   // Whether this run's werewolf has arrived yet.
   private wolfCame = false;
   private targets: Target[] = [];
@@ -215,6 +218,7 @@ export class ArenaScene extends Phaser.Scene {
     this.pickups.onCollected = (kind) => this.collect(kind);
     this.wolf = new Werewolf(werewolf);
     this.wolfView = new WerewolfView(this, this.wolf, this.fx);
+    this.elites = [];
     this.sfx = new SoundFx(this);
     this.view.onStep = () => this.sfx.play('step');
     this.run = new Run(this.shades);
@@ -262,7 +266,9 @@ export class ArenaScene extends Phaser.Scene {
     this.player.onTeleportArrive = (x, y) => this.view.onTeleportArrive(x, y);
     this.arrows.onHit = (target, damage, ax, ay, dx, dy) => {
       // Knockback pushes away from a point just behind the hit, so along the arrow's flight.
+      const elite = this.elites.find((e) => e.wolf === target);
       if (target === this.wolf) this.wolf.damage(damage);
+      else if (elite) elite.wolf.damage(damage);
       else this.shades.damage(target, damage, ax - dx, ay - dy);
       const s = toScreen(ax, ay);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
@@ -288,20 +294,7 @@ export class ArenaScene extends Phaser.Scene {
             this.fx.addShake(run.killShake);
       this.freeze(run.killHitStop);
     };
-    this.wolf.onRisen = () => this.wolfView.onRisen();
-    this.wolf.onAttack = () => this.sfx.play('wolfAttack');
-    this.wolf.onSlam = () => {
-      this.sfx.play('wolfSmash');
-      this.onSlam();
-    };
-    this.wolf.onSwipe = () => {
-      this.sfx.play('wolfSwipe');
-      this.wolfView.onSwipe();
-    };
-    this.wolf.onLand = () => {
-      this.sfx.play('wolfSmash');
-      this.wolfView.onLand();
-    };
+    this.wireWolf(this.wolf, this.wolfView);
     this.wolf.onKilled = (x, y) => this.onWolfKilled(x, y);
     this.run.spawnPoint = () => this.spawnPoint();
 
@@ -315,6 +308,8 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Skip 15s', run: () => (this.run.time += 15) },
       { label: 'Spawn werewolf', run: () => this.spawnWolf() },
       { label: 'Kill werewolf', run: () => this.wolf.damage(this.wolf.hp) },
+      { label: 'Spawn elite werewolf', run: () => this.spawnElite() },
+      { label: 'Kill elite werewolves', run: () => [...this.elites].forEach((e) => e.wolf.damage(e.wolf.hp)) },
       { label: 'Kill all Shades', run: () => [...this.shades.list].forEach((s) => this.shades.kill(s)) },
       { label: 'Hold spawns', run: () => (this.run.holdSpawns = !this.run.holdSpawns) },
       { label: 'Pause', run: () => (this.paused = !this.paused) },
@@ -503,18 +498,66 @@ export class ArenaScene extends Phaser.Scene {
     }
   }
 
-  private onSlam(): void {
-    this.wolfView.onSlam();
+  // Sounds and looks every werewolf shares, the boss and the elites.
+  private wireWolf(w: Werewolf, view: WerewolfView): void {
+    w.onRisen = () => view.onRisen();
+    w.onAttack = () => this.sfx.play('wolfAttack');
+    w.onSlam = () => {
+      this.sfx.play('wolfSmash');
+      view.onSlam();
+    };
+    w.onSwipe = () => {
+      this.sfx.play('wolfSwipe');
+      view.onSwipe();
+    };
+    w.onLand = () => {
+      this.sfx.play('wolfSmash');
+      view.onLand();
+    };
   }
 
-  // The werewolf's attacks: the dash hurts along his path as he passes and at the far end where he slams; the
+  // A plain werewolf, for now from the dev menu (spawners will bring them later): a few tiles from the player, on
+  // clear ground. He drops nothing yet; soul shards come with the world's enemies.
+  private spawnElite(): void {
+    const wolf = new Werewolf(cfgElite);
+    const view = new WerewolfView(this, wolf, this.fx, false);
+    this.wireWolf(wolf, view);
+    const entry = { wolf, view };
+    wolf.onKilled = (x, y) => {
+      view.onKilled(x, y);
+      this.freeze(0.08, true);
+      this.elites.splice(this.elites.indexOf(entry), 1);
+      view.destroy();
+    };
+    const p = { x: this.player.x, y: this.player.y, radius: wolf.radius };
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * Math.PI * 2;
+      p.x = this.player.x + Math.cos(a) * 450;
+      p.y = this.player.y + Math.sin(a) * 450;
+      this.world.resolve(p);
+      if (!this.world.onBlockingFloor(p.x, p.y, wolf.radius) && !this.world.onHurtingFloor(p.x, p.y)) break;
+    }
+    wolf.spawn(p.x, p.y);
+    this.elites.push(entry);
+  }
+
+  private clearElites(): void {
+    this.elites.forEach((e) => e.view.destroy());
+    this.elites = [];
+  }
+
+  // Every werewolf here: the boss (when he is about) and the elites.
+  private allWolves(): Werewolf[] {
+    return [this.wolf, ...this.elites.map((e) => e.wolf)];
+  }
+
+  // A werewolf's attacks: the dash hurts along his path as he passes and at the far end where he slams; the
   // jump hurts the landing circle; the swipe hurts its cone for as long as he lunges.
-  private checkWolfAttack(): void {
+  private checkWolfAttack(w: Werewolf): void {
     const p = this.player;
-    const w = this.wolf;
     const r = cfgPlayer.hitRadius;
     const hit = w.inDash(p.x, p.y, r) || (w.slammed && w.inSlam(p.x, p.y, r)) || (w.landed && w.inLanding(p.x, p.y, r)) || (w.state === 'swipe' && w.inSwipe(p.x, p.y, r));
-    if (!hit || this.run.state !== 'fighting' || (p.safe && !werewolf.slamPiercesInvuln)) return;
+    if (!hit || this.run.state !== 'fighting' || (p.safe && !w.cfg.slamPiercesInvuln)) return;
     // Counted even in god mode, so his attack choice can be tested.
     w.struck = true;
     if (!sim.godMode) this.die();
@@ -589,6 +632,7 @@ export class ArenaScene extends Phaser.Scene {
     this.pickupsView.clear();
     this.wolf.clear();
     this.wolfView.clear();
+    this.clearElites();
     this.wolfCame = false;
     this.arrows.clear();
     this.breakables.clear();
@@ -694,6 +738,7 @@ export class ArenaScene extends Phaser.Scene {
     this.shadesView.render(this.player.x, this.player.y);
     this.pickupsView.render(frameDt);
     this.wolfView.render(frameDt, cam.width);
+    for (const e of this.elites) e.view.render(frameDt, cam.width);
     this.breakablesView.update(frameDt);
     // A story pose (lying, getting up) stands in for his normal look.
     this.pose.update(frameDt, this.player.x, this.player.y);
@@ -750,16 +795,18 @@ export class ArenaScene extends Phaser.Scene {
     if (r.state === 'fighting' && !this.wolfCame && !r.holdSpawns && r.time >= werewolf.arriveTime) this.spawnWolf();
     this.nav.setGoal(this.player.x, this.player.y);
     this.shades.update(dt, this.world, this.nav);
-    this.wolf.update(dt, this.world, this.nav, this.player);
-    this.checkWolfAttack();
+    for (const w of this.allWolves()) {
+      w.update(dt, this.world, this.nav, this.player);
+      this.checkWolfAttack(w);
+    }
     this.targets.length = 0;
     this.targets.push(...this.shades.list);
-    if (this.wolf.alive && !this.wolf.airborne) this.targets.push(this.wolf);
+    for (const w of this.allWolves()) if (w.alive && !w.airborne) this.targets.push(w);
     this.arrows.update(dt, this.targets, this.world);
     this.pickups.update(dt, this.player.x, this.player.y, r.state === 'fighting' && this.control);
     if (r.state === 'fighting' && !this.player.safe && !sim.godMode) {
       const { x, y } = this.player;
-      if (this.shades.touching(x, y, cfgPlayer.hitRadius) || this.wolf.touching(x, y, cfgPlayer.hitRadius) || this.world.onHurtingFloor(x, y)) this.die();
+      if (this.shades.touching(x, y, cfgPlayer.hitRadius) || this.allWolves().some((w) => w.touching(x, y, cfgPlayer.hitRadius)) || this.world.onHurtingFloor(x, y)) this.die();
     }
   }
 
@@ -799,9 +846,10 @@ export class ArenaScene extends Phaser.Scene {
       const b = toScreen(s.x + s.vx * 0.25, s.y + s.vy * 0.25);
       g.lineStyle(1, 0xffcc44, 1).lineBetween(a.x, a.y, b.x, b.y);
     }
-    if (this.wolf.alive) {
-      ring(this.wolf.x, this.wolf.y, this.wolf.radius, 0xffcc44);
-      ring(this.wolf.x, this.wolf.y, this.wolf.radius * werewolf.contactScale, 0xff4466);
+    for (const w of this.allWolves()) {
+      if (!w.alive) continue;
+      ring(w.x, w.y, w.radius, 0xffcc44);
+      ring(w.x, w.y, w.radius * w.cfg.contactScale, 0xff4466);
     }
     for (const c of this.world.circles) ring(c.x, c.y, c.radius, 0x66ffaa);
     // What arrows hit, in orange: hit shapes, and the collision circles of things that can break but have none.

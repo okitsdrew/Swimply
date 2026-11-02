@@ -11,8 +11,11 @@ export type WolfState = 'gone' | 'rising' | 'walk' | 'quickDash' | 'windup' | 'd
 const off = { x: 0, y: 0 };
 const way = { x: 0, y: 0 };
 
-// The werewolf mini-boss. One at a time, so this is a single creature rather than a list. A state machine with
-// three attacks. Two are picked at random when the player comes in range:
+// Each werewolf ids itself below zero, so arrows never mix one up with a Shade.
+let nextId = -1;
+
+// A werewolf: the Mindscape's mini-boss or a plain elite, depending on the config section it is given. A state
+// machine with three attacks. Two are picked at random when the player comes in range:
 //   dash: windup (the attack rectangle grows, aimed where the player was) -> dash (to the rectangle's far end,
 //         hurting what it passes) -> slam (hurts the far end) -> recover
 //   jump: crouch -> jump (in the air, over anything, toward where the player was) -> land (hurts the landing
@@ -24,8 +27,8 @@ const way = { x: 0, y: 0 };
 // dash, an attack that is ready starts with a shorter windup.
 // No drawing: render/WerewolfView reads the state.
 export class Werewolf implements Target {
-  // Arrows remember what they have hit by id; this one never matches a Shade's.
-  readonly id = -1;
+  // Arrows remember what they have hit by id.
+  readonly id = nextId--;
   x = 0;
   y = 0;
   radius: number;
@@ -69,7 +72,7 @@ export class Werewolf implements Target {
   // Which way he faces on screen, -1 or 1.
   facing = 1;
 
-  // Which config section drives him (the mini-boss now; plain elites later).
+  // Which config section drives him: the mini-boss or the plain werewolf.
   constructor(readonly cfg: WolfConfig) {
     this.radius = cfg.radius * cfg.scale;
   }
