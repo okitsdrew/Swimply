@@ -7,10 +7,10 @@ export const breakables = defineConfig(
   {
     // Seconds a struck thing flashes white.
     flashTime: 0.08,
-    hitShake: 1,
+    hitShake: 0,
     // The break: a puff of smoke along its collision circles, a shake and a short freeze.
-    breakSmoke: 24,
-    breakShake: 6,
+    breakSmoke: 2,
+    breakShake: 1,
     breakHitStop: 0.05,
   },
   {
