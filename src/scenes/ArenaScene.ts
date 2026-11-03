@@ -3,9 +3,7 @@ import { player as cfgPlayer } from '../config/character';
 import { camera } from '../config/feel';
 import { render } from '../config/render';
 import { run } from '../config/run';
-import { priest } from '../config/priest';
 import { shade } from '../config/shade';
-import { spawners } from '../config/spawners';
 import { sim } from '../config/sim';
 import { story } from '../config/story';
 import { breakables as cfgBreakables } from '../config/breakables';
@@ -16,7 +14,7 @@ import { Circle } from '../core/geometry';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { boxCorners } from '../data/assets';
-import { AreaMap, findMarker, maps, Placed, withFlags, zoneAt } from '../data/maps';
+import { AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
 import { PickupKind, pickupKinds } from '../data/pickups';
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, storyFlags } from '../data/story';
@@ -39,23 +37,21 @@ import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
 import { PickupsView } from '../render/PickupsView';
 import { PlayerView } from '../render/PlayerView';
-import { PriestsView } from '../render/PriestsView';
 import { clock, RunHud } from '../render/RunHud';
-import { ShadesView } from '../render/ShadesView';
 import { TimoView } from '../render/TimoView';
-import { WerewolfView } from '../render/WerewolfView';
 import { Arrows } from '../sim/Arrows';
 import { Breakables } from '../sim/Breakables';
 import { Pickups } from '../sim/Pickups';
 import { Player } from '../sim/Player';
-import { Priest, Priests } from '../sim/Priests';
 import { Run } from '../sim/Run';
 import { Shades } from '../sim/Shades';
+import { Werewolves } from '../sim/Werewolves';
 import { stats } from '../sim/stats';
 import { Target } from '../sim/targets';
-import { Werewolf } from '../sim/Werewolf';
 import { FlowField } from '../sim/Nav';
 import { MapWorld } from '../sim/World';
+import { Enemies } from './Enemies';
+import { priestKind, shadeKind, werewolfKind } from './enemyKinds';
 import { StoryRunner } from './StoryRunner';
 import { TreeSceneData } from './TreeScene';
 
@@ -128,23 +124,13 @@ export class ArenaScene extends Phaser.Scene {
   private fx!: Fx;
   private arrows!: Arrows;
   private arrowsView!: ArrowsView;
-  private shades!: Shades;
   private pickups!: Pickups;
   private pickupsView!: PickupsView;
-  private shadesView!: ShadesView;
-  private priests!: Priests;
-  private priestsView!: PriestsView;
-  // The Mindscape's mini-boss.
-  private wolf!: Werewolf;
-  private wolfView!: WerewolfView;
-  // Plain werewolves, elites met in the world.
-  private elites: { wolf: Werewolf; view: WerewolfView }[] = [];
-  // Placed enemies still waiting for the player: a werewolf or Priest stands there; a Shade rises when he comes near.
-  private sleepers: { o: Placed; wolf: Werewolf | null; priest: Priest | null }[] = [];
-  // The placed marker each placed enemy came from, so its "killed sets" flag turns on when it dies.
-  private placedOf = new Map<object, Placed>();
-  // Each spawner's clock and the enemies it has out, so it keeps to its max alive (its own, or its asset's).
-  private spawning = new Map<Placed, { timer: number; out: Set<object> }>();
+  // Every enemy, of every kind (see enemyKinds.ts). The run spawns Shades itself, and the Mindscape's mini-boss
+  // has its own group, so those two are kept to hand.
+  private enemies!: Enemies;
+  private shades!: Shades;
+  private boss!: Werewolves;
   // Whether this run's werewolf has arrived yet.
   private wolfCame = false;
   private targets: Target[] = [];
@@ -223,17 +209,29 @@ export class ArenaScene extends Phaser.Scene {
     this.arrowsView = new ArrowsView(this, this.arrows, this.fx);
     this.breakables = new Breakables();
     this.breakablesView = new BreakablesView(this.mapView, this.fx);
-    this.shades = new Shades();
-    this.shadesView = new ShadesView(this, this.shades, this.fx);
-    this.priests = new Priests();
-    this.priestsView = new PriestsView(this, this.priests, this.fx);
     this.pickups = new Pickups();
     this.pickupsView = new PickupsView(this, this.pickups);
     this.pickups.onCollected = (kind) => this.collect(kind);
-    this.wolf = new Werewolf(werewolf);
-    this.wolfView = new WerewolfView(this, this.wolf, this.fx);
-    this.elites = [];
     this.sfx = new SoundFx(this);
+    const kc = { scene: this, fx: this.fx, sfx: this.sfx, freeze: (s: number, force?: boolean) => this.freeze(s, force) };
+    const shadeK = shadeKind(kc);
+    const bossK = werewolfKind(kc, 'werewolf_miniboss', werewolf, true);
+    shadeK.dev!.spawn = () => this.run.spawn();
+    bossK.dev!.spawn = () => this.spawnWolf();
+    this.shades = shadeK.group;
+    this.boss = bossK.group;
+    this.enemies = new Enemies([shadeK, priestKind(kc), bossK, werewolfKind(kc, 'werewolf', cfgElite, false)], this.world, this.nav, this.player);
+    this.enemies.onFlag = (flag) => {
+      this.areaFlags[flag] = true;
+      this.showMap();
+    };
+    this.enemies.onKilled = (kind, x, y) => {
+      if (kind === 'shade' && this.run.state === 'fighting' && !this.calm) {
+        this.run.kills++;
+        this.dropShards(x, y, tree.shardsPerKill);
+      }
+      if (kind === 'werewolf_miniboss') this.onWolfKilled(x, y);
+    };
     this.view.onStep = () => this.sfx.play('step');
     this.run = new Run(this.shades);
     this.run.holdSpawns = this.calm || params.has('calm');
@@ -280,11 +278,7 @@ export class ArenaScene extends Phaser.Scene {
     this.player.onTeleportArrive = (x, y) => this.view.onTeleportArrive(x, y);
     this.arrows.onHit = (target, damage, ax, ay, dx, dy) => {
       // Knockback pushes away from a point just behind the hit, so along the arrow's flight.
-      const elite = this.elites.find((e) => e.wolf === target);
-      if (target === this.wolf) this.wolf.damage(damage);
-      else if (elite) elite.wolf.damage(damage);
-      else if (this.priests.list.includes(target as Priest)) this.priests.damage(target, damage, ax - dx, ay - dy);
-      else this.shades.damage(target, damage, ax - dx, ay - dy);
+      this.enemies.damage(target, damage, ax - dx, ay - dy);
       const s = toScreen(ax, ay);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
       this.fx.addShake(camera.shakeOnHit);
@@ -299,29 +293,6 @@ export class ArenaScene extends Phaser.Scene {
     };
     this.breakables.onHit = (thing) => this.breakablesView.onHit(thing);
     this.breakables.onBroken = (thing) => this.onBroken(thing);
-    this.shades.onRisen = (s) => this.shadesView.onRisen(s);
-    this.shades.onKilled = (x, y, s) => {
-      this.enemyDied(s);
-      if (this.run.state === 'fighting' && !this.calm) {
-        this.run.kills++;
-        this.dropShards(x, y, tree.shardsPerKill);
-      }
-      this.shadesView.onKilled(x, y);
-            this.fx.addShake(run.killShake);
-      this.freeze(run.killHitStop);
-    };
-    this.priests.onRisen = (p) => this.priestsView.onRisen(p);
-    this.priests.onCast = (_p, orb) => this.priestsView.onCast(orb);
-    this.priests.onOrbGone = (x, y) => this.priestsView.onOrbGone(x, y);
-    this.priests.onTeleport = (_p, x0, y0, x1, y1) => this.priestsView.onTeleport(x0, y0, x1, y1);
-    this.priests.onKilled = (x, y, p) => {
-      this.enemyDied(p);
-      this.priestsView.onKilled(x, y);
-      this.fx.addShake(run.killShake);
-      this.freeze(run.killHitStop);
-    };
-    this.wireWolf(this.wolf, this.wolfView);
-    this.wolf.onKilled = (x, y) => this.onWolfKilled(x, y);
     this.run.spawnPoint = () => this.spawnPoint();
 
     this.startRun();
@@ -330,15 +301,8 @@ export class ArenaScene extends Phaser.Scene {
 
     DevMenu.get().setActions([
       { label: 'Restart run', run: () => this.startRun() },
-      { label: 'Spawn a Shade', run: () => this.run.spawn() },
       { label: 'Skip 15s', run: () => (this.run.time += 15) },
-      { label: 'Spawn werewolf', run: () => this.spawnWolf() },
-      { label: 'Kill werewolf', run: () => this.wolf.damage(this.wolf.hp) },
-      { label: 'Spawn elite werewolf', run: () => this.spawnElite() },
-      { label: 'Kill elite werewolves', run: () => [...this.elites].forEach((e) => e.wolf.damage(e.wolf.hp)) },
-      { label: 'Kill all Shades', run: () => [...this.shades.list].forEach((s) => this.shades.kill(s)) },
-      { label: 'Spawn a Priest', run: () => this.spawnPriest() },
-      { label: 'Kill Priests', run: () => [...this.priests.list].forEach((p) => this.priests.kill(p)) },
+      ...this.enemies.devActions(),
       { label: 'Hold spawns', run: () => (this.run.holdSpawns = !this.run.holdSpawns) },
       { label: 'Pause', run: () => (this.paused = !this.paused) },
       { label: 'Step', run: () => { this.paused = true; this.stepsQueued++; } },
@@ -526,188 +490,13 @@ export class ArenaScene extends Phaser.Scene {
   private spawnWolf(): void {
     this.wolfCame = true;
     const p = this.spawnPoint();
-    this.wolf.spawn(p.x, p.y);
+    this.boss.spawn(p.x, p.y);
     this.hud.announce('THE WEREWOLF COMES');
     // Part of what reveals Time Warp on the tree.
     if (!save.flags.werewolfSeen) {
       save.flags.werewolfSeen = true;
       writeSave();
     }
-  }
-
-  // Sounds and looks every werewolf shares, the boss and the elites.
-  private wireWolf(w: Werewolf, view: WerewolfView): void {
-    w.onRisen = () => view.onRisen();
-    w.onAttack = () => this.sfx.play('wolfAttack');
-    w.onSlam = () => {
-      this.sfx.play('wolfSmash');
-      view.onSlam();
-    };
-    w.onSwipe = () => {
-      this.sfx.play('wolfSwipe');
-      view.onSwipe();
-    };
-    w.onLand = () => {
-      this.sfx.play('wolfSmash');
-      view.onLand();
-    };
-  }
-
-  // A plain werewolf, for now from the dev menu (spawners will bring them later): a few tiles from the player, on
-  // clear ground. He drops nothing yet; soul shards come with the world's enemies.
-  private spawnElite(): void {
-    const p = this.clearSpot(this.player.x, this.player.y, 450, cfgElite.radius * cfgElite.scale);
-    this.addElite().spawn(p.x, p.y);
-  }
-
-  // A Priest rising a few tiles from the player, on clear ground.
-  private spawnPriest(): void {
-    const p = this.clearSpot(this.player.x, this.player.y, 400, priest.radius * priest.scale);
-    this.priests.spawn(p.x, p.y);
-  }
-
-  // A new plain werewolf, not yet out: the caller spawns him (he rises) or has him wait (placed).
-  private addElite(): Werewolf {
-    const wolf = new Werewolf(cfgElite);
-    const view = new WerewolfView(this, wolf, this.fx, false);
-    this.wireWolf(wolf, view);
-    const entry = { wolf, view };
-    wolf.onKilled = (x, y) => {
-      view.onKilled(x, y);
-      this.freeze(0.08, true);
-      this.elites.splice(this.elites.indexOf(entry), 1);
-      this.enemyDied(wolf);
-      view.destroy();
-    };
-    this.elites.push(entry);
-    return wolf;
-  }
-
-  // A world enemy died: its spawner may send another, and a placed one's "killed sets" flag turns on for this visit.
-  private enemyDied(e: object): void {
-    for (const st of this.spawning.values()) st.out.delete(e);
-    const o = this.placedOf.get(e);
-    if (!o) return;
-    this.placedOf.delete(e);
-    if (!o.onBreak) return;
-    this.areaFlags[o.onBreak] = true;
-    this.showMap();
-  }
-
-  private clearElites(): void {
-    this.elites.forEach((e) => e.view.destroy());
-    this.elites = [];
-  }
-
-  // A spot about `dist` from (x, y) in a random direction where something of radius r can stand: pushed out of
-  // anything solid, and not on blocking or killing floor if a few tries can help it.
-  private clearSpot(x: number, y: number, dist: number, r: number): Vec2 {
-    const p = { x, y, radius: r };
-    for (let i = 0; i < 12; i++) {
-      const a = Math.random() * Math.PI * 2;
-      p.x = x + Math.cos(a) * dist;
-      p.y = y + Math.sin(a) * dist;
-      this.world.resolve(p);
-      if (!this.world.onBlockingFloor(p.x, p.y, r) && !this.world.onHurtingFloor(p.x, p.y)) break;
-    }
-    return { x: p.x, y: p.y };
-  }
-
-  // The map's own enemies, fresh: placed werewolves stand at their spots; placed Shades and spawners wait.
-  private placeEnemies(): void {
-    this.sleepers = [];
-    this.spawning.clear();
-    this.placedOf.clear();
-    for (const o of this.map.objects) {
-      if (o.asset.marker !== 'enemy' || !o.asset.enemy) continue;
-      if (o.asset.enemy === 'werewolf') {
-        const wolf = this.addElite();
-        wolf.wait(o.x, o.y);
-        this.placedOf.set(wolf, o);
-        this.sleepers.push({ o, wolf, priest: null });
-      } else if (o.asset.enemy === 'priest') {
-        const priest = this.priests.wait(o.x, o.y);
-        this.placedOf.set(priest, o);
-        this.sleepers.push({ o, wolf: null, priest });
-      } else this.sleepers.push({ o, wolf: null, priest: null });
-    }
-  }
-
-  // Wakes placed enemies the player comes near, and runs every spawner whose zone he stands in (or, with no zone,
-  // that he is near). A broken spawner is no longer in the map, so it simply stops; what it sent out stays.
-  private updateWorldEnemies(dt: number): void {
-    const p = this.player;
-    const near = (o: Placed) => Math.hypot(o.x - p.x, o.y - p.y) < (o.aggro || spawners.aggroRadius);
-    this.sleepers = this.sleepers.filter(({ o, wolf, priest: pr }) => {
-      if (wolf) {
-        if (wolf.state !== 'idle') return false;
-        if (!near(o)) return true;
-        wolf.wake();
-        return false;
-      }
-      if (pr) {
-        if (pr.state !== 'idle') return false;
-        if (!near(o)) return true;
-        this.priests.wake(pr);
-        return false;
-      }
-      if (!near(o)) return true;
-      const made = this.spawnEnemy('shade', o.x, o.y);
-      if (made) this.placedOf.set(made, o);
-      return false;
-    });
-    const here = zoneAt(this.map, p.x, p.y);
-    for (const o of this.map.objects) {
-      const a = o.asset;
-      if (!a.enemy || a.marker === 'enemy') continue;
-      let st = this.spawning.get(o);
-      if (!st) this.spawning.set(o, (st = { timer: 0, out: new Set() }));
-      const on = o.zone ? o.zone === here : near(o);
-      if (!on) {
-        // Coming back in, the first one rises soon after, not a whole spawnEvery later.
-        st.timer = Math.max(0, (o.every || a.spawnEvery) - spawners.firstSpawn);
-        continue;
-      }
-      st.timer += dt;
-      if (st.timer < (o.every || a.spawnEvery) || st.out.size >= (o.max || a.spawnMax)) continue;
-      st.timer = 0;
-      const r = a.enemy === 'werewolf' ? cfgElite.radius * cfgElite.scale : a.enemy === 'priest' ? priest.radius * priest.scale : shade.radius;
-      const at = this.clearSpot(o.x, o.y, spawners.spawnDistance * o.size, r);
-      const made = this.spawnEnemy(a.enemy, at.x, at.y);
-      if (made) st.out.add(made);
-    }
-  }
-
-  // One enemy of a kind rising at (x, y); returns it, for a spawner to count.
-  private spawnEnemy(kind: string, x: number, y: number): object | null {
-    if (kind === 'werewolf') {
-      const wolf = this.addElite();
-      wolf.spawn(x, y);
-      return wolf;
-    }
-    if (kind === 'shade') {
-      this.shades.spawn(x, y, shade.hp);
-      return this.shades.list[this.shades.list.length - 1];
-    }
-    if (kind === 'priest') return this.priests.spawn(x, y);
-    return null;
-  }
-
-  // Every werewolf here: the boss (when he is about) and the elites.
-  private allWolves(): Werewolf[] {
-    return [this.wolf, ...this.elites.map((e) => e.wolf)];
-  }
-
-  // A werewolf's attacks: the dash hurts along his path as he passes and at the far end where he slams; the
-  // jump hurts the landing circle; the swipe hurts its cone for as long as he lunges.
-  private checkWolfAttack(w: Werewolf): void {
-    const p = this.player;
-    const r = cfgPlayer.hitRadius;
-    const hit = w.inDash(p.x, p.y, r) || (w.slammed && w.inSlam(p.x, p.y, r)) || (w.landed && w.inLanding(p.x, p.y, r)) || (w.state === 'swipe' && w.inSwipe(p.x, p.y, r));
-    if (!hit || this.run.state !== 'fighting' || (p.safe && !w.cfg.slamPiercesInvuln)) return;
-    // Counted even in god mode, so his attack choice can be tested.
-    w.struck = true;
-    if (!sim.godMode) this.die();
   }
 
   // Freezes the sim briefly so a kill lands. Kills in quick succession share one freeze unless `force`.
@@ -758,14 +547,13 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private onWolfKilled(x: number, y: number): void {
-    this.wolfView.onKilled(x, y);
-        if (this.run.state !== 'fighting') return;
+    if (this.run.state !== 'fighting') return;
     this.dropShards(x, y, werewolf.shards, true);
     this.freeze(0.15, true);
     // Beating him wins the Mindscape, full tree or not: the Shades fade, then he wakes back where he touched the bow.
     this.winMindscape();
     this.run.holdSpawns = true;
-    [...this.shades.list].forEach((s) => this.shades.kill(s));
+    this.enemies.killAll('shade');
     // Every orb left on the floor comes to him.
     this.pickups.callAll();
     this.ghost.show('Memories restored', Math.max(0.5, story.clearedDelay - 1));
@@ -773,15 +561,9 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private startRun(): void {
-    this.shades.clear();
-    this.shadesView.clear();
-    this.priests.clear();
-    this.priestsView.clear();
+    this.enemies.clear();
     this.pickups.clear();
     this.pickupsView.clear();
-    this.wolf.clear();
-    this.wolfView.clear();
-    this.clearElites();
     this.wolfCame = false;
     this.arrows.clear();
     this.breakables.clear();
@@ -792,7 +574,7 @@ export class ArenaScene extends Phaser.Scene {
       this.areaFlags = {};
       this.showMap();
     }
-    this.placeEnemies();
+    this.enemies.place(this.map);
     // Where the address says, else the map's player start marker, else the middle of the map.
     const at = params.get('at')?.split(',').map(Number);
     const start = (this.arriveDoor && this.besideDoor(this.arriveDoor)) ?? this.arriveAt ?? (at?.length === 2 && at.every(Number.isFinite) ? { x: at[0], y: at[1] }
@@ -885,11 +667,8 @@ export class ArenaScene extends Phaser.Scene {
     cam.scrollY = this.camCenter.y - cam.height / 2 + this.fx.shakeOffset.y;
 
     this.arrowsView.render();
-    this.shadesView.render(frameDt * (this.paused ? 0 : sim.timeScale), this.player.x, this.player.y, this.world);
-    this.priestsView.render(frameDt * (this.paused ? 0 : sim.timeScale), this.player.x, this.player.y);
+    this.enemies.render({ dt: frameDt, simDt: frameDt * (this.paused ? 0 : sim.timeScale), playerX: this.player.x, playerY: this.player.y, world: this.world, width: cam.width });
     this.pickupsView.render(frameDt);
-    this.wolfView.render(frameDt, cam.width);
-    for (const e of this.elites) e.view.render(frameDt, cam.width);
     this.breakablesView.update(frameDt);
     // A story pose (lying, getting up) stands in for his normal look.
     this.pose.update(frameDt, this.player.x, this.player.y);
@@ -902,7 +681,7 @@ export class ArenaScene extends Phaser.Scene {
     this.box.update(frameDt, cam.width, this.player.x, this.player.y);
     this.ghost.update(frameDt, cam.width, cam.height);
     this.hint.update(frameDt, this.player.x, this.player.y, !!this.near && !this.leaving && this.control && this.run.state === 'fighting');
-    const notes = [this.showHitboxes && this.wolf.present && `WEREWOLF ${this.wolf.state.toUpperCase()}`, this.paused && !this.treeOpen && 'PAUSED', this.run.holdSpawns && !this.calm && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
+    const notes = [this.showHitboxes && this.boss.list[0] && `WEREWOLF ${this.boss.list[0].state.toUpperCase()}`, this.paused && !this.treeOpen && 'PAUSED', this.run.holdSpawns && !this.calm && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
     this.drawDebug();
     this.updateCursor();
@@ -941,26 +720,22 @@ export class ArenaScene extends Phaser.Scene {
       this.player.update(dt, this.input2, this.aim);
       if (Math.hypot(this.input2.move.x, this.input2.move.y) > 0.1) this.story.notify('move');
       this.checkLinks();
-      this.updateWorldEnemies(dt);
+      this.enemies.updateWorld(dt, this.map);
     }
     r.update(dt);
     if (r.state === 'fighting' && !this.wolfCame && !r.holdSpawns && r.time >= werewolf.arriveTime) this.spawnWolf();
     this.nav.setGoal(this.player.x, this.player.y);
-    this.shades.update(dt, this.world, this.nav, this.player);
-    this.priests.update(dt, this.world, this.nav, this.player);
-    for (const w of this.allWolves()) {
-      w.update(dt, this.world, this.nav, this.player);
-      this.checkWolfAttack(w);
-    }
+    this.enemies.update(dt);
+    const p = this.player;
+    // Attacks hit through god mode too (an attack marks what it caught), but only kill without it.
+    if (r.state === 'fighting' && this.enemies.strikes(p.x, p.y, cfgPlayer.hitRadius, p.safe) && !sim.godMode) this.die();
     this.targets.length = 0;
-    this.targets.push(...this.shades.list);
-    for (const p of this.priests.list) if (p.alive) this.targets.push(p);
-    for (const w of this.allWolves()) if (w.alive && !w.airborne) this.targets.push(w);
+    this.enemies.targets(this.targets);
     this.arrows.update(dt, this.targets, this.world);
     this.pickups.update(dt, this.player.x, this.player.y, r.state === 'fighting' && this.control);
     if (r.state === 'fighting' && !this.player.safe && !sim.godMode) {
       const { x, y } = this.player;
-      if (this.shades.touching(x, y, cfgPlayer.hitRadius) || this.priests.touching(x, y, cfgPlayer.hitRadius) || this.allWolves().some((w) => w.touching(x, y, cfgPlayer.hitRadius)) || this.world.onHurtingFloor(x, y)) this.die();
+      if (this.enemies.touching(x, y, cfgPlayer.hitRadius) || this.world.onHurtingFloor(x, y)) this.die();
     }
   }
 
@@ -991,26 +766,15 @@ export class ArenaScene extends Phaser.Scene {
       const p = toScreen(this.player.x, this.player.y);
       g.lineStyle(1, 0x7fc8ff, 1).strokeCircle(p.x, p.y, cfgPickups.pickupRadius * render.isoScale * Math.SQRT2);
     } else ring(this.player.x, this.player.y, cfgPickups.pickupRadius, 0x7fc8ff);
-    for (const s of this.shades.list) {
-      if (!s.alive) continue;
-      ring(s.x, s.y, s.radius, 0xffcc44);
-      ring(s.x, s.y, s.radius * shade.contactScale, 0xff4466);
-      // Which way it is trying to walk.
-      const a = toScreen(s.x, s.y);
-      const b = toScreen(s.x + s.vx * 0.25, s.y + s.vy * 0.25);
-      g.lineStyle(1, 0xffcc44, 1).lineBetween(a.x, a.y, b.x, b.y);
-    }
-    for (const p of this.priests.list) {
-      if (!p.alive) continue;
-      ring(p.x, p.y, p.radius, 0xffcc44);
-      ring(p.x, p.y, p.radius * priest.contactScale, 0xff4466);
-    }
-    for (const o of this.priests.orbs) ring(o.x, o.y, priest.orbRadius * priest.orbContact, 0xff4466);
-    for (const w of this.allWolves()) {
-      if (!w.alive) continue;
-      ring(w.x, w.y, w.radius, 0xffcc44);
-      ring(w.x, w.y, w.radius * w.cfg.contactScale, 0xff4466);
-    }
+    // Enemy bodies in yellow, what kills on touch in red.
+    this.enemies.debug({
+      ring: (x, y, r, hurts) => ring(x, y, r, hurts ? 0xff4466 : 0xffcc44),
+      line: (x0, y0, x1, y1) => {
+        const a = toScreen(x0, y0);
+        const b = toScreen(x1, y1);
+        g.lineStyle(1, 0xffcc44, 1).lineBetween(a.x, a.y, b.x, b.y);
+      },
+    });
     for (const c of this.world.circles) ring(c.x, c.y, c.radius, 0x66ffaa);
     // What arrows hit, in orange: hit shapes, and the collision circles of things that can break but have none.
     for (const o of this.map.objects) {

@@ -3,6 +3,7 @@ import { render } from '../config/render';
 import { shade } from '../config/shade';
 import { Circle } from '../core/geometry';
 import { toScreen } from '../core/iso';
+import { DebugDraw, EnemyGroup } from './enemies';
 import { Navigator } from './Nav';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
@@ -31,7 +32,7 @@ const CLEARANCE = 2;
 // Shades walk at the player (round water by the navigator's route, round pillars by steering; or straight through
 // everything with throughWalls), and push gently off each other. No drawing:
 // render/ShadesView reads `list`.
-export class Shades {
+export class Shades implements EnemyGroup<Shade> {
   readonly list: Shade[] = [];
   private nextId = 1;
   private nearby: Circle[] = [];
@@ -44,19 +45,51 @@ export class Shades {
     return this.list.length;
   }
 
-  spawn(x: number, y: number, hp = shade.hp): void {
-    this.list.push({
+  get bodyRadius(): number {
+    return shade.radius;
+  }
+
+  spawn(x: number, y: number, hp = shade.hp): Shade {
+    const s: Shade = {
       id: this.nextId++, x, y, radius: shade.radius, alive: false, hp, vx: 0, vy: 0, kx: 0, ky: 0,
       rising: Math.max(shade.spawnTell, 1e-4), flash: 0, phase: Math.random() * Math.PI * 2, avoid: null, side: 1,
-    });
+    };
+    this.list.push(s);
+    return s;
+  }
+
+  // Shades have no standing pose: a placed one rises when the hero comes near.
+  wake(): void {}
+
+  waiting(): boolean {
+    return false;
+  }
+
+  // Rising ones are passed too; arrows skip anything not yet alive.
+  targets(out: Target[]): void {
+    for (const s of this.list) out.push(s);
+  }
+
+  // Their only attack is touching him.
+  strikes(): boolean {
+    return false;
+  }
+
+  debug(d: DebugDraw): void {
+    for (const s of this.list) {
+      if (!s.alive) continue;
+      d.ring(s.x, s.y, s.radius, false);
+      d.ring(s.x, s.y, s.radius * shade.contactScale, true);
+      // Which way it is trying to walk.
+      d.line(s.x, s.y, s.x + s.vx * 0.25, s.y + s.vy * 0.25);
+    }
   }
 
   clear(): void {
     this.list.length = 0;
   }
 
-  damage(target: Target, amount: number, fromX: number, fromY: number): void {
-    const s = target as Shade;
+  damage(s: Shade, amount: number, fromX: number, fromY: number): void {
     if (!s.alive) return;
     s.hp -= amount;
     s.flash = feel.hitFlashTime;

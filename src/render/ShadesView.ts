@@ -6,6 +6,7 @@ import { Circle } from '../core/geometry';
 import { Shade, Shades } from '../sim/Shades';
 import { CollisionWorld } from '../sim/World';
 import { shadeFrames, Tex } from './art';
+import { EnemyView, ViewFrame } from './enemies';
 import { Fx } from './Fx';
 
 interface Visual {
@@ -27,7 +28,7 @@ const screen = { x: 0, y: 0 };
 
 // Draws Shades and their spawn marks. A mark is a dark ring that closes in on the spot, so the player always
 // sees where the next one will rise before it can hurt him.
-export class ShadesView {
+export class ShadesView implements EnemyView<Shade> {
   private visuals = new Map<Shade, Visual>();
   private marks: Phaser.GameObjects.Graphics;
 
@@ -64,7 +65,11 @@ export class ShadesView {
     return false;
   }
 
-  render(dt: number, playerX: number, playerY: number, world: CollisionWorld): void {
+  render(f: ViewFrame): void {
+    this.draw(f.simDt, f.playerX, f.playerY, f.world);
+  }
+
+  private draw(dt: number, playerX: number, playerY: number, world: CollisionWorld): void {
     const px = render.pixelScale;
     const scale = px * shade.scale;
     for (const [s, v] of this.visuals) {

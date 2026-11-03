@@ -1,5 +1,6 @@
 import { feel } from '../config/feel';
 import { priest } from '../config/priest';
+import { DebugDraw, EnemyGroup } from './enemies';
 import { Navigator } from './Nav';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
@@ -42,7 +43,7 @@ let nextId = 1_000_000;
 // (backing off if he comes too close) and cast: windup (arms up, the warning) -> cast (the orb leaves, aimed where
 // he stands at that moment) -> walk, with a cooldown before the next. Orbs fly straight, over water and (with
 // orbsThroughWalls) through walls; otherwise they stop at whatever stops arrows. No drawing: render/PriestsView reads `list` and `orbs`.
-export class Priests {
+export class Priests implements EnemyGroup<Priest> {
   readonly list: Priest[] = [];
   readonly orbs: Orb[] = [];
 
@@ -79,13 +80,38 @@ export class Priests {
     p.tpCooldown = priest.firstTeleport;
   }
 
+  waiting(p: Priest): boolean {
+    return p.state === 'idle';
+  }
+
+  get bodyRadius(): number {
+    return priest.radius * priest.scale;
+  }
+
+  targets(out: Target[]): void {
+    for (const p of this.list) if (p.alive) out.push(p);
+  }
+
+  // Its orbs hurt on touch, so they are checked with its body in touching().
+  strikes(): boolean {
+    return false;
+  }
+
+  debug(d: DebugDraw): void {
+    for (const p of this.list) {
+      if (!p.alive) continue;
+      d.ring(p.x, p.y, p.radius, false);
+      d.ring(p.x, p.y, p.radius * priest.contactScale, true);
+    }
+    for (const o of this.orbs) d.ring(o.x, o.y, priest.orbRadius * priest.orbContact, true);
+  }
+
   clear(): void {
     this.list.length = 0;
     this.orbs.length = 0;
   }
 
-  damage(target: Target, amount: number, fromX: number, fromY: number): void {
-    const p = target as Priest;
+  damage(p: Priest, amount: number, fromX: number, fromY: number): void {
     if (!p.alive) return;
     this.wake(p);
     p.hp -= amount;
