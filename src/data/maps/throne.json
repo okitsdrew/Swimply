@@ -315,6 +315,10 @@
     { "asset": "fire", "x": 1280, "y": 1280 },
     { "asset": "fire", "x": 1376, "y": 1248 },
     { "asset": "fire", "x": 1376, "y": 1376 },
-    { "asset": "fire", "x": 1216, "y": 1312 }
+    { "asset": "fire", "x": 1216, "y": 1312 },
+    { "asset": "wooden-bench-sw", "x": 1280, "y": 1152 },
+    { "asset": "wooden-bench-sw", "x": 1344, "y": 1184 },
+    { "asset": "wooden-bench-sw", "x": 1152, "y": 1152 },
+    { "asset": "wooden-bench-sw", "x": 1216, "y": 1280 }
   ]
 }

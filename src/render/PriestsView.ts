@@ -4,6 +4,7 @@ import { render } from '../config/render';
 import { ellipseHalfSize, toScreen } from '../core/iso';
 import { Orb, Priest, Priests } from '../sim/Priests';
 import { priestCastFrames, priestWalkFrames, Tex } from './art';
+import { EnemyView, ViewFrame } from './enemies';
 import { Fx } from './Fx';
 
 interface Visual {
@@ -42,7 +43,7 @@ const ORB_HEIGHT = 10;
 // Draws Priests, their spawn marks and their orbs. Walking swaps the two walk frames; the windup holds arms up
 // (frame 11) and the cast holds frame 12 while the orb leaves; a teleport fades it out and in. An orb is a white
 // core in a gold glow, or, once sprites named priest_orb_0, priest_orb_1, ... exist, those frames in the glow.
-export class PriestsView {
+export class PriestsView implements EnemyView<Priest> {
   private visuals = new Map<Priest, Visual>();
   private orbs = new Map<Orb, OrbVisual>();
   private marks: Phaser.GameObjects.Graphics;
@@ -97,7 +98,11 @@ export class PriestsView {
     this.fx.smoke(screen.x, cy, 3, 6);
   }
 
-  render(dt: number, playerX: number, playerY: number): void {
+  render(f: ViewFrame): void {
+    this.draw(f.simDt, f.playerX, f.playerY);
+  }
+
+  private draw(dt: number, playerX: number, playerY: number): void {
     this.time += dt;
     const px = render.pixelScale;
     const scale = px * priest.scale;
