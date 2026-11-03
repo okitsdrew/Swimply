@@ -28,6 +28,8 @@ const spawnersIn = (id) =>
     const a = assets.get(o.asset);
     return a?.enemy && a.marker !== 'enemy';
   });
+// Doors with a link and no lock: standing in one and pressing F should go there.
+const openDoorsIn = (id) => readMap(id).objects.filter((o) => assets.get(o.asset)?.marker === 'door' && o.to && !o.opens && !o.opensWhenClear);
 // Where to stand to set a spawner going: the middle of the zone tile nearest it, or (no zone) right beside it.
 function standFor(id, o) {
   const m = readMap(id);
@@ -162,6 +164,27 @@ for (const id of maps.filter((m) => !process.argv[2] || m === process.argv[2])) 
           });
         }
         await shoot(page, 1);
+        await ctx.close();
+      }
+    });
+  }
+  const doors = openDoorsIn(id);
+  if (doors.length) {
+    await check(`map ${id}: ${doors.length} door(s) with F`, async () => {
+      for (const o of doors) {
+        const { page, ctx } = await open(`${id} door to ${o.to}`, play(`map=${id}&at=${o.x},${o.y}`));
+        await ready(page);
+        // Hidden by a flag, or a story scene holding him still (waking up in the spawn room): nothing to try.
+        const usable = await page.evaluate(([x, y]) => {
+          const s = window.swimply.scene.getScene('arena');
+          return s.control && s.map.objects.some((p) => p.x === x && p.y === y);
+        }, [o.x, o.y]);
+        if (usable) {
+          await page.keyboard.press('f');
+          await until(page, (to) => new URL(location.href).searchParams.get('map') === to, o.to, 10).catch(() => {
+            throw new Error(`F in the door at ${o.x},${o.y} did not go to ${o.to}`);
+          });
+        }
         await ctx.close();
       }
     });

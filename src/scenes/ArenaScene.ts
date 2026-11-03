@@ -31,6 +31,7 @@ import { Eyelids } from '../render/Eyelids';
 import { Fx } from '../render/Fx';
 import { GhostText } from '../render/GhostText';
 import { HeroPose } from '../render/HeroPose';
+import { DoorsView } from '../render/DoorsView';
 import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
 import { PickupsView } from '../render/PickupsView';
@@ -92,6 +93,7 @@ export class ArenaScene extends Phaser.Scene {
   // Doors, links and the fade to another map.
   private travel!: Travel;
   private hint!: InteractHint;
+  private doorsView!: DoorsView;
   private box!: DialogueBox;
   private ghost!: GhostText;
   private story!: StoryRunner;
@@ -231,6 +233,8 @@ export class ArenaScene extends Phaser.Scene {
     this.hud = new RunHud(this, this.run);
     this.hud.showRun = !this.calm;
     this.hint = new InteractHint(this);
+    this.doorsView = new DoorsView(this);
+    this.doorsView.onUnlock = () => this.sfx.play('unlock');
     this.box = new DialogueBox(this);
     this.ghost = new GhostText(this);
     this.timo = new TimoView(this);
@@ -581,6 +585,7 @@ export class ArenaScene extends Phaser.Scene {
     this.arrowsView.render();
     this.enemies.render({ dt: frameDt, simDt: frameDt * (this.paused ? 0 : sim.timeScale), playerX: this.player.x, playerY: this.player.y, world: this.world, width: cam.width });
     this.pickupsView.render(frameDt);
+    this.doorsView.update(frameDt, this.map, (o) => this.isOpen(o));
     this.breakablesView.update(frameDt);
     // A story pose (lying, getting up) stands in for his normal look.
     this.pose.update(frameDt, this.player.x, this.player.y);
