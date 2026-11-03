@@ -1,6 +1,6 @@
 import { Asset } from '../data/assets';
 import { Floor } from '../data/floors';
-import { MAP_FORMAT } from '../data/maps';
+import { MAP_FORMAT, MapMode } from '../data/maps';
 import { CLEAR, Sprite, SPRITE_FORMAT } from '../data/sprites';
 import { round } from './ui';
 
@@ -101,6 +101,8 @@ export function spritesText(list: Sprite[]): string {
 // placed object. A floor keeps its character from `legend` (the file's own legend) where it has one.
 export interface MapFile {
   name: string;
+  // Missing on drafts kept from before maps had a mode: calm.
+  mode?: MapMode;
   tileSize: number;
   cols: number;
   // cols * rows floor ids, row by row.
@@ -161,7 +163,7 @@ ${zoneRows.map((r) => `    ${JSON.stringify(r)}`).join(',\n')}
   return `{
   "format": ${MAP_FORMAT},
   "kind": "area",
-  "name": ${JSON.stringify(m.name)},
+  "name": ${JSON.stringify(m.name)},${m.mode && m.mode !== 'calm' ? `\n  "mode": ${JSON.stringify(m.mode)},` : ''}
   "tileSize": ${m.tileSize},${m.darkness ? `\n  "darkness": ${round(m.darkness)},` : ''}
   "legend": {
 ${legendLines.join(',\n')}

@@ -7,7 +7,7 @@ import { story } from '../config/story';
 import { ellipseHalfSize, toScreen, Vec2 } from '../core/iso';
 import { Asset, assets } from '../data/assets';
 import { floors } from '../data/floors';
-import { AreaMap, flagList, parseMap, showsWith, withFlags } from '../data/maps';
+import { AreaMap, flagList, MAP_MODES, MapMode, parseMap, showsWith, withFlags } from '../data/maps';
 import { Problems, report } from '../data/registry';
 import { deleteFile, hex, readFile, readMapFiles, renameInDataFile, saveFile } from './files';
 import { MapCanvas } from './MapCanvas';
@@ -373,7 +373,7 @@ class LevelEditor {
     const t = 64;
     const start = assets.list().find((a) => a.marker === 'playerStart');
     const map: EditMap = {
-      name: id, tileSize: t, cols: n, rows: n, legend: {}, darkness: 0,
+      name: id, mode: 'calm', tileSize: t, cols: n, rows: n, legend: {}, darkness: 0,
       tiles: Array.from({ length: n * n }, () => this.floor),
       zones: Array.from({ length: n * n }, () => ''),
       objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1, if: '', unless: '', to: '', opens: '', opensWhenClear: false, onBreak: '', aggro: 0, zone: '', every: 0, max: 0 }] : [],
@@ -1121,7 +1121,7 @@ class LevelEditor {
       row('asset', select(assets.list().map((a) => a.id), o.asset, (v) => { edit(() => (d.map.objects[sel].asset = v)); this.buildProps(); })),
       row('x, y', numberInput(o.x, 1, (v) => edit(() => (d.map.objects[sel].x = v))), numberInput(o.y, 1, (v) => edit(() => (d.map.objects[sel].y = v)))),
       row('size', numberInput(o.size, 0.1, (v) => edit(() => (d.map.objects[sel].size = Math.max(0.1, v))), { min: 0.1 })),
-      asset?.marker === 'shadeSpawn' ? el('p', { class: 'hint', text: `Shades appear inside the blue ring. Size scales it (radius ${run.spawnZoneRadius} at size 1, in the dev menu's run section). A map with no zones is calm: no Shades, no run.` }) : '',
+      asset?.marker === 'shadeSpawn' ? el('p', { class: 'hint', text: `Shades appear inside the blue ring. Size scales it (radius ${run.spawnZoneRadius} at size 1, in the dev menu's run section). They only work in a map whose mode is mindscape (the Map panel); a calm map ignores them.` }) : '',
       asset?.marker === 'playerStart' ? el('p', { class: 'hint', text: 'Where a run starts. Only the first player start in a map counts.' }) : '',
       row('goes to', select(['', ...this.docs.map((m) => m.id).filter((id) => id !== d.id)], o.to ?? '', (v) => edit(() => (d.map.objects[sel].to = v)))),
       asset?.marker === 'door'
@@ -1214,6 +1214,10 @@ class LevelEditor {
       el('h3', { text: 'Map' }),
       row('id', el('span', { text: `${d.id} (Rename on the left)` })),
       row('name', textInput(m.name, (v) => { d.change((mm) => (mm.name = v || d.id)); this.changed(); })),
+      row('mode', select(MAP_MODES, m.mode ?? 'calm', (v) => { d.change((mm) => (mm.mode = v as MapMode)); this.changed(); this.buildProps(); })),
+      el('p', { class: 'hint', text: (m.mode ?? 'calm') === 'mindscape'
+        ? 'The Mindscape: a run. Shades keep coming in its Shade spawn zones, the clock runs, kills drop memory shards, the werewolf comes, and a death opens the tree.'
+        : 'Calm: no run. Shade spawn zones do nothing here, and a death puts him back where he came in.' }),
       row('darkness', numberInput(m.darkness ?? 0, 0.05, (v) => { d.change((mm) => (mm.darkness = Phaser.Math.Clamp(v, 0, 1))); this.changed(); }, { min: 0, max: 1 })),
       el('p', { class: 'hint', text: 'How dark the map is away from lights, 0 to 1. Assets with a light (set in the asset maker) light it up.' }),
       el('p', { class: 'hint', text: `${m.cols} × ${m.rows} tiles, each ${m.tileSize} world units across. The top corner of the diamond is row 0, column 0.` }),

@@ -2,6 +2,7 @@
   "format": 1,
   "kind": "area",
   "name": "mindscape",
+  "mode": "mindscape",
   "tileSize": 64,
   "legend": {
     "~": "obsidian_stone",

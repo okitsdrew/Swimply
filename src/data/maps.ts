@@ -47,9 +47,15 @@ export interface Placed {
   max: number;
 }
 
+// How a map is played. "calm": no run, and a death puts him back where he came in. "mindscape": the run (Shades
+// that keep coming in its spawn zones, the clock, memory shards, the werewolf, the tree after a death).
+export type MapMode = 'calm' | 'mindscape';
+export const MAP_MODES: MapMode[] = ['calm', 'mindscape'];
+
 export interface AreaMap {
   id: string;
   name: string;
+  mode: MapMode;
   tileSize: number;
   cols: number;
   rows: number;
@@ -198,7 +204,10 @@ export function parseMap(id: string, data: unknown, problems: Problems): AreaMap
     }
   }
 
-  return { id, name: str(d.name, id, `${where}.name`, problems), tileSize: num(d.tileSize, 64, `${where}.tileSize`, problems), cols, rows, legend: legendIds, tiles, objects, darkness: num(d.darkness, 0, `${where}.darkness`, problems), zones };
+  const mode = str(d.mode, 'calm', `${where}.mode`, problems) as MapMode;
+  if (!MAP_MODES.includes(mode)) problems.push(`${where}: mode ${JSON.stringify(mode)} is not one of ${MAP_MODES.join(', ')}; played as calm`);
+
+  return { id, name: str(d.name, id, `${where}.name`, problems), mode: MAP_MODES.includes(mode) ? mode : 'calm', tileSize: num(d.tileSize, 64, `${where}.tileSize`, problems), cols, rows, legend: legendIds, tiles, objects, darkness: num(d.darkness, 0, `${where}.darkness`, problems), zones };
 }
 
 function loadAll(): AreaMap[] {
