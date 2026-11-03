@@ -31,6 +31,8 @@ export interface EnemyGroup<E extends Enemy = Enemy> {
   // Still standing where it was placed, not yet woken.
   waiting(e: E): boolean;
   damage(e: E, amount: number, fromX: number, fromY: number): void;
+  // Thrown away from (fromX, fromY), as hard as `amount` (a blast). Kinds too heavy to move leave this out.
+  push?(e: E, fromX: number, fromY: number, amount: number): void;
   kill(e: E): void;
   clear(): void;
   update(dt: number, world: CollisionWorld, nav: Navigator, target: Vec2): void;

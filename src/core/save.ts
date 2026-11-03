@@ -1,12 +1,12 @@
 // Persistent player progress. Versioned, so old saves are migrated as the format grows.
 //
 // Two kinds of data, never mixed:
-//  - `baseline`, `tree`, `shards` and `flags` are permanent and live here (the character's lasting strength, what
-//    he has bought, the shards he has banked, story progress).
+//  - `baseline`, `tree`, `shards`, `flags`, `vestiges` and `equipped` are permanent and live here (the character's
+//    lasting strength, what he has bought, the shards he has banked, story progress, the skills he holds).
 //  - A run's own state (its clock, kills, the Shades on the map) is NOT saved. It starts fresh each run.
 
 const SAVE_KEY = 'swimply.save';
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface SaveData {
   version: number;
@@ -19,14 +19,20 @@ export interface SaveData {
   shards: number;
   // Story and tutorial progress.
   flags: Record<string, boolean>;
+  // Vestiges (skills) he has reclaimed, by id, in the order he got them.
+  vestiges: string[];
+  // What sits in each of his Vestige slots: a Vestige id, or '' for an empty slot.
+  equipped: string[];
 }
 
-const fresh = (): SaveData => ({ version: SAVE_VERSION, baseline: {}, tree: {}, shards: 0, flags: {} });
+const fresh = (): SaveData => ({ version: SAVE_VERSION, baseline: {}, tree: {}, shards: 0, flags: {}, vestiges: [], equipped: [] });
 
 // migrations[n] turns a version-n save into version n+1. Add one whenever SAVE_VERSION goes up.
 const migrations: Record<number, (d: SaveData) => SaveData> = {
   // Version 2 adds the upgrade tree and banked shards.
   1: (d) => ({ ...d, tree: {}, shards: 0 }),
+  // Version 3 adds Vestiges and their slots.
+  2: (d) => ({ ...d, vestiges: [], equipped: [] }),
 };
 
 function migrate(d: SaveData): SaveData {
@@ -43,8 +49,10 @@ function sanitize(raw: unknown): SaveData {
   const r = (raw ?? {}) as Partial<SaveData>;
   if (typeof r.version !== 'number' || r.version > SAVE_VERSION) return fresh();
   const shards = typeof r.shards === 'number' && Number.isFinite(r.shards) ? r.shards : 0;
+  const ids = (v: unknown): string[] => (Array.isArray(v) ? v.map((x) => (typeof x === 'string' ? x : '')) : []);
   return migrate({
     version: r.version, baseline: { ...(r.baseline ?? {}) }, tree: { ...(r.tree ?? {}) }, shards, flags: { ...(r.flags ?? {}) },
+    vestiges: ids(r.vestiges).filter(Boolean), equipped: ids(r.equipped),
   });
 }
 

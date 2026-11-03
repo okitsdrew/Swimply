@@ -179,6 +179,22 @@ export class Enemies {
     this.owners.get(t)?.group.damage(t as Enemy, amount, fromX, fromY);
   }
 
+  // A blast at (x, y): everyone within `radius` takes `amount` (each kind's own hit and knockback), and everyone
+  // within `pushRadius` is thrown outward by `push`. Calls `hit` for each one damaged, for numbers and sound.
+  blast(x: number, y: number, radius: number, amount: number, pushRadius: number, push: number, hit: (e: Enemy) => void): void {
+    for (const k of this.kinds.values()) {
+      for (const e of [...k.group.list]) {
+        if (!e.alive) continue;
+        const d = Math.hypot(e.x - x, e.y - y) - e.radius;
+        if (d < pushRadius) k.group.push?.(e, x, y, push);
+        if (d < radius) {
+          k.group.damage(e, amount, x, y);
+          hit(e);
+        }
+      }
+    }
+  }
+
   render(f: ViewFrame): void {
     for (const k of this.kinds.values()) k.view.render(f);
   }

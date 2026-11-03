@@ -111,6 +111,14 @@ export class Priests implements EnemyGroup<Priest> {
     this.orbs.length = 0;
   }
 
+  push(p: Priest, fromX: number, fromY: number, amount: number): void {
+    const dx = p.x - fromX;
+    const dy = p.y - fromY;
+    const d = Math.hypot(dx, dy) || 1;
+    p.kx += (dx / d) * amount;
+    p.ky += (dy / d) * amount;
+  }
+
   damage(p: Priest, amount: number, fromX: number, fromY: number): void {
     if (!p.alive) return;
     this.wake(p);

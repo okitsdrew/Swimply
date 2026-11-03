@@ -9,7 +9,11 @@ export type Action =
   | 'fire'
   | 'dash'
   | 'teleport'
-  | 'interact';
+  | 'interact'
+  // Vestige slots 1 to 3.
+  | 'skill1'
+  | 'skill2'
+  | 'skill3';
 
 export interface InputSource {
   // Actions currently held.
@@ -33,6 +37,9 @@ const keyBindings: Record<string, Action> = {
   KeyD: 'moveRight',
   Space: 'dash',
   KeyF: 'interact',
+  KeyQ: 'skill1',
+  KeyE: 'skill2',
+  KeyR: 'skill3',
 };
 
 const mouseBindings: Record<number, Action> = {

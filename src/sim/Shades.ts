@@ -89,6 +89,14 @@ export class Shades implements EnemyGroup<Shade> {
     this.list.length = 0;
   }
 
+  push(s: Shade, fromX: number, fromY: number, amount: number): void {
+    const dx = s.x - fromX;
+    const dy = s.y - fromY;
+    const d = Math.hypot(dx, dy) || 1;
+    s.kx += (dx / d) * amount;
+    s.ky += (dy / d) * amount;
+  }
+
   damage(s: Shade, amount: number, fromX: number, fromY: number): void {
     if (!s.alive) return;
     s.hp -= amount;

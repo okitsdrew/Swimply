@@ -6,6 +6,7 @@ import { run } from '../config/run';
 import { sim } from '../config/sim';
 import { story } from '../config/story';
 import { breakables as cfgBreakables } from '../config/breakables';
+import { doomsday } from '../config/vestiges';
 import { werewolf as cfgElite, werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
@@ -13,6 +14,7 @@ import { allOn, AreaMap, findMarker, maps, Placed, withFlags } from '../data/map
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
+import { forgetVestiges, unlockVestige } from '../data/vestiges';
 import { save, writeSave } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
 import { AmbienceView } from '../render/AmbienceView';
@@ -34,6 +36,7 @@ import { PickupsView } from '../render/PickupsView';
 import { PlayerView } from '../render/PlayerView';
 import { RunHud } from '../render/RunHud';
 import { TimoView } from '../render/TimoView';
+import { VestigesView } from '../render/VestigesView';
 import { Arrows } from '../sim/Arrows';
 import { Breakables } from '../sim/Breakables';
 import { Pickups } from '../sim/Pickups';
@@ -42,6 +45,7 @@ import { Run } from '../sim/Run';
 import { stats } from '../sim/stats';
 import { Target } from '../sim/targets';
 import { FlowField } from '../sim/Nav';
+import { VestigeCaster } from '../sim/Vestiges';
 import { MapWorld } from '../sim/World';
 import { Enemies } from './Enemies';
 import { priestKind, shadeKind, werewolfKind } from './enemyKinds';
@@ -113,6 +117,8 @@ export class ArenaScene extends Phaser.Scene {
   private arrows!: Arrows;
   private arrowsView!: ArrowsView;
   private pickups!: Pickups;
+  private caster!: VestigeCaster;
+  private vestigesView!: VestigesView;
   private pickupsView!: PickupsView;
   // Every enemy, of every kind (see enemyKinds.ts).
   private enemies!: Enemies;
@@ -185,6 +191,10 @@ export class ArenaScene extends Phaser.Scene {
     this.pickups = new Pickups();
     this.pickupsView = new PickupsView(this, this.pickups);
     this.sfx = new SoundFx(this);
+    this.caster = new VestigeCaster(this.world, this.player);
+    this.vestigesView = new VestigesView(this, this.caster, this.fx);
+    this.caster.onDeny = () => this.sfx.play('deny');
+    this.caster.onBlast = (x, y) => this.doomsdayBlast(x, y);
     this.travel = new Travel(this, this.mapId, this.calm, this.world, this.player, this.sfx);
     // He got out alive, so what he broke here stays broken.
     this.travel.onLeave = () => {
@@ -298,6 +308,8 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Reset this map (unbreak, revive)', run: () => this.resetMapFlags() },
       { label: 'Story: fresh start', run: () => this.storyFresh() },
       { label: 'Story: Mindscape won', run: () => this.storyWon() },
+      { label: 'Vestige: grant Doomsday', run: () => unlockVestige('doomsday') },
+      { label: 'Vestiges: forget all', run: () => forgetVestiges() },
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
       { label: 'Level editor', run: () => window.open(`level-editor.html?map=${this.mapId}`, 'swimply-level-editor') },
     ]);
@@ -334,6 +346,7 @@ export class ArenaScene extends Phaser.Scene {
     resetTree(false);
     save.shards = 0;
     addShards(0);
+    forgetVestiges();
     Travel.forget();
     this.scene.restart({ map: DEFAULT_MAP });
   }
@@ -349,6 +362,24 @@ export class ArenaScene extends Phaser.Scene {
     if (seconds <= 0 || (!force && this.hitStop <= 0 && this.sinceHitStop < run.hitStopGap)) return;
     if (this.hitStop <= 0) this.sinceHitStop = 0;
     this.hitStop = Math.max(this.hitStop, seconds);
+  }
+
+  // Timo's Doomsday Scenario goes off where he landed: enemies and things that break, within reach, are hurt.
+  private doomsdayBlast(x: number, y: number): void {
+    const number = (ex: number, ey: number, amount: number) => {
+      const s = toScreen(ex, ey);
+      this.fx.damageNumber(s.x, s.y - render.arrowHeight, amount);
+    };
+    this.enemies.blast(x, y, doomsday.damageRadius, doomsday.damage, doomsday.knockbackRadius, doomsday.knockback, (e) => number(e.x, e.y, doomsday.damage));
+    const amount = doomsday.damage * doomsday.breakDamage;
+    for (const o of [...this.map.objects]) {
+      if (amount <= 0 || !this.breakables.canBreak(o) || Math.hypot(o.x - x, o.y - y) > doomsday.damageRadius) continue;
+      number(o.x, o.y, amount);
+      this.breakables.damage(o, amount);
+    }
+    this.vestigesView.blast(x, y);
+    this.sfx.play('doomsday');
+    this.freeze(doomsday.hitStop, true);
   }
 
   // Something gave way: its flag turns on for this visit (or it is just gone, with none), and the map is shown again
@@ -388,6 +419,7 @@ export class ArenaScene extends Phaser.Scene {
     this.pickupsView.clear();
     this.mindscape?.reset();
     this.arrows.clear();
+    this.caster.reset();
     this.breakables.clear();
     this.breakablesView.clear();
     // A new run puts back what the last one broke.
@@ -464,6 +496,7 @@ export class ArenaScene extends Phaser.Scene {
     if (this.pose.active !== this.posed && this.run.state === 'fighting') this.view.setVisible(!this.pose.active);
     this.posed = this.pose.active;
     this.timo.update(frameDt, this.player.x, this.player.y);
+    this.vestigesView.update(frameDt, this.player.x, this.player.y, this.run.state === 'fighting' && !this.pose.active, cam.width, cam.height);
     this.lids.update(frameDt, cam.width, cam.height);
     this.ambience.update(frameDt);
     this.loops.update(this.player.x, this.player.y);
@@ -504,7 +537,11 @@ export class ArenaScene extends Phaser.Scene {
       this.input2.consume('interact');
       this.input2.consume('fire');
     }
-    this.player.fireBlocked = this.story.talking || (this.player.fireBlocked && this.input2.isDown('fire'));
+    // Vestiges come before his own update, so the click that casts one does not also shoot.
+    const aimed = this.caster.aiming >= 0;
+    const canAct = r.state === 'fighting' && !this.travel.leaving && this.control && !this.story.talking && !this.tree.open && !stats.weak();
+    this.caster.update(dt, this.input2, this.aim, canAct);
+    this.player.fireBlocked = this.story.talking || this.caster.aiming >= 0 || ((aimed || this.player.fireBlocked) && this.input2.isDown('fire'));
     if (r.state === 'fighting' && !this.travel.leaving && this.control) {
       this.player.update(dt, this.input2, this.aim);
       if (Math.hypot(this.input2.move.x, this.input2.move.y) > 0.1) this.story.notify('move');

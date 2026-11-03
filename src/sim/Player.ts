@@ -239,6 +239,27 @@ export class Player {
     }
   }
 
+  // A flight straight to (x, y) over `travel` seconds, with the teleport's look, for a Vestige. He cannot be hurt on
+  // the way, and lands standing still. The caller has checked he can stand there.
+  blink(x: number, y: number, travel: number): void {
+    const fromX = this.x;
+    const fromY = this.y;
+    this.tpEndVx = 0;
+    this.tpEndVy = 0;
+    this.dashTime = 0;
+    this.lockTime = 0;
+    this.onTeleport(fromX, fromY, x, y, travel);
+    if (travel > 1e-3) {
+      this.teleportTime = travel;
+      this.tpVx = (x - fromX) / travel;
+      this.tpVy = (y - fromY) / travel;
+    } else {
+      this.x = x;
+      this.y = y;
+      this.endTeleport();
+    }
+  }
+
   // How much of a jump he gets (0 to 1). He passes over water but not through pillars or the map's edge, and never
   // lands in water: a jump that would end there is cut back to the last spot where he can stand.
   private clipJump(jx: number, jy: number): number {
