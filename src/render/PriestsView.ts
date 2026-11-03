@@ -34,8 +34,7 @@ interface Spark {
 const SPARK_COLORS = [0xffffff, 0xfff6d8, 0xffe14a, 0xb08a10, 0x6e4a08];
 
 const screen = { x: 0, y: 0 };
-// The orb's colours: a white core in a gold halo, like the priest's eyes.
-const HALO = 0xffc93a;
+// The orb's core colour when no orb sprites are drawn; its glow is priest.glowColor.
 const CORE = 0xfff6d8;
 // How high above the ground orbs fly, in art pixels (about chest height).
 const ORB_HEIGHT = 10;
@@ -66,13 +65,13 @@ export class PriestsView {
     toScreen(x, y, screen);
     const cy = screen.y - 9 * px * priest.scale;
     this.fx.smoke(screen.x, cy, Math.round(priest.deathSmoke * priest.scale), 6 * px * priest.scale);
-    this.fx.particle({ x: screen.x, y: cy, life: 0.15, from: 0.6 * priest.scale, to: 0, tint: HALO, depth: screen.y + 2 });
+    this.fx.particle({ x: screen.x, y: cy, life: 0.15, from: 0.6 * priest.scale, to: 0, tint: priest.glowColor, depth: screen.y + 2 });
   }
 
   // A small burst where the orb leaves his hands.
   onCast(o: Orb): void {
     toScreen(o.x, o.y, screen);
-    this.fx.particle({ x: screen.x, y: screen.y - ORB_HEIGHT * render.pixelScale, life: 0.2, from: 1.2, to: 0, tint: HALO, depth: screen.y + 2 });
+    this.fx.particle({ x: screen.x, y: screen.y - ORB_HEIGHT * render.pixelScale, life: 0.2, from: 1.2, to: 0, tint: priest.glowColor, depth: screen.y + 2 });
   }
 
   // A puff where it vanishes; another where it appears, as it fades back in.
@@ -94,7 +93,7 @@ export class PriestsView {
   onOrbGone(x: number, y: number): void {
     toScreen(x, y, screen);
     const cy = screen.y - ORB_HEIGHT * render.pixelScale;
-    this.fx.particle({ x: screen.x, y: cy, life: 0.18, from: 1, to: 0, tint: HALO, depth: screen.y + 2 });
+    this.fx.particle({ x: screen.x, y: cy, life: 0.18, from: 1, to: 0, tint: priest.glowColor, depth: screen.y + 2 });
     this.fx.smoke(screen.x, cy, 3, 6);
   }
 
@@ -165,7 +164,7 @@ export class PriestsView {
       let v = this.orbs.get(o);
       if (!v) {
         v = {
-          halo: this.scene.add.image(0, 0, Tex.glow).setTint(HALO).setBlendMode(Phaser.BlendModes.ADD),
+          halo: this.scene.add.image(0, 0, Tex.glow).setTint(priest.glowColor).setBlendMode(Phaser.BlendModes.ADD),
           core: orbFrames.length ? this.scene.add.image(0, 0, orbFrames[0]) : this.scene.add.image(0, 0, Tex.glow).setTint(CORE),
           shed: 0,
         };
@@ -173,9 +172,9 @@ export class PriestsView {
       }
       toScreen(o.x, o.y, screen);
       const y = screen.y - ORB_HEIGHT * px;
-      const pulse = 1 + 0.15 * Math.sin(this.time * 18);
+      const pulse = 1 + priest.glowPulse * Math.sin(this.time * priest.glowPulseSpeed);
       const fade = priest.orbLife > 0 ? Math.min(1, (priest.orbLife - o.age) / 0.25) : 1;
-      v.halo.setPosition(screen.x, y).setScale((r * 4 * pulse) / 32).setAlpha(0.8 * fade).setDepth(screen.y - 0.1);
+      v.halo.setTint(priest.glowColor).setPosition(screen.x, y).setScale((r * priest.glowSize * pulse) / 32).setAlpha(priest.glowAlpha * fade).setDepth(screen.y - 0.1);
       if (orbFrames.length) {
         const f = orbFrames[Math.floor(o.age / Math.max(priest.orbFrameTime, 0.01)) % orbFrames.length];
         v.core.setTexture(f).setPosition(screen.x, y).setScale(px).setAlpha(fade).setDepth(screen.y);

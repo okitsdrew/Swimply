@@ -57,6 +57,12 @@ export const priest = defineConfig(
     walkFrameTime: 0.25,
     // Seconds per frame when the orb is drawn from sprites named priest_orb_0, priest_orb_1, ...
     orbFrameTime: 0.07,
+    // The glow round an orb: its colour, size (times the orb's radius), opacity, and how much and how fast it pulses.
+    glowColor: 0xffc93a,
+    glowSize: 4,
+    glowAlpha: 0.8,
+    glowPulse: 0.15,
+    glowPulseSpeed: 18,
     // The orb's trail: pixel sparks shed each second, and how long one lasts as it drifts back, falls and darkens.
     trailSparks: 40,
     trailLife: 0.4,
@@ -96,6 +102,11 @@ export const priest = defineConfig(
     spawnTell: { min: 0, max: 3, step: 0.05 },
     walkFrameTime: { min: 0.05, max: 1, step: 0.01 },
     orbFrameTime: { min: 0.02, max: 1, step: 0.01 },
+    glowColor: 'color',
+    glowSize: { min: 0, max: 20, step: 0.25 },
+    glowAlpha: { min: 0, max: 1, step: 0.05 },
+    glowPulse: { min: 0, max: 1, step: 0.05 },
+    glowPulseSpeed: { min: 0, max: 60, step: 1 },
     trailSparks: { min: 0, max: 200, step: 5 },
     trailLife: { min: 0.05, max: 2, step: 0.05 },
     deathSmoke: { min: 0, max: 60, step: 1 },
