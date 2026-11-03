@@ -155,7 +155,7 @@
     { "asset": "rubble", "x": 768, "y": 1536 },
     { "asset": "rubble", "x": 800, "y": 1536 },
     { "asset": "rubble", "x": 800, "y": 1600 },
-    { "asset": "door", "x": 0, "y": 800, "to": "garden" },
+    { "asset": "door", "x": 32, "y": 800, "to": "garden" },
     { "asset": "empty_pedestal", "x": 672, "y": 544 },
     { "asset": "empty_pedestal", "x": 544, "y": 672 },
     { "asset": "empty_pedestal", "x": 544, "y": 928 },

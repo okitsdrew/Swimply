@@ -223,7 +223,7 @@
     { "asset": "tall-granite-wall-se", "x": 3168, "y": 2688 },
     { "asset": "tall-granite-wall-se", "x": 3104, "y": 2688 },
     { "asset": "tall-granite-wall-se", "x": 3040, "y": 2688 },
-    { "asset": "door", "x": 1920, "y": 800, "to": "garden" },
+    { "asset": "door", "x": 1888, "y": 800, "to": "garden" },
     { "asset": "door", "x": 3552, "y": 2720, "to": "kitchen" },
     { "asset": "xglass-granite-wall-se", "x": 544, "y": 576 },
     { "asset": "xglass-granite-wall-se", "x": 672, "y": 576 },
