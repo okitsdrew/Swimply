@@ -871,8 +871,8 @@
       ]
     },
     {
-      "id": "shade-spawner",
-      "name": "Shade spawner",
+      "id": "spawner-shade",
+      "name": "spawner shade",
       "category": "markers",
       "parts": [
         {
@@ -895,7 +895,7 @@
       "health": 500,
       "enemy": "shade",
       "spawnEvery": 2,
-      "spawnMax": 4
+      "spawnMax": 30
     },
     {
       "id": "werewolf",
@@ -912,20 +912,55 @@
       "enemy": "shade"
     },
     {
-      "id": "red-spawner",
-      "name": "Red spawner",
+      "id": "spawner-priest",
+      "name": "priest spawner",
       "category": "markers",
-      "parts": [{ "texture": "spawner_red_0", "y": -1, "originY": 0.95, "frames": ["spawner_red_0", "spawner_red_1", "spawner_red_2", "spawner_red_3", "spawner_red_4", "spawner_red_5", "spawner_red_6", "spawner_red_7"] }],
+      "parts": [
+        {
+          "texture": "spawner_red_0",
+          "y": -1,
+          "originY": 0.95,
+          "frames": [
+            "spawner_red_0",
+            "spawner_red_1",
+            "spawner_red_2",
+            "spawner_red_3",
+            "spawner_red_4",
+            "spawner_red_5",
+            "spawner_red_6",
+            "spawner_red_7"
+          ]
+        }
+      ],
       "hit": [{ "box": true, "w": 40, "h": 40 }],
       "health": 500
     },
     {
-      "id": "orange-spawner",
-      "name": "Orange spawner",
+      "id": "spawner-werewolf",
+      "name": "spawner werewolf",
       "category": "markers",
-      "parts": [{ "texture": "spawner_orange_0", "y": -1, "originY": 0.95, "frames": ["spawner_orange_0", "spawner_orange_1", "spawner_orange_2", "spawner_orange_3", "spawner_orange_4", "spawner_orange_5", "spawner_orange_6", "spawner_orange_7"] }],
+      "parts": [
+        {
+          "texture": "spawner_orange_0",
+          "y": -1,
+          "originY": 0.95,
+          "frames": [
+            "spawner_orange_0",
+            "spawner_orange_1",
+            "spawner_orange_2",
+            "spawner_orange_3",
+            "spawner_orange_4",
+            "spawner_orange_5",
+            "spawner_orange_6",
+            "spawner_orange_7"
+          ]
+        }
+      ],
       "hit": [{ "box": true, "w": 40, "h": 40 }],
-      "health": 500
+      "health": 500,
+      "enemy": "werewolf",
+      "spawnEvery": 1,
+      "spawnMax": 2
     }
   ]
 }
