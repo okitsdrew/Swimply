@@ -6,17 +6,17 @@ export const priest = defineConfig(
   'priest',
   'enemies',
   {
-    hp: 60,
+    hp: 250,
     speed: 90,
     radius: 18,
-    scale: 1,
+    scale: 1.5,
     // The player dies when his hit circle meets this fraction of the Priest's radius.
     contactScale: 0.6,
     turnRate: 6,
     knockback: 60,
     knockbackDecay: 12,
     // It stops walking once the player is this close (and in sight), and steps back if he comes closer than tooClose.
-    castRange: 450,
+    castRange: 650,
     tooClose: 200,
     backSpeed: 60,
     // Arms up for this long before the orb goes; then frame 12 holds for castHold.
@@ -31,8 +31,12 @@ export const priest = defineConfig(
     needsSight: true,
     orbSpeed: 260,
     orbRadius: 9,
-    // Seconds an orb flies before it fades out.
-    orbLife: 3,
+    // Seconds an orb flies before it fades out. 0: it flies until it hits him or leaves the map.
+    orbLife: 0,
+    // How hard an orb turns toward him (degrees a second), for its first homingTime seconds; then it flies straight
+    // on, so one that missed leaves instead of circling him forever.
+    homingTurn: 60,
+    homingTime: 1.5,
     // The orb hurts the player when it is this fraction of its radius from his hit circle.
     orbContact: 0.8,
     // Seconds the spawn mark shows before it rises; it cannot hurt or be hit until then.
@@ -60,7 +64,9 @@ export const priest = defineConfig(
     needsSight: 'bool',
     orbSpeed: { min: 20, max: 1500, step: 10 },
     orbRadius: { min: 2, max: 60, step: 1 },
-    orbLife: { min: 0.2, max: 10, step: 0.1 },
+    orbLife: { min: 0, max: 10, step: 0.1 },
+    homingTurn: { min: 0, max: 720, step: 5 },
+    homingTime: { min: 0, max: 10, step: 0.1 },
     orbContact: { min: 0.1, max: 2, step: 0.05 },
     spawnTell: { min: 0, max: 3, step: 0.05 },
     walkFrameTime: { min: 0.05, max: 1, step: 0.01 },

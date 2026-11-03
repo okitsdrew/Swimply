@@ -129,7 +129,7 @@ export class PriestsView {
       toScreen(o.x, o.y, screen);
       const y = screen.y - ORB_HEIGHT * px;
       const pulse = 1 + 0.15 * Math.sin(this.time * 18);
-      const fade = Math.min(1, o.life / 0.25);
+      const fade = priest.orbLife > 0 ? Math.min(1, (priest.orbLife - o.age) / 0.25) : 1;
       v.halo.setPosition(screen.x, y).setScale((r * 4 * pulse) / 32).setAlpha(0.8 * fade).setDepth(screen.y - 0.1);
       v.core.setPosition(screen.x, y).setScale((r * 2) / 32).setAlpha(fade).setDepth(screen.y);
     }

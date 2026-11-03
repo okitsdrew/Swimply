@@ -552,7 +552,7 @@ export class ArenaScene extends Phaser.Scene {
 
   // A Priest rising a few tiles from the player, on clear ground.
   private spawnPriest(): void {
-    const p = this.clearSpot(this.player.x, this.player.y, 400, priest.radius);
+    const p = this.clearSpot(this.player.x, this.player.y, 400, priest.radius * priest.scale);
     this.priests.spawn(p.x, p.y);
   }
 
@@ -661,7 +661,7 @@ export class ArenaScene extends Phaser.Scene {
       st.timer += dt;
       if (st.timer < a.spawnEvery || st.out.size >= a.spawnMax) continue;
       st.timer = 0;
-      const r = a.enemy === 'werewolf' ? cfgElite.radius * cfgElite.scale : a.enemy === 'priest' ? priest.radius : shade.radius;
+      const r = a.enemy === 'werewolf' ? cfgElite.radius * cfgElite.scale : a.enemy === 'priest' ? priest.radius * priest.scale : shade.radius;
       const at = this.clearSpot(o.x, o.y, spawners.spawnDistance * o.size, r);
       const made = this.spawnEnemy(a.enemy, at.x, at.y);
       if (made) st.out.add(made);

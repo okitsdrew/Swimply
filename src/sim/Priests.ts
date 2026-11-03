@@ -25,8 +25,8 @@ export interface Orb {
   y: number;
   vx: number;
   vy: number;
-  // Seconds left before it fades out.
-  life: number;
+  // Seconds it has flown.
+  age: number;
 }
 
 const way = { x: 0, y: 0 };
@@ -49,7 +49,7 @@ export class Priests {
   // One rising at (x, y): the spawn mark shows first.
   spawn(x: number, y: number): Priest {
     const p: Priest = {
-      id: nextId++, x, y, radius: priest.radius, alive: false, hp: priest.hp, state: 'rising', time: 0,
+      id: nextId++, x, y, radius: priest.radius * priest.scale, alive: false, hp: priest.hp, state: 'rising', time: 0,
       vx: 0, vy: 0, kx: 0, ky: 0, flash: 0, cooldown: priest.firstCast,
     };
     this.list.push(p);
@@ -114,7 +114,7 @@ export class Priests {
     const turn = 1 - Math.exp(-priest.turnRate * dt);
     const kdecay = Math.exp(-priest.knockbackDecay * dt);
     for (const p of this.list) {
-      p.radius = priest.radius;
+      p.radius = priest.radius * priest.scale;
       p.flash -= dt;
       p.time += dt;
       if (p.state === 'rising') {
@@ -148,7 +148,7 @@ export class Priests {
         }
       } else if (p.state === 'windup') {
         if (p.time >= priest.castWindup) {
-          const orb = { x: p.x, y: p.y, vx: (tx / dist) * priest.orbSpeed, vy: (ty / dist) * priest.orbSpeed, life: priest.orbLife };
+          const orb = { x: p.x, y: p.y, vx: (tx / dist) * priest.orbSpeed, vy: (ty / dist) * priest.orbSpeed, age: 0 };
           this.orbs.push(orb);
           this.onCast(p, orb);
           this.enter(p, 'cast');
@@ -167,12 +167,24 @@ export class Priests {
       world.resolve(p);
     }
 
+    const turnMax = ((priest.homingTurn * Math.PI) / 180) * dt;
     for (let i = this.orbs.length - 1; i >= 0; i--) {
       const o = this.orbs[i];
-      o.life -= dt;
+      o.age += dt;
+      // Homing: turn the heading toward him, by no more than turnMax this step.
+      if (o.age < priest.homingTime && turnMax > 0) {
+        const want = Math.atan2(target.y - o.y, target.x - o.x);
+        const now = Math.atan2(o.vy, o.vx);
+        let d = want - now;
+        d = Math.atan2(Math.sin(d), Math.cos(d));
+        const a = now + Math.max(-turnMax, Math.min(turnMax, d));
+        o.vx = Math.cos(a) * priest.orbSpeed;
+        o.vy = Math.sin(a) * priest.orbSpeed;
+      }
       const step = Math.hypot(o.vx, o.vy) * dt;
       const hit = step > 0 && !priest.orbsThroughWalls ? world.raycast(o.x, o.y, (o.vx * dt) / step, (o.vy * dt) / step, step) : -1;
-      if (hit >= 0 || o.life <= 0) {
+      const out = o.x < 0 || o.y < 0 || o.x > world.width || o.y > world.height;
+      if (hit >= 0 || out || (priest.orbLife > 0 && o.age >= priest.orbLife)) {
         const k = hit >= 0 ? hit / step : 1;
         this.orbs.splice(i, 1);
         this.onOrbGone(o.x + o.vx * dt * k, o.y + o.vy * dt * k);

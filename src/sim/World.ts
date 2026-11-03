@@ -4,6 +4,9 @@ import { AreaMap, Placed, tileAt } from '../data/maps';
 // What every moving thing asks about solid ground. Systems hold a CollisionWorld, never the list of shapes
 // behind it, so how the world is built from map data can change without touching them.
 export interface CollisionWorld {
+  // The map's size in world units; everything inside is between 0 and these.
+  readonly width: number;
+  readonly height: number;
   // Pushes a circle out of everything solid. With overFloors, blocking floors (water) are ignored, as for a teleport
   // in flight.
   resolve(c: Circle, overFloors?: boolean): void;
