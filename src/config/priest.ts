@@ -59,7 +59,7 @@ export const priest = defineConfig(
     orbFrameTime: 0.07,
     // The glow round an orb: its colour, size (times the orb's radius), opacity, and how much and how fast it pulses.
     glowColor: 0xffc93a,
-    glowSize: 4,
+    glowSize: 1.5,
     glowAlpha: 0.8,
     glowPulse: 0.15,
     glowPulseSpeed: 18,
