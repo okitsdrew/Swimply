@@ -18,7 +18,7 @@ All numbers in config are test values and will change.
 ## Vestiges (skills)
 
 - A **Vestige** is a skill. He equips up to **3**. Equipped ones hover around him as emblems (Timo already floats beside him).
-- They are equipped in the Mindscape menu (the "thinking" menu below). A newly unlocked Vestige equips itself if a slot is empty.
+- They are equipped in the Mindscape menu (the "thinking" menu below), opened with **Tab** whenever no fight is on. A newly unlocked Vestige equips itself if a slot is empty. The slots are cast with **Q, E, R**.
 - The throne hub has **8 pedestals**: an unlocked Vestige hovers over its pedestal; while it is equipped, the pedestal shows a grey outline instead.
 - **Using one:** press its button, and an area shows where it will hit, following the mouse; click to cast it there. Some are toggles instead (for example, double attack speed and damage for 10 seconds).
 - Skills come before the bosses, so he has them in the boss fights. Made from scratch, not ported from Heaven.
