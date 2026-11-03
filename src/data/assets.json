@@ -892,7 +892,24 @@
         }
       ],
       "hit": [{ "box": true, "w": 40, "h": 40 }],
-      "health": 500
+      "health": 500,
+      "enemy": "shade",
+      "spawnEvery": 2,
+      "spawnMax": 4
+    },
+    {
+      "id": "werewolf",
+      "name": "Werewolf (placed)",
+      "category": "markers",
+      "marker": "enemy",
+      "enemy": "werewolf"
+    },
+    {
+      "id": "shade",
+      "name": "Shade (placed)",
+      "category": "markers",
+      "marker": "enemy",
+      "enemy": "shade"
     }
   ]
 }

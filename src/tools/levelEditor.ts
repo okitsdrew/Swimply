@@ -2,6 +2,7 @@ import './tools.css';
 import Phaser from 'phaser';
 import { render } from '../config/render';
 import { run } from '../config/run';
+import { spawners } from '../config/spawners';
 import { story } from '../config/story';
 import { ellipseHalfSize, toScreen, Vec2 } from '../core/iso';
 import { Asset, assets } from '../data/assets';
@@ -17,15 +18,22 @@ import { button, byName, checkbox, el, ID_PATTERN, numberInput, round, row, sele
 // area maps under src/data/maps, and writes them back in the hand-written style. It also renames or replaces a
 // floor or asset across every map, which the asset maker leaves to it because it is the tool that owns the maps.
 
-type Tool = 'select' | 'place' | 'paint' | 'fill' | 'rect';
-const TOOL_KEYS: Record<string, Tool> = { v: 'select', a: 'place', b: 'paint', g: 'fill', r: 'rect' };
-const TOOL_NAMES: Record<Tool, string> = { select: 'Select (V)', place: 'Place (A)', paint: 'Brush (B)', fill: 'Fill (G)', rect: 'Box (R)' };
+type Tool = 'select' | 'place' | 'paint' | 'fill' | 'rect' | 'zone';
+const TOOL_KEYS: Record<string, Tool> = { v: 'select', a: 'place', b: 'paint', g: 'fill', r: 'rect', z: 'zone' };
+const TOOL_NAMES: Record<Tool, string> = { select: 'Select (V)', place: 'Place (A)', paint: 'Brush (B)', fill: 'Fill (G)', rect: 'Box (R)', zone: 'Zones (Z)' };
 const TOOL_HINTS: Record<Tool, string> = {
   select: 'Click a thing to select it, or drag a box round several. Shift adds to the selection. Drag to move, Alt+drag to move a copy. Delete removes, [ and ] resize, arrows nudge, Ctrl+C / Ctrl+V copy and paste at the cursor, Ctrl+D copies in place, Ctrl+A selects all.',
   place: 'Click to place the chosen asset. Right-click a thing to place more of that. Hold Shift to place off the grid.',
   paint: 'Drag to paint the chosen floor. [ and ] change the brush size. Right-click picks up the floor under the cursor.',
   fill: 'Click to fill the patch of the same floor under the cursor. Right-click picks up a floor.',
   rect: 'Drag a box to fill it with the chosen floor. Right-click picks up a floor.',
+  zone: 'Drag to paint the chosen zone (named areas spawners use; the floor is untouched). Alt+drag rubs zones out. [ and ] change the brush size. Right-click picks up the zone under the cursor.',
+};
+// A colour per zone name, the same every time, so a zone keeps its colour between visits.
+const zoneColor = (name: string): number => {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return Phaser.Display.Color.HSVToRGB((h % 360) / 360, 0.65, 1).color;
 };
 const FLOOR_TOOLS: Tool[] = ['paint', 'fill', 'rect'];
 // Grid steps for placing and moving things, in world units (a tile is 64).
@@ -41,7 +49,7 @@ interface Draft {
 }
 
 type Drag =
-  | { kind: 'paint'; col: number; row: number }
+  | { kind: 'paint'; col: number; row: number; erase?: boolean }
   | { kind: 'rect'; c0: number; r0: number; c1: number; r1: number }
   // Moves every selected thing by the same amount. `from` is where each one started; `anchor` is the one under the
   // cursor, which snaps to the grid, and the others keep their places relative to it.
@@ -56,6 +64,8 @@ class LevelEditor {
   private floor = floors.list()[0]?.id ?? '';
   private asset = assets.list().find((a) => !a.marker)?.id ?? assets.list()[0]?.id ?? '';
   private brush = 1;
+  // The zone the Zones tool paints.
+  private zoneName = 'zone_a';
   private snap = 32;
   private grid = true;
   private collision = true;
@@ -194,9 +204,14 @@ class LevelEditor {
   }
 
   // Every edit ends here: redraw the map, mark it unsaved, keep a draft.
-  private changed(rebuildProps = true): void {
+  // After painting zones, which the map's drawing does not show: everything changed() does but redraw it.
+  private changedZones(): void {
+    this.changed(false, false);
+  }
+
+  private changed(rebuildProps = true, redraw = true): void {
     if (this.doc) {
-      this.canvas.setMap(this.viewMap(this.doc));
+      if (redraw) this.canvas.setMap(this.viewMap(this.doc));
       // Undoing back to the saved version counts as saved again.
       this.doc.dirty = this.doc.disk === null || this.doc.text() !== this.doc.disk;
     }
@@ -360,7 +375,8 @@ class LevelEditor {
     const map: EditMap = {
       name: id, tileSize: t, cols: n, rows: n, legend: {}, darkness: 0,
       tiles: Array.from({ length: n * n }, () => this.floor),
-      objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1, if: '', unless: '', to: '', onBreak: '' }] : [],
+      zones: Array.from({ length: n * n }, () => ''),
+      objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1, if: '', unless: '', to: '', onBreak: '', aggro: 0, zone: '' }] : [],
     };
     const d = new MapDoc(id, map, null, true);
     this.docs.push(d);
@@ -485,7 +501,7 @@ class LevelEditor {
         const a = assets.get(this.asset);
         if (!a) return;
         const at = this.place(p);
-        d.change((m) => m.objects.push({ asset: a.id, x: at.x, y: at.y, size: 1, if: '', unless: '', to: '', onBreak: '' }));
+        d.change((m) => m.objects.push({ asset: a.id, x: at.x, y: at.y, size: 1, if: '', unless: '', to: '', onBreak: '', aggro: 0, zone: '' }));
         this.selection = [d.map.objects.length - 1];
         this.changed();
         break;
@@ -500,6 +516,11 @@ class LevelEditor {
         break;
       case 'rect':
         this.drag = { kind: 'rect', c0: col, r0: row, c1: col, r1: row };
+        break;
+      case 'zone':
+        d.beginDrag();
+        this.drag = { kind: 'paint', col, row, erase: alt };
+        this.paintAt(col, row, alt);
         break;
     }
   }
@@ -532,7 +553,7 @@ class LevelEditor {
       // Paints every tile between the last one and this one, so a fast stroke leaves no gaps.
       const steps = Math.max(Math.abs(col - drag.col), Math.abs(row - drag.row));
       for (let i = 1; i <= steps; i++) {
-        this.paintAt(Math.round(drag.col + ((col - drag.col) * i) / steps), Math.round(drag.row + ((row - drag.row) * i) / steps));
+        this.paintAt(Math.round(drag.col + ((col - drag.col) * i) / steps), Math.round(drag.row + ((row - drag.row) * i) / steps), drag.erase);
       }
       drag.col = col;
       drag.row = row;
@@ -567,6 +588,15 @@ class LevelEditor {
 
   private rightClick(p: Vec2): void {
     if (FLOOR_TOOLS.includes(this.tool)) return this.pickFloor(p);
+    if (this.tool === 'zone') {
+      const [col, row] = this.tileOf(p);
+      const z = this.doc?.zone(col, row);
+      if (z) {
+        this.zoneName = z;
+        this.buildProps();
+      }
+      return;
+    }
     const i = this.pick(p);
     const o = i !== null ? this.doc?.map.objects[i] : undefined;
     if (o && this.tool === 'place') {
@@ -575,10 +605,16 @@ class LevelEditor {
     }
   }
 
-  private paintAt(col: number, row: number): void {
+  private paintAt(col: number, row: number, erase = false): void {
     const lo = -Math.floor((this.brush - 1) / 2);
     const hi = lo + this.brush - 1;
-    if (this.doc?.paintBox(col + lo, row + lo, col + hi, row + hi, this.floor)) this.changed(false);
+    const d = this.doc;
+    if (this.tool === 'zone') {
+      // Zones are not drawn by the game, so only the overlay changes: no need to redraw the map.
+      if (d?.paintZone(col + lo, row + lo, col + hi, row + hi, erase ? '' : this.zoneName)) this.changedZones();
+      return;
+    }
+    if (d?.paintBox(col + lo, row + lo, col + hi, row + hi, this.floor)) this.changed(false);
   }
 
   private pickFloor(p: Vec2): void {
@@ -655,6 +691,25 @@ class LevelEditor {
       g.lineStyle(1 / this.canvas.zoom, color, alpha).strokeEllipse(s.x, s.y, e.x * 2, e.y * 2, 16);
     };
 
+    // Zones: all of them while painting zones, else the zone of a selected spawner. One quad per run along a row.
+    const sel = this.single !== null ? m.objects[this.single] : undefined;
+    const only = this.tool === 'zone' ? null : sel?.zone || undefined;
+    if ((this.tool === 'zone' || only) && m.zones) {
+      for (let r = 0; r < m.rows; r++) {
+        let c = 0;
+        while (c < m.cols) {
+          const z = m.zones[r * m.cols + c] ?? '';
+          let e = c;
+          while (e + 1 < m.cols && (m.zones[r * m.cols + e + 1] ?? '') === z) e++;
+          if (z && (only === null || z === only)) {
+            const pts = [toScreen(c * t, r * t), toScreen((e + 1) * t, r * t), toScreen((e + 1) * t, (r + 1) * t), toScreen(c * t, (r + 1) * t)];
+            g.fillStyle(zoneColor(z), z === this.zoneName || only ? 0.35 : 0.2).fillPoints(pts, true);
+          }
+          c = e + 1;
+        }
+      }
+    }
+
     if (this.grid) {
       g.lineStyle(1 / this.canvas.zoom, 0xffffff, 0.08);
       for (let c = 1; c < m.cols; c++) line(c * t, 0, c * t, h);
@@ -667,7 +722,7 @@ class LevelEditor {
       const a = assets.get(o.asset);
       if (!a || !this.shown(o)) return;
       const s = toScreen(o.x, o.y);
-      const reach = (a.marker ? Math.max(run.spawnZoneRadius, story.doorRadius, 20) : 150) * o.size * 1.5;
+      const reach = Math.max((a.marker ? Math.max(run.spawnZoneRadius, story.doorRadius, 20) : 150) * o.size * 1.5, a.enemy ? (o.aggro || spawners.aggroRadius) * 1.5 : 0);
       if (s.x < v.x - reach || s.x > v.right + reach || s.y < v.y - reach || s.y > v.bottom + reach) return;
       if (this.collision) for (const c of a.collision) ring(o.x + c.x * o.size, o.y + c.y * o.size, c.radius * o.size, 0x66ffaa, 0.8);
       if (a.marker) {
@@ -675,6 +730,9 @@ class LevelEditor {
         if (a.marker === 'shadeSpawn') ring(o.x, o.y, run.spawnZoneRadius * o.size, 0x66d9ef);
         if (a.marker === 'door') ring(o.x, o.y, story.doorRadius * o.size, 0xc080ff);
       }
+      // A placed enemy's aggro ring, and a spawner's when it has no zone; a spawner with a zone shows its zone's colour.
+      if (a.enemy && (a.marker === 'enemy' || !o.zone)) ring(o.x, o.y, o.aggro || spawners.aggroRadius, 0xff5060, 0.9);
+      if (a.enemy && a.marker !== 'enemy' && o.zone) ring(o.x, o.y, 26, zoneColor(o.zone));
       if (this.selection.includes(i)) {
         ring(o.x, o.y, 18, 0xffe14a);
         ring(o.x, o.y, 20, 0xffe14a);
@@ -690,7 +748,7 @@ class LevelEditor {
       g.lineStyle(1 / this.canvas.zoom, 0xffe14a, 1).strokePoints(pts, true);
     } else if (drag?.kind === 'rect') {
       box(Math.min(drag.c0, drag.c1), Math.min(drag.r0, drag.r1), Math.max(drag.c0, drag.c1), Math.max(drag.r0, drag.r1), color, 0.6);
-    } else if (p && this.tool === 'paint') {
+    } else if (p && (this.tool === 'paint' || this.tool === 'zone')) {
       const [col, row] = this.tileOf(p);
       const lo = -Math.floor((this.brush - 1) / 2);
       box(col + lo, row + lo, col + lo + this.brush - 1, row + lo + this.brush - 1, 0xffe14a);
@@ -773,7 +831,7 @@ class LevelEditor {
       case '[':
       case ']': {
         const up = e.key === ']';
-        if (FLOOR_TOOLS.includes(this.tool)) {
+        if (FLOOR_TOOLS.includes(this.tool) || this.tool === 'zone') {
           this.brush = Phaser.Math.Clamp(this.brush + (up ? 1 : -1), 1, 9);
           this.buildToolbar();
         } else if (sel.length) {
@@ -864,7 +922,7 @@ class LevelEditor {
 
   private buildToolbar(): void {
     const tools = (Object.keys(TOOL_NAMES) as Tool[]).map((t) => button(TOOL_NAMES[t], () => this.setTool(t), { class: t === this.tool ? 'on' : '' }));
-    const brush = FLOOR_TOOLS.includes(this.tool) && this.tool === 'paint'
+    const brush = this.tool === 'paint' || this.tool === 'zone'
       ? [el('span', { class: 'sep' }), el('span', { text: 'brush' }), numberInput(this.brush, 1, (v) => (this.brush = Phaser.Math.Clamp(Math.round(v), 1, 9)), { min: 1, max: 9, style: 'width:44px' })]
       : [];
     this.toolbar.replaceChildren(
@@ -1021,11 +1079,21 @@ class LevelEditor {
     }
     this.props.replaceChildren(
       // The palettes stay at the top, so they do not move when the selection panel grows or shrinks.
-      ...this.floorPalette(),
+      ...(this.tool === 'zone' ? this.zonePalette(d) : this.floorPalette()),
       ...this.assetPalette(),
       ...this.selectionPanel(d),
       ...this.mapPanel(d),
     );
+  }
+
+  private zonePalette(d: MapDoc): HTMLElement[] {
+    const names = [...new Set([...d.zoneNames(), this.zoneName].filter(Boolean))];
+    return [
+      el('h2', { text: 'Zones' }),
+      row('paint', textInput(this.zoneName, (v) => { this.zoneName = v.trim().replace(/\s+/g, '_'); this.buildProps(); })),
+      ...names.map((z) => button(z, () => { this.zoneName = z; this.buildProps(); }, { class: z === this.zoneName ? 'item on' : 'item', style: `border-left:6px solid #${zoneColor(z).toString(16).padStart(6, '0')}` })),
+      el('p', { class: 'hint', text: 'Type a new name to start a zone. A spawner\'s "zone" (select it) names the zone it works in; several spawners can share one. Zones are invisible in the game.' }),
+    ];
   }
 
   private selectionPanel(d: MapDoc): (HTMLElement | string)[] {
@@ -1062,6 +1130,21 @@ class LevelEditor {
       row('only if', textInput(o.if ?? '', (v) => edit(() => (d.map.objects[sel].if = v)))),
       row('only unless', textInput(o.unless ?? '', (v) => edit(() => (d.map.objects[sel].unless = v)))),
       el('p', { class: 'hint', text: 'Save flags, such as mindscapeCleared. "Only if" shows it while the flag is on, "only unless" while it is off. Leave empty for always.' }),
+      ...(asset?.enemy && asset.marker === 'enemy'
+        ? [
+            row('aggro', numberInput(o.aggro ?? 0, 10, (v) => edit(() => (d.map.objects[sel].aggro = Math.max(0, v))), { min: 0 })),
+            el('p', { class: 'hint', text: `A ${asset.enemy} waits here until the hero comes inside the red ring, or shoots it. 0 uses the default (${spawners.aggroRadius}, in the dev menu's spawners section). Once awake it chases him anywhere.` }),
+          ]
+        : []),
+      ...(asset?.enemy && asset.marker !== 'enemy'
+        ? [
+            row('zone', select(['', ...new Set([...d.zoneNames(), o.zone ?? ''].filter(Boolean))], o.zone ?? '', (v) => { edit(() => (d.map.objects[sel].zone = v)); this.buildProps(); })),
+            ...(o.zone ? [] : [row('aggro', numberInput(o.aggro ?? 0, 10, (v) => edit(() => (d.map.objects[sel].aggro = Math.max(0, v))), { min: 0 }))]),
+            el('p', { class: 'hint', text: o.zone
+              ? `Spawns ${asset.enemy}s (one every ${asset.spawnEvery}s, up to ${asset.spawnMax} at once) while the hero is in zone "${o.zone}", shown in its colour.`
+              : `Spawns ${asset.enemy}s while the hero is inside the red ring. Paint a zone with the Zones tool (Z) and pick it here to use an area instead.` }),
+          ]
+        : []),
       ...(asset?.health
         ? [
             row('broken sets', textInput(o.onBreak ?? '', (v) => edit(() => (d.map.objects[sel].onBreak = v)))),

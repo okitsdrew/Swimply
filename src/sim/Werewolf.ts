@@ -6,7 +6,7 @@ import { Navigator } from './Nav';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
-export type WolfState = 'gone' | 'rising' | 'walk' | 'quickDash' | 'windup' | 'dash' | 'slam' | 'crouch' | 'jump' | 'land' | 'swipeWindup' | 'swipe' | 'recover';
+export type WolfState = 'gone' | 'idle' | 'rising' | 'walk' | 'quickDash' | 'windup' | 'dash' | 'slam' | 'crouch' | 'jump' | 'land' | 'swipeWindup' | 'swipe' | 'recover';
 
 const off = { x: 0, y: 0 };
 const way = { x: 0, y: 0 };
@@ -125,6 +125,17 @@ export class Werewolf implements Target {
     this.enter('rising');
   }
 
+  // Placed in a map: he stands there, and can be shot, until wake() (the player comes near, or an arrow hits him).
+  wait(x: number, y: number): void {
+    this.spawn(x, y);
+    this.alive = true;
+    this.enter('idle');
+  }
+
+  wake(): void {
+    if (this.state === 'idle') this.enter('walk');
+  }
+
   clear(): void {
     this.alive = false;
     this.enter('gone');
@@ -132,6 +143,7 @@ export class Werewolf implements Target {
 
   damage(amount: number): void {
     if (!this.alive) return;
+    this.wake();
     this.hp -= amount;
     this.flash = feel.hitFlashTime;
     if (this.hp <= 0) {

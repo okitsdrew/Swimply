@@ -4,6 +4,7 @@ import { camera } from '../config/feel';
 import { render } from '../config/render';
 import { run } from '../config/run';
 import { shade } from '../config/shade';
+import { spawners } from '../config/spawners';
 import { sim } from '../config/sim';
 import { story } from '../config/story';
 import { breakables as cfgBreakables } from '../config/breakables';
@@ -14,7 +15,7 @@ import { Circle } from '../core/geometry';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { boxCorners } from '../data/assets';
-import { AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
+import { AreaMap, findMarker, maps, Placed, withFlags, zoneAt } from '../data/maps';
 import { PickupKind, pickupKinds } from '../data/pickups';
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, storyFlags } from '../data/story';
@@ -133,6 +134,10 @@ export class ArenaScene extends Phaser.Scene {
   private wolfView!: WerewolfView;
   // Plain werewolves, elites met in the world.
   private elites: { wolf: Werewolf; view: WerewolfView }[] = [];
+  // Placed enemies still waiting for the player: a werewolf stands there; a Shade rises when he comes near.
+  private sleepers: { o: Placed; wolf: Werewolf | null }[] = [];
+  // Each spawner's clock and the enemies it has out (Shades or werewolves), so it keeps to its asset's spawnMax.
+  private spawning = new Map<Placed, { timer: number; out: Set<object> }>();
   // Whether this run's werewolf has arrived yet.
   private wolfCame = false;
   private targets: Target[] = [];
@@ -285,8 +290,9 @@ export class ArenaScene extends Phaser.Scene {
     this.breakables.onHit = (thing) => this.breakablesView.onHit(thing);
     this.breakables.onBroken = (thing) => this.onBroken(thing);
     this.shades.onRisen = (s) => this.shadesView.onRisen(s);
-    this.shades.onKilled = (x, y) => {
-      if (this.run.state === 'fighting') {
+    this.shades.onKilled = (x, y, s) => {
+      for (const st of this.spawning.values()) st.out.delete(s);
+      if (this.run.state === 'fighting' && !this.calm) {
         this.run.kills++;
         this.dropShards(x, y, tree.shardsPerKill);
       }
@@ -519,6 +525,12 @@ export class ArenaScene extends Phaser.Scene {
   // A plain werewolf, for now from the dev menu (spawners will bring them later): a few tiles from the player, on
   // clear ground. He drops nothing yet; soul shards come with the world's enemies.
   private spawnElite(): void {
+    const p = this.clearSpot(this.player.x, this.player.y, 450, cfgElite.radius * cfgElite.scale);
+    this.addElite().spawn(p.x, p.y);
+  }
+
+  // A new plain werewolf, not yet out: the caller spawns him (he rises) or has him wait (placed).
+  private addElite(): Werewolf {
     const wolf = new Werewolf(cfgElite);
     const view = new WerewolfView(this, wolf, this.fx, false);
     this.wireWolf(wolf, view);
@@ -527,23 +539,95 @@ export class ArenaScene extends Phaser.Scene {
       view.onKilled(x, y);
       this.freeze(0.08, true);
       this.elites.splice(this.elites.indexOf(entry), 1);
+      for (const st of this.spawning.values()) st.out.delete(wolf);
       view.destroy();
     };
-    const p = { x: this.player.x, y: this.player.y, radius: wolf.radius };
-    for (let i = 0; i < 12; i++) {
-      const a = Math.random() * Math.PI * 2;
-      p.x = this.player.x + Math.cos(a) * 450;
-      p.y = this.player.y + Math.sin(a) * 450;
-      this.world.resolve(p);
-      if (!this.world.onBlockingFloor(p.x, p.y, wolf.radius) && !this.world.onHurtingFloor(p.x, p.y)) break;
-    }
-    wolf.spawn(p.x, p.y);
     this.elites.push(entry);
+    return wolf;
   }
 
   private clearElites(): void {
     this.elites.forEach((e) => e.view.destroy());
     this.elites = [];
+  }
+
+  // A spot about `dist` from (x, y) in a random direction where something of radius r can stand: pushed out of
+  // anything solid, and not on blocking or killing floor if a few tries can help it.
+  private clearSpot(x: number, y: number, dist: number, r: number): Vec2 {
+    const p = { x, y, radius: r };
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * Math.PI * 2;
+      p.x = x + Math.cos(a) * dist;
+      p.y = y + Math.sin(a) * dist;
+      this.world.resolve(p);
+      if (!this.world.onBlockingFloor(p.x, p.y, r) && !this.world.onHurtingFloor(p.x, p.y)) break;
+    }
+    return { x: p.x, y: p.y };
+  }
+
+  // The map's own enemies, fresh: placed werewolves stand at their spots; placed Shades and spawners wait.
+  private placeEnemies(): void {
+    this.sleepers = [];
+    this.spawning.clear();
+    for (const o of this.map.objects) {
+      if (o.asset.marker !== 'enemy' || !o.asset.enemy) continue;
+      if (o.asset.enemy === 'werewolf') {
+        const wolf = this.addElite();
+        wolf.wait(o.x, o.y);
+        this.sleepers.push({ o, wolf });
+      } else this.sleepers.push({ o, wolf: null });
+    }
+  }
+
+  // Wakes placed enemies the player comes near, and runs every spawner whose zone he stands in (or, with no zone,
+  // that he is near). A broken spawner is no longer in the map, so it simply stops; what it sent out stays.
+  private updateWorldEnemies(dt: number): void {
+    const p = this.player;
+    const near = (o: Placed) => Math.hypot(o.x - p.x, o.y - p.y) < (o.aggro || spawners.aggroRadius);
+    this.sleepers = this.sleepers.filter(({ o, wolf }) => {
+      if (wolf) {
+        if (wolf.state !== 'idle') return false;
+        if (!near(o)) return true;
+        wolf.wake();
+        return false;
+      }
+      if (!near(o)) return true;
+      this.spawnEnemy('shade', o.x, o.y);
+      return false;
+    });
+    const here = zoneAt(this.map, p.x, p.y);
+    for (const o of this.map.objects) {
+      const a = o.asset;
+      if (!a.enemy || a.marker === 'enemy') continue;
+      let st = this.spawning.get(o);
+      if (!st) this.spawning.set(o, (st = { timer: 0, out: new Set() }));
+      const on = o.zone ? o.zone === here : near(o);
+      if (!on) {
+        // Coming back in, the first one rises soon after, not a whole spawnEvery later.
+        st.timer = Math.max(0, a.spawnEvery - spawners.firstSpawn);
+        continue;
+      }
+      st.timer += dt;
+      if (st.timer < a.spawnEvery || st.out.size >= a.spawnMax) continue;
+      st.timer = 0;
+      const at = this.clearSpot(o.x, o.y, spawners.spawnDistance * o.size, a.enemy === 'werewolf' ? cfgElite.radius * cfgElite.scale : shade.radius);
+      const made = this.spawnEnemy(a.enemy, at.x, at.y);
+      if (made) st.out.add(made);
+    }
+  }
+
+  // One enemy of a kind rising at (x, y); returns it, for a spawner to count.
+  private spawnEnemy(kind: string, x: number, y: number): object | null {
+    if (kind === 'werewolf') {
+      const wolf = this.addElite();
+      wolf.spawn(x, y);
+      return wolf;
+    }
+    if (kind === 'shade') {
+      this.shades.spawn(x, y, shade.hp);
+      return this.shades.list[this.shades.list.length - 1];
+    }
+    return null;
   }
 
   // Every werewolf here: the boss (when he is about) and the elites.
@@ -643,6 +727,7 @@ export class ArenaScene extends Phaser.Scene {
       this.areaFlags = {};
       this.showMap();
     }
+    this.placeEnemies();
     // Where the address says, else the map's player start marker, else the middle of the map.
     const at = params.get('at')?.split(',').map(Number);
     const start = (this.arriveDoor && this.besideDoor(this.arriveDoor)) ?? this.arriveAt ?? (at?.length === 2 && at.every(Number.isFinite) ? { x: at[0], y: at[1] }
@@ -790,6 +875,7 @@ export class ArenaScene extends Phaser.Scene {
       this.player.update(dt, this.input2, this.aim);
       if (Math.hypot(this.input2.move.x, this.input2.move.y) > 0.1) this.story.notify('move');
       this.checkLinks();
+      this.updateWorldEnemies(dt);
     }
     r.update(dt);
     if (r.state === 'fighting' && !this.wolfCame && !r.holdSpawns && r.time >= werewolf.arriveTime) this.spawnWolf();
