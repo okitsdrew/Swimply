@@ -1,5 +1,6 @@
 import raw from './story.json';
 import { bool, list, num, obj, Problems, Registry, report, str } from './registry';
+import { vestiges } from './vestiges';
 
 // The story: who speaks, and scripts (short scenes) made of steps. A script plays when its map starts and the save's
 // flags allow it; its last step usually sets a flag so it does not play again. Edit story.json by hand: changing a
@@ -40,6 +41,13 @@ export interface Speaker {
 //   { "timo": "bow_pedestal" }                               Timo floats over beside the first placed thing of
 //                                                            that asset id; "hero" to follow the hero again
 //   { "shake": 6 }                                           shakes the screen (an explosion nearby)
+//   { "camera": "throne", "time": 1.5 }                      slides the camera to the first placed thing of that
+//                                                            asset id (or a spot, "800,640"), taking `time` seconds;
+//                                                            the script waits. "hero" slides back and follows him
+//   { "walk": "throne" }                                     he walks up to the first placed thing of that asset id
+//                                                            (or to a spot, "800,640") on his own; the script waits
+//   { "vestige": "doomsday" }                                he reclaims that Vestige: a banner, and it fills an
+//                                                            empty slot
 export type Step =
   | { kind: 'say'; speaker: Speaker; text: string; face: string }
   | { kind: 'wait'; seconds: number }
@@ -50,7 +58,10 @@ export type Step =
   | { kind: 'control'; on: boolean }
   | { kind: 'pose'; pose: 'asleep' | 'stand'; seconds: number; frames: PoseFrame[] }
   | { kind: 'timo'; target: string }
-  | { kind: 'shake'; amount: number };
+  | { kind: 'shake'; amount: number }
+  | { kind: 'camera'; target: string; seconds: number }
+  | { kind: 'walk'; target: string }
+  | { kind: 'vestige'; id: string };
 
 // One getting-up frame (hero_getup_<frame>) and how long it shows.
 export interface PoseFrame {
@@ -118,7 +129,14 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
   }
   if (e.timo !== undefined) return { kind: 'timo', target: str(e.timo, 'hero', `${where}.timo`, problems) };
   if (e.shake !== undefined) return { kind: 'shake', amount: num(e.shake, 6, `${where}.shake`, problems) };
-  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake), skipped`);
+  if (e.camera !== undefined) return { kind: 'camera', target: str(e.camera, 'hero', `${where}.camera`, problems), seconds: Math.max(0, num(e.time, 1.2, `${where}.time`, problems)) };
+  if (e.walk !== undefined) return { kind: 'walk', target: str(e.walk, '', `${where}.walk`, problems) };
+  if (e.vestige !== undefined) {
+    const id = str(e.vestige, '', `${where}.vestige`, problems);
+    if (!vestiges.get(id)) return problems.push(`${where}: unknown vestige ${JSON.stringify(id)} (see vestiges.json), skipped`), null;
+    return { kind: 'vestige', id };
+  }
+  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, vestige), skipped`);
   return null;
 }
 

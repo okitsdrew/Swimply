@@ -134,6 +134,12 @@ export class Enemies {
     return !map.objects.some((o) => o.asset.enemy && o.asset.marker !== 'enemy');
   }
 
+  // A fight is on: some enemy is up and about (not one still standing where it was placed, nor one rising).
+  fighting(): boolean {
+    for (const k of this.kinds.values()) if (k.group.list.some((e) => e.alive && !k.group.waiting(e))) return true;
+    return false;
+  }
+
   killAll(id: string): void {
     const g = this.kinds.get(id)?.group;
     if (g) [...g.list].forEach((e) => g.kill(e));

@@ -13,7 +13,9 @@ export type Action =
   // Vestige slots 1 to 3.
   | 'skill1'
   | 'skill2'
-  | 'skill3';
+  | 'skill3'
+  // The Mindscape menu (Vestiges).
+  | 'menu';
 
 export interface InputSource {
   // Actions currently held.
@@ -40,6 +42,7 @@ const keyBindings: Record<string, Action> = {
   KeyQ: 'skill1',
   KeyE: 'skill2',
   KeyR: 'skill3',
+  Tab: 'menu',
 };
 
 const mouseBindings: Record<number, Action> = {

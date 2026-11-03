@@ -1,7 +1,7 @@
 // The smoke test: `npm run smoke`. It starts the dev server, opens every map in a hidden browser, spawns and kills
-// each kind of enemy, fires arrows, stands next to every spawner, wins the Mindscape, casts Doomsday, and opens the
-// two tools. It fails if any page throws an error or logs one. It does not judge whether anything looks or plays
-// right; it catches "I broke the kitchen while fixing the garden".
+// each kind of enemy, fires arrows, stands next to every spawner, wins the Mindscape, casts Doomsday, opens the
+// Vestiges menu and the two tools. It fails if any page throws an error or logs one. It does not judge whether
+// anything looks or plays right; it catches "I broke the kitchen while fixing the garden".
 //
 // `npm run smoke garden` checks only that map (plus the Mindscape and tool checks).
 //
@@ -230,6 +230,17 @@ await check("Vestige: Timo's Doomsday Scenario", async () => {
   const after = await page.evaluate(() => { const s = window.swimply.scene.getScene('arena'); return { x: s.player.x, y: s.player.y, cd: s.caster.cooldownLeft('doomsday') }; });
   if (after.cd <= 0) throw new Error('Q then a click did not cast Doomsday (no cooldown started)');
   if (Math.hypot(after.x - from.x, after.y - from.y) < 5) throw new Error('Doomsday did not move him to the spot');
+  // The Mindscape menu opens on Tab once no fight is on, and closes on Tab.
+  for (const k of ['Kill all Shades', 'Kill Priests', 'Kill elite werewolves']) await press(page, k);
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Tab');
+  await until(page, () => window.swimply.scene.isActive('vestiges'), null, 5).catch(() => {
+    throw new Error('Tab did not open the Vestiges menu');
+  });
+  await page.keyboard.press('Tab');
+  await until(page, () => !window.swimply.scene.isActive('vestiges'), null, 5).catch(() => {
+    throw new Error('Tab did not close the Vestiges menu');
+  });
   await ctx.close();
 });
 

@@ -239,6 +239,35 @@ export class Player {
     }
   }
 
+  // Walks him toward (x, y) on his own (a story scene), at `speed`, round nothing: solid things stop him. Returns how
+  // far is left.
+  walkToward(dt: number, x: number, y: number, speed: number): number {
+    const dx = x - this.x;
+    const dy = y - this.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 1e-3) {
+      this.aimX = dx / d;
+      this.aimY = dy / d;
+    }
+    const step = Math.min(d, speed * dt);
+    this.vx = d > 1e-3 ? (dx / d) * speed : 0;
+    this.vy = d > 1e-3 ? (dy / d) * speed : 0;
+    this.x += this.aimX * step;
+    this.y += this.aimY * step;
+    this.body.x = this.x;
+    this.body.y = this.y;
+    this.body.radius = cfgPlayer.bodyRadius;
+    this.world.resolve(this.body);
+    this.x = this.body.x;
+    this.y = this.body.y;
+    return Math.hypot(x - this.x, y - this.y);
+  }
+
+  stop(): void {
+    this.vx = 0;
+    this.vy = 0;
+  }
+
   // A flight straight to (x, y) over `travel` seconds, with the teleport's look, for a Vestige. He cannot be hurt on
   // the way, and lands standing still. The caller has checked he can stand there.
   blink(x: number, y: number, travel: number): void {

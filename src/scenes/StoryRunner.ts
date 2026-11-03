@@ -12,6 +12,11 @@ export interface Stage {
   pose(pose: 'asleep' | 'stand', seconds: number, frames: PoseFrame[]): void;
   moveTimo(target: string): void;
   shake(amount: number): void;
+  camera(target: string, seconds: number): void;
+  walk(target: string): void;
+  // Still walking to where a walk step sent him.
+  readonly walking: boolean;
+  vestige(id: string): void;
 }
 
 // Plays one script (data/story.ts) step by step. The scene tells it what the player did (notify) and when F was
@@ -68,6 +73,8 @@ export class StoryRunner {
       : step.kind === 'wait' ? this.time >= step.seconds
       : step.kind === 'waitFor' ? this.events.has(step.event)
       : step.kind === 'eyes' ? !step.open || this.time >= step.seconds
+      : step.kind === 'camera' ? this.time >= step.seconds
+      : step.kind === 'walk' ? !this.stage.walking
       : true;
     if (done) this.next();
   }
@@ -99,6 +106,9 @@ export class StoryRunner {
     else if (step.kind === 'pose') this.stage.pose(step.pose, step.seconds, step.frames);
     else if (step.kind === 'timo') this.stage.moveTimo(step.target);
     else if (step.kind === 'shake') this.stage.shake(step.amount);
+    else if (step.kind === 'camera') this.stage.camera(step.target, step.seconds);
+    else if (step.kind === 'walk') this.stage.walk(step.target);
+    else if (step.kind === 'vestige') this.stage.vestige(step.id);
     // Steps that finish at once move on in the next update.
   }
 }

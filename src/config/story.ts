@@ -18,6 +18,11 @@ export const story = defineConfig(
     respawnDelay: 1,
     // Seconds "Memories restored" shows before he leaves the Mindscape.
     clearedDelay: 2.5,
+    // A story walk stops this far (world units) from the edge of the thing he walks to, at this fraction of his speed.
+    walkStop: 30,
+    walkSpeed: 0.6,
+    // Seconds the "Vestige reclaimed" banner shows.
+    vestigeBanner: 3,
   },
   {
     weakSpeedMult: { min: 0.05, max: 1, step: 0.05 },
@@ -26,6 +31,9 @@ export const story = defineConfig(
     fadeTime: { min: 0, max: 2, step: 0.05 },
     respawnDelay: { min: 0, max: 5, step: 0.1 },
     clearedDelay: { min: 0, max: 10, step: 0.1 },
+    walkStop: { min: 0, max: 200, step: 5 },
+    walkSpeed: { min: 0.1, max: 2, step: 0.05 },
+    vestigeBanner: { min: 0.5, max: 10, step: 0.1 },
   },
 );
 
