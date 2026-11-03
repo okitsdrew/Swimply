@@ -38,6 +38,9 @@ export interface Placed {
   aggro: number;
   // A spawner spawns while the player stands in this painted zone. Empty: within its aggro distance instead.
   zone: string;
+  // A spawner's own rate (seconds between spawns) and how many it keeps out at once. 0: its asset's.
+  every: number;
+  max: number;
 }
 
 export interface AreaMap {
@@ -157,6 +160,8 @@ export function parseMap(id: string, data: unknown, problems: Problems): AreaMap
       onBreak: str(e.onBreak, '', `${w}.onBreak`, problems),
       aggro: Math.max(0, num(e.aggro, 0, `${w}.aggro`, problems)),
       zone: str(e.zone, '', `${w}.zone`, problems),
+      every: Math.max(0, num(e.every, 0, `${w}.every`, problems)),
+      max: Math.max(0, Math.round(num(e.max, 0, `${w}.max`, problems))),
     });
   });
 

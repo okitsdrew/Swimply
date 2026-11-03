@@ -143,7 +143,7 @@ export class ArenaScene extends Phaser.Scene {
   private sleepers: { o: Placed; wolf: Werewolf | null; priest: Priest | null }[] = [];
   // The placed marker each placed enemy came from, so its "killed sets" flag turns on when it dies.
   private placedOf = new Map<object, Placed>();
-  // Each spawner's clock and the enemies it has out, so it keeps to its asset's spawnMax.
+  // Each spawner's clock and the enemies it has out, so it keeps to its max alive (its own, or its asset's).
   private spawning = new Map<Placed, { timer: number; out: Set<object> }>();
   // Whether this run's werewolf has arrived yet.
   private wolfCame = false;
@@ -656,11 +656,11 @@ export class ArenaScene extends Phaser.Scene {
       const on = o.zone ? o.zone === here : near(o);
       if (!on) {
         // Coming back in, the first one rises soon after, not a whole spawnEvery later.
-        st.timer = Math.max(0, a.spawnEvery - spawners.firstSpawn);
+        st.timer = Math.max(0, (o.every || a.spawnEvery) - spawners.firstSpawn);
         continue;
       }
       st.timer += dt;
-      if (st.timer < a.spawnEvery || st.out.size >= a.spawnMax) continue;
+      if (st.timer < (o.every || a.spawnEvery) || st.out.size >= (o.max || a.spawnMax)) continue;
       st.timer = 0;
       const r = a.enemy === 'werewolf' ? cfgElite.radius * cfgElite.scale : a.enemy === 'priest' ? priest.radius * priest.scale : shade.radius;
       const at = this.clearSpot(o.x, o.y, spawners.spawnDistance * o.size, r);

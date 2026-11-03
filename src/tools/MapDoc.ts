@@ -20,6 +20,8 @@ export interface EditObject {
   onBreak: string;
   aggro: number;
   zone: string;
+  every: number;
+  max: number;
 }
 
 export interface EditMap extends MapFile {
@@ -38,7 +40,7 @@ export function fromAreaMap(m: AreaMap): EditMap {
     legend: { ...m.legend },
     darkness: m.darkness,
     tiles: m.tiles.map((t) => t.id),
-    objects: m.objects.map((o) => ({ asset: o.asset.id, x: o.x, y: o.y, size: o.size, if: o.if, unless: o.unless, to: o.to, onBreak: o.onBreak, aggro: o.aggro, zone: o.zone })),
+    objects: m.objects.map((o) => ({ asset: o.asset.id, x: o.x, y: o.y, size: o.size, if: o.if, unless: o.unless, to: o.to, onBreak: o.onBreak, aggro: o.aggro, zone: o.zone, every: o.every, max: o.max })),
     zones: [...m.zones],
   };
 }
@@ -70,7 +72,7 @@ export class MapDoc {
     const objects: Placed[] = [];
     for (const o of m.objects) {
       const asset = assets.get(o.asset);
-      if (asset) objects.push({ asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '', onBreak: o.onBreak ?? '', aggro: o.aggro ?? 0, zone: o.zone ?? '' });
+      if (asset) objects.push({ asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '', onBreak: o.onBreak ?? '', aggro: o.aggro ?? 0, zone: o.zone ?? '', every: o.every ?? 0, max: o.max ?? 0 });
     }
     return { id: this.id, name: m.name, tileSize: m.tileSize, cols: m.cols, rows: m.rows, legend: m.legend, tiles: m.tiles.map((id) => floors.get(id) ?? fallback), objects, darkness: m.darkness ?? 0, zones: m.tiles.map((_, i) => m.zones?.[i] ?? '') };
   }
