@@ -912,6 +912,13 @@
       "enemy": "shade"
     },
     {
+      "id": "priest",
+      "name": "Priest (placed)",
+      "category": "markers",
+      "marker": "enemy",
+      "enemy": "priest"
+    },
+    {
       "id": "spawner-priest",
       "name": "priest spawner",
       "category": "markers",
@@ -933,7 +940,8 @@
         }
       ],
       "hit": [{ "box": true, "w": 40, "h": 40 }],
-      "health": 500
+      "health": 500,
+      "enemy": "priest"
     },
     {
       "id": "spawner-werewolf",
