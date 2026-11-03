@@ -4,7 +4,7 @@ import { Navigator } from './Nav';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
-export type PriestState = 'idle' | 'rising' | 'walk' | 'windup' | 'cast';
+export type PriestState = 'idle' | 'rising' | 'walk' | 'windup' | 'cast' | 'blinkOut' | 'blinkIn';
 
 export interface Priest extends Target {
   hp: number;
@@ -18,6 +18,10 @@ export interface Priest extends Target {
   flash: number;
   // Seconds until it may start its next cast.
   cooldown: number;
+  // Seconds until it may teleport again, and where the teleport it is in goes.
+  tpCooldown: number;
+  bx: number;
+  by: number;
 }
 
 export interface Orb {
@@ -30,6 +34,7 @@ export interface Orb {
 }
 
 const way = { x: 0, y: 0 };
+const test = { x: 0, y: 0, radius: 0 };
 // Priests id themselves from here up, apart from Shades (counting up from 1) and werewolves (below zero).
 let nextId = 1_000_000;
 
@@ -45,12 +50,14 @@ export class Priests {
   onRisen: (p: Priest) => void = () => {};
   onKilled: (x: number, y: number, p: Priest) => void = () => {};
   onOrbGone: (x: number, y: number) => void = () => {};
+  // It fades out at (x0, y0) and will appear at (x1, y1).
+  onTeleport: (p: Priest, x0: number, y0: number, x1: number, y1: number) => void = () => {};
 
   // One rising at (x, y): the spawn mark shows first.
   spawn(x: number, y: number): Priest {
     const p: Priest = {
       id: nextId++, x, y, radius: priest.radius * priest.scale, alive: false, hp: priest.hp, state: 'rising', time: 0,
-      vx: 0, vy: 0, kx: 0, ky: 0, flash: 0, cooldown: priest.firstCast,
+      vx: 0, vy: 0, kx: 0, ky: 0, flash: 0, cooldown: priest.firstCast, tpCooldown: priest.firstTeleport, bx: x, by: y,
     };
     this.list.push(p);
     return p;
@@ -69,6 +76,7 @@ export class Priests {
     p.state = 'walk';
     p.time = 0;
     p.cooldown = priest.firstCast;
+    p.tpCooldown = priest.firstTeleport;
   }
 
   clear(): void {
@@ -99,7 +107,7 @@ export class Priests {
   // True if a Priest's body or one of the orbs overlaps the circle (the player's forgiving hit circle).
   touching(x: number, y: number, r: number): boolean {
     for (const p of this.list) {
-      if (!p.alive) continue;
+      if (!p.alive || p.state === 'blinkOut' || p.state === 'blinkIn') continue;
       const min = r + p.radius * priest.contactScale;
       if ((p.x - x) ** 2 + (p.y - y) ** 2 < min * min) return true;
     }
@@ -135,17 +143,29 @@ export class Priests {
       let wantY = 0;
       if (p.state === 'walk') {
         p.cooldown -= dt;
+        p.tpCooldown -= dt;
         if (!seen || dist > priest.castRange) {
-          nav.direction(p.x, p.y, p.radius, way);
-          wantX = way.x * priest.speed;
-          wantY = way.y * priest.speed;
-        } else {
-          if (dist < priest.tooClose) {
-            wantX = (-tx / dist) * priest.backSpeed;
-            wantY = (-ty / dist) * priest.backSpeed;
+          if (!(p.tpCooldown <= 0 && this.blink(p, this.castSpot(p, target, world)))) {
+            nav.direction(p.x, p.y, p.radius, way);
+            wantX = way.x * priest.speed;
+            wantY = way.y * priest.speed;
           }
+        } else if (dist < priest.tooClose && !(p.tpCooldown <= 0 && this.blink(p, this.escapeSpot(p, target, world)))) {
+          wantX = (-tx / dist) * priest.backSpeed;
+          wantY = (-ty / dist) * priest.backSpeed;
           if (p.cooldown <= 0) this.enter(p, 'windup');
+        } else if (p.state === 'walk' && p.cooldown <= 0) this.enter(p, 'windup');
+      } else if (p.state === 'blinkOut') {
+        if (p.time >= priest.blinkTime) {
+          p.x = p.bx;
+          p.y = p.by;
+          p.vx = p.vy = p.kx = p.ky = 0;
+          this.enter(p, 'blinkIn');
         }
+        continue;
+      } else if (p.state === 'blinkIn') {
+        if (p.time >= priest.blinkTime) this.enter(p, 'walk');
+        continue;
       } else if (p.state === 'windup') {
         if (p.time >= priest.castWindup) {
           const orb = { x: p.x, y: p.y, vx: (tx / dist) * priest.orbSpeed, vy: (ty / dist) * priest.orbSpeed, age: 0 };
@@ -193,6 +213,69 @@ export class Priests {
       o.x += o.vx * dt;
       o.y += o.vy * dt;
     }
+  }
+
+  // Starts a teleport to the spot, if there is one.
+  private blink(p: Priest, to: { x: number; y: number } | null): boolean {
+    if (!to) return false;
+    p.bx = to.x;
+    p.by = to.y;
+    p.tpCooldown = priest.teleportCooldown;
+    this.onTeleport(p, p.x, p.y, to.x, to.y);
+    this.enter(p, 'blinkOut');
+    return true;
+  }
+
+  // Somewhere it can stand: inside the map, not in anything solid, not on water or a killing floor.
+  private standable(x: number, y: number, r: number, world: CollisionWorld): boolean {
+    if (x < r || y < r || x > world.width - r || y > world.height - r) return false;
+    test.x = x;
+    test.y = y;
+    test.radius = r;
+    world.resolve(test);
+    if (Math.hypot(test.x - x, test.y - y) > 1) return false;
+    return !world.onBlockingFloor(x, y, r) && !world.onHurtingFloor(x, y);
+  }
+
+  // A spot between tooClose and castRange from him, that can see him, within teleportRange of the priest (walls
+  // in between do not matter). Of a few random tries, the one nearest the priest.
+  private castSpot(p: Priest, target: { x: number; y: number }, world: CollisionWorld): { x: number; y: number } | null {
+    let best: { x: number; y: number } | null = null;
+    let bestD = Infinity;
+    const near = Math.min(priest.tooClose + 50, priest.castRange);
+    const far = Math.max(near, priest.castRange * 0.85);
+    for (let i = 0; i < 16; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = near + Math.random() * (far - near);
+      const x = target.x + Math.cos(a) * d;
+      const y = target.y + Math.sin(a) * d;
+      const fromP = Math.hypot(x - p.x, y - p.y);
+      if (fromP > priest.teleportRange || fromP >= bestD || !this.standable(x, y, p.radius, world)) continue;
+      if (world.raycast(x, y, (target.x - x) / d, (target.y - y) / d, d) >= 0) continue;
+      best = { x, y };
+      bestD = fromP;
+    }
+    return best;
+  }
+
+  // A spot escapeDistance away from him, roughly straight away, with open ground the whole way there. Of a few
+  // tries, the one farthest from him.
+  private escapeSpot(p: Priest, target: { x: number; y: number }, world: CollisionWorld): { x: number; y: number } | null {
+    let best: { x: number; y: number } | null = null;
+    let bestD = -1;
+    const away = Math.atan2(p.y - target.y, p.x - target.x);
+    for (let i = 0; i < 10; i++) {
+      const a = away + (Math.random() - 0.5) * (Math.PI * 2) / 3;
+      const dx = Math.cos(a) * priest.escapeDistance;
+      const dy = Math.sin(a) * priest.escapeDistance;
+      const x = p.x + dx;
+      const y = p.y + dy;
+      const fromT = Math.hypot(x - target.x, y - target.y);
+      if (fromT <= bestD || world.sweep(p.x, p.y, dx, dy, p.radius) < 1 || !this.standable(x, y, p.radius, world)) continue;
+      best = { x, y };
+      bestD = fromT;
+    }
+    return best;
   }
 
   private enter(p: Priest, state: PriestState): void {

@@ -313,6 +313,7 @@ export class ArenaScene extends Phaser.Scene {
     this.priests.onRisen = (p) => this.priestsView.onRisen(p);
     this.priests.onCast = (_p, orb) => this.priestsView.onCast(orb);
     this.priests.onOrbGone = (x, y) => this.priestsView.onOrbGone(x, y);
+    this.priests.onTeleport = (_p, x0, y0, x1, y1) => this.priestsView.onTeleport(x0, y0, x1, y1);
     this.priests.onKilled = (x, y, p) => {
       this.enemyDied(p);
       this.priestsView.onKilled(x, y);
@@ -875,7 +876,7 @@ export class ArenaScene extends Phaser.Scene {
     cam.scrollY = this.camCenter.y - cam.height / 2 + this.fx.shakeOffset.y;
 
     this.arrowsView.render();
-    this.shadesView.render(this.player.x, this.player.y);
+    this.shadesView.render(frameDt * (this.paused ? 0 : sim.timeScale), this.player.x, this.player.y, this.world);
     this.priestsView.render(frameDt * (this.paused ? 0 : sim.timeScale), this.player.x, this.player.y);
     this.pickupsView.render(frameDt);
     this.wolfView.render(frameDt, cam.width);

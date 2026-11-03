@@ -15,10 +15,20 @@ export const priest = defineConfig(
     turnRate: 6,
     knockback: 60,
     knockbackDecay: 12,
-    // It stops walking once the player is this close (and in sight), and steps back if he comes closer than tooClose.
+    // It stops walking once the player is this close (and in sight). Closer than tooClose, it teleports away (or
+    // steps back while its teleport is cooling down).
     castRange: 650,
     tooClose: 200,
     backSpeed: 60,
+    // The teleport: out of range or out of sight, it blinks to a spot that can see him (through walls); too close,
+    // it blinks escapeDistance away from him along open ground (never through a wall).
+    teleportCooldown: 4,
+    firstTeleport: 1.5,
+    // The farthest it blinks into position from where it stands.
+    teleportRange: 900,
+    escapeDistance: 300,
+    // Seconds it takes to fade out, and again to fade in at the new spot.
+    blinkTime: 0.2,
     // Arms up for this long before the orb goes; then frame 12 holds for castHold.
     castWindup: 0.7,
     castHold: 0.3,
@@ -26,7 +36,7 @@ export const priest = defineConfig(
     // The first cast after it wakes or rises comes this soon.
     firstCast: 0.8,
     // Orbs fly through walls and anything else solid. Off, they stop where an arrow would.
-    orbsThroughWalls: true,
+    orbsThroughWalls: false,
     // It only starts a cast when nothing solid is between it and the player; off, being in range is enough.
     needsSight: true,
     orbSpeed: 260,
@@ -42,6 +52,8 @@ export const priest = defineConfig(
     // Seconds the spawn mark shows before it rises; it cannot hurt or be hit until then.
     spawnTell: 0.7,
     walkFrameTime: 0.25,
+    // Seconds per frame when the orb is drawn from sprites named priest_orb_0, priest_orb_1, ...
+    orbFrameTime: 0.1,
     deathSmoke: 10,
   },
   {
@@ -56,6 +68,11 @@ export const priest = defineConfig(
     castRange: { min: 50, max: 2000, step: 10 },
     tooClose: { min: 0, max: 1000, step: 10 },
     backSpeed: { min: 0, max: 400, step: 5 },
+    teleportCooldown: { min: 0.2, max: 20, step: 0.1 },
+    firstTeleport: { min: 0, max: 10, step: 0.1 },
+    teleportRange: { min: 50, max: 3000, step: 10 },
+    escapeDistance: { min: 50, max: 1500, step: 10 },
+    blinkTime: { min: 0.02, max: 1, step: 0.02 },
     castWindup: { min: 0.05, max: 3, step: 0.05 },
     castHold: { min: 0, max: 2, step: 0.05 },
     castCooldown: { min: 0.1, max: 10, step: 0.1 },
@@ -70,6 +87,7 @@ export const priest = defineConfig(
     orbContact: { min: 0.1, max: 2, step: 0.05 },
     spawnTell: { min: 0, max: 3, step: 0.05 },
     walkFrameTime: { min: 0.05, max: 1, step: 0.01 },
+    orbFrameTime: { min: 0.02, max: 1, step: 0.01 },
     deathSmoke: { min: 0, max: 60, step: 1 },
   },
 );

@@ -32,6 +32,10 @@ export const shade = defineConfig(
     hemFlicker: 6,
     deathSmoke: 8,
     deathFlash: 0.6,
+    // With throughWalls: a see-through silhouette drawn over everything while a Shade is in or behind something
+    // solid, so it never vanishes inside a wall. Its opacity, and how fast it fades in and out (per second).
+    ghostAlpha: 0.45,
+    ghostFade: 8,
   },
   {
     hp: { min: 1, max: 2000, step: 1 },
@@ -54,5 +58,7 @@ export const shade = defineConfig(
     hemFlicker: { min: 0, max: 30, step: 1 },
     deathSmoke: { min: 0, max: 60, step: 1 },
     deathFlash: { min: 0, max: 3, step: 0.1 },
+    ghostAlpha: { min: 0, max: 1, step: 0.05 },
+    ghostFade: { min: 0.5, max: 40, step: 0.5 },
   },
 );
