@@ -86,6 +86,7 @@ class PreviewScene extends Phaser.Scene {
     const map: AreaMap = {
       id: 'preview',
       name: 'preview',
+      mode: 'calm',
       tileSize: TILE,
       cols: TILES,
       rows: TILES,

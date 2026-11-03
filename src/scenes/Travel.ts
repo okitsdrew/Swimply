@@ -44,8 +44,8 @@ export class Travel {
     this.onLeave();
     leftFrom.set(this.mapId, { x: this.hero.x, y: this.hero.y });
     cameFrom = this.mapId;
-    // Into the Mindscape (a map Shades spawn in) from somewhere calm, or through a door from one calm map to another.
-    const intoRun = next.objects.some((o) => o.asset.marker === 'shadeSpawn');
+    // Into the Mindscape from somewhere calm, or through a door from one calm map to another.
+    const intoRun = next.mode === 'mindscape';
     if (this.calm) this.sfx.play(intoRun ? 'portal' : 'door');
     const cam = this.scene.cameras.main;
     cam.fadeOut(story.fadeTime * 1000);

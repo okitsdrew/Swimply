@@ -3,17 +3,13 @@ import { player as cfgPlayer } from '../config/character';
 import { camera } from '../config/feel';
 import { render } from '../config/render';
 import { run } from '../config/run';
-import { shade } from '../config/shade';
 import { sim } from '../config/sim';
 import { story } from '../config/story';
 import { breakables as cfgBreakables } from '../config/breakables';
-import { pickups as cfgPickups } from '../config/pickups';
-import { tree } from '../config/tree';
 import { werewolf as cfgElite, werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { allOn, AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
-import { PickupKind, pickupKinds } from '../data/pickups';
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
@@ -36,25 +32,23 @@ import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
 import { PickupsView } from '../render/PickupsView';
 import { PlayerView } from '../render/PlayerView';
-import { clock, RunHud } from '../render/RunHud';
+import { RunHud } from '../render/RunHud';
 import { TimoView } from '../render/TimoView';
 import { Arrows } from '../sim/Arrows';
 import { Breakables } from '../sim/Breakables';
 import { Pickups } from '../sim/Pickups';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
-import { Shades } from '../sim/Shades';
-import { Werewolves } from '../sim/Werewolves';
 import { stats } from '../sim/stats';
 import { Target } from '../sim/targets';
 import { FlowField } from '../sim/Nav';
 import { MapWorld } from '../sim/World';
 import { Enemies } from './Enemies';
 import { priestKind, shadeKind, werewolfKind } from './enemyKinds';
+import { ArenaParts, Mindscape, TreeScreen, winMindscape } from './Mindscape';
 import { StoryRunner } from './StoryRunner';
 import { drawHitboxes } from './hitboxes';
 import { Travel } from './Travel';
-import { TreeSceneData } from './TreeScene';
 
 const DEFAULT_MAP = 'spawn';
 
@@ -65,9 +59,9 @@ const DEFAULT_MAP = 'spawn';
 // The map is kept in the address, so the reload after a tool saves comes back to the same map.
 const params = new URLSearchParams(location.search);
 
-// The arena: a map from src/data/maps, played one of two ways. A map with Shade spawn zones is a run (the
-// Mindscape): Shades that keep coming, death, the upgrade tree, and the next run. Any other map is calm: no Shades,
-// no run clock, and a death puts him back where he came in. Doors and things with a `to` lead to other maps. The sim
+// The arena: a map from src/data/maps, played the way its mode says. In the Mindscape the run (Shades that keep
+// coming, death, the upgrade tree, and the next run) is Mindscape.ts's. Any other map is calm: no Shades, no run
+// clock, and a death puts him back where he came in. Doors and things with a `to` lead to other maps. The sim
 // runs on a fixed time step here; drawing runs once per screen frame. Switching map restarts the scene with the new
 // map's id.
 export class ArenaScene extends Phaser.Scene {
@@ -84,8 +78,11 @@ export class ArenaScene extends Phaser.Scene {
   private broken = new Set<Placed>();
   private breakables!: Breakables;
   private breakablesView!: BreakablesView;
-  // No spawn zones: no Shades, no run, no tree.
+  // Not the Mindscape: no Shades, no run, no tree.
   private calm = false;
+  // The run, in the Mindscape only.
+  private mindscape: Mindscape | null = null;
+  private tree!: TreeScreen;
   // Where he comes in, when another map sent him here.
   private arriveAt: Vec2 | null = null;
   // The door here he came in through, when another map's door sent him; he appears on clear floor beside it.
@@ -117,13 +114,8 @@ export class ArenaScene extends Phaser.Scene {
   private arrowsView!: ArrowsView;
   private pickups!: Pickups;
   private pickupsView!: PickupsView;
-  // Every enemy, of every kind (see enemyKinds.ts). The run spawns Shades itself, and the Mindscape's mini-boss
-  // has its own group, so those two are kept to hand.
+  // Every enemy, of every kind (see enemyKinds.ts).
   private enemies!: Enemies;
-  private shades!: Shades;
-  private boss!: Werewolves;
-  // Whether this run's werewolf has arrived yet.
-  private wolfCame = false;
   private targets: Target[] = [];
   private run!: Run;
   private hud!: RunHud;
@@ -138,7 +130,6 @@ export class ArenaScene extends Phaser.Scene {
   private paused = false;
   private stepsQueued = 0;
   private aim: Vec2 | null = null;
-  private treeOpen = false;
   private cursor = '';
 
   constructor() {
@@ -165,12 +156,7 @@ export class ArenaScene extends Phaser.Scene {
     this.broken = new Set();
     this.map = withFlags(map, save.flags);
     this.mapId = map.id;
-    this.calm = !this.map.objects.some((o) => o.asset.marker === 'shadeSpawn');
-    // Being in the Mindscape (any map that spawns) is what brings back his strength.
-    if (!this.calm && !save.flags.enteredMindscape) {
-      save.flags.enteredMindscape = true;
-      writeSave();
-    }
+    this.calm = map.mode !== 'mindscape';
     if (params.get('map') !== map.id) {
       params.set('map', map.id);
       params.delete('at');
@@ -181,7 +167,6 @@ export class ArenaScene extends Phaser.Scene {
     this.acc = 0;
     this.paused = false;
     this.stepsQueued = 0;
-    this.treeOpen = false;
 
     makeArt(this);
     this.cameras.main.setBackgroundColor(0x000000);
@@ -199,7 +184,6 @@ export class ArenaScene extends Phaser.Scene {
     this.breakablesView = new BreakablesView(this.mapView, this.fx);
     this.pickups = new Pickups();
     this.pickupsView = new PickupsView(this, this.pickups);
-    this.pickups.onCollected = (kind) => this.collect(kind);
     this.sfx = new SoundFx(this);
     this.travel = new Travel(this, this.mapId, this.calm, this.world, this.player, this.sfx);
     // He got out alive, so what he broke here stays broken.
@@ -211,24 +195,19 @@ export class ArenaScene extends Phaser.Scene {
     const kc = { scene: this, fx: this.fx, sfx: this.sfx, freeze: (s: number, force?: boolean) => this.freeze(s, force) };
     const shadeK = shadeKind(kc);
     const bossK = werewolfKind(kc, 'werewolf_miniboss', werewolf, true);
-    shadeK.dev!.spawn = () => this.run.spawn();
-    bossK.dev!.spawn = () => this.spawnWolf();
-    this.shades = shadeK.group;
-    this.boss = bossK.group;
+    // In the Mindscape the dev menu's Shade and werewolf come the run's way, in its spawn zones.
+    if (!this.calm) {
+      shadeK.dev!.spawn = () => this.run.spawn();
+      bossK.dev!.spawn = () => this.mindscape?.spawnWolf();
+    }
     this.enemies = new Enemies([shadeK, priestKind(kc), bossK, werewolfKind(kc, 'werewolf', cfgElite, false)], this.world, this.nav, this.player);
     this.enemies.onFlag = (flag) => {
       this.areaFlags[flag] = true;
       this.showMap();
     };
-    this.enemies.onKilled = (kind, x, y) => {
-      if (kind === 'shade' && this.run.state === 'fighting' && !this.calm) {
-        this.run.kills++;
-        this.dropShards(x, y, tree.shardsPerKill);
-      }
-      if (kind === 'werewolf_miniboss') this.onWolfKilled(x, y);
-    };
+    this.enemies.onKilled = (kind, x, y) => this.mindscape?.onKilled(kind, x, y);
     this.view.onStep = () => this.sfx.play('step');
-    this.run = new Run(this.shades);
+    this.run = new Run(shadeK.group);
     this.run.holdSpawns = this.calm || params.has('calm');
     this.hud = new RunHud(this, this.run);
     this.hud.showRun = !this.calm;
@@ -290,7 +269,13 @@ export class ArenaScene extends Phaser.Scene {
     };
     this.breakables.onHit = (thing) => this.breakablesView.onHit(thing);
     this.breakables.onBroken = (thing) => this.onBroken(thing);
-    this.run.spawnPoint = () => this.spawnPoint();
+    const parts: ArenaParts = {
+      scene: this, map: () => this.map, world: this.world, player: this.player, run: this.run, hud: this.hud, enemies: this.enemies,
+      pickups: this.pickups, sfx: this.sfx, ghost: this.ghost, travel: this.travel, input: this.input2,
+      freeze: (s, force) => this.freeze(s, force), pause: (on) => (this.paused = on), startRun: () => this.startRun(),
+    };
+    this.tree = new TreeScreen(parts);
+    this.mindscape = this.calm ? null : new Mindscape(parts, this.tree, bossK.group, DEFAULT_MAP);
 
     this.startRun();
     const script = scriptFor(this.mapId, save.flags);
@@ -303,7 +288,7 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Hold spawns', run: () => (this.run.holdSpawns = !this.run.holdSpawns) },
       { label: 'Pause', run: () => (this.paused = !this.paused) },
       { label: 'Step', run: () => { this.paused = true; this.stepsQueued++; } },
-      { label: 'Open tree', run: () => this.openTree() },
+      { label: 'Open tree', run: () => this.tree.show() },
       { label: '+50 shards', run: () => addShards(50) },
       { label: 'Reset tree (refund)', run: () => resetTree(true) },
       { label: 'Reset tree and shards', run: () => { resetTree(false); save.shards = 0; addShards(0); } },
@@ -355,59 +340,8 @@ export class ArenaScene extends Phaser.Scene {
 
   private storyWon(): void {
     for (const f of storyFlags()) delete save.flags[f];
-    this.winMindscape();
+    winMindscape();
     this.scene.restart({ map: DEFAULT_MAP });
-  }
-
-  // The full tree whatever was bought, teleport, and his strength for good.
-  private winMindscape(): void {
-    Object.assign(save.flags, { enteredMindscape: true, mindscapeCleared: true, teleport: true });
-    maxTree();
-    addShards(0);
-  }
-
-  // The tree screen. The sim is paused under it, so nothing goes on attacking where he fell. After a death, closing
-  // it starts the next run; opened mid-run from the dev menu, the run carries on.
-  private openTree(): void {
-    if (this.treeOpen) return;
-    this.treeOpen = true;
-    this.hud.treeOpen = true;
-    this.sfx.play('treeOpen');
-    const r = this.run;
-    const dead = r.state === 'dead' && !this.calm;
-    this.paused = true;
-    const data: TreeSceneData = {
-      summary: dead ? `YOU DIED   ${clock(r.time)}, ${r.kills} kills, +${r.shards} shards` : 'MEMORIES',
-      closeLabel: dead ? 'Next run' : 'Back',
-      onClose: () => this.closeTree(),
-    };
-    this.scene.launch('tree', data);
-  }
-
-  private closeTree(): void {
-    if (!this.treeOpen) return;
-    this.treeOpen = false;
-    this.hud.treeOpen = false;
-    this.sfx.play('click');
-    this.scene.stop('tree');
-    // Clicks on the tree screen also reached the game's input; drop them so they don't fire an arrow.
-    this.input2.endFrame();
-    if (this.run.state === 'dead') this.startRun();
-    // The click on Next run is still held; the bow waits until it is let go.
-    this.player.fireBlocked = true;
-    this.paused = false;
-  }
-
-  private spawnWolf(): void {
-    this.wolfCame = true;
-    const p = this.spawnPoint();
-    this.boss.spawn(p.x, p.y);
-    this.hud.announce('THE WEREWOLF COMES');
-    // Part of what reveals Time Warp on the tree.
-    if (!save.flags.werewolfSeen) {
-      save.flags.werewolfSeen = true;
-      writeSave();
-    }
   }
 
   // Freezes the sim briefly so a kill lands. Kills in quick succession share one freeze unless `force`.
@@ -415,20 +349,6 @@ export class ArenaScene extends Phaser.Scene {
     if (seconds <= 0 || (!force && this.hitStop <= 0 && this.sinceHitStop < run.hitStopGap)) return;
     if (this.hitStop <= 0) this.sinceHitStop = 0;
     this.hitStop = Math.max(this.hitStop, seconds);
-  }
-
-  // Memory shard orbs where something died in the Mindscape. A boss's pile bursts out further.
-  private dropShards(x: number, y: number, count: number, burst = false): void {
-    const kind = pickupKinds.get('memory_shard');
-    if (kind && count > 0) this.pickups.drop(kind, x, y, count, burst ? cfgPickups.burstSpeed : cfgPickups.popSpeed);
-  }
-
-  // An orb reached him: bank its worth, after the tree's bonus for memory shards.
-  private collect(kind: PickupKind): void {
-    if (kind.wallet !== 'memory') return;
-    const n = Math.round(kind.value * stats.shardGain());
-    this.run.shards += n;
-    addShards(n);
   }
 
   // Something gave way: its flag turns on for this visit (or it is just gone, with none), and the map is shown again
@@ -462,25 +382,11 @@ export class ArenaScene extends Phaser.Scene {
     return allOn(o.opens, { ...save.flags, ...this.areaFlags }) && (!o.opensWhenClear || this.enemies.cleared(this.map));
   }
 
-  private onWolfKilled(x: number, y: number): void {
-    if (this.run.state !== 'fighting') return;
-    this.dropShards(x, y, werewolf.shards, true);
-    this.freeze(0.15, true);
-    // Beating him wins the Mindscape, full tree or not: the Shades fade, then he wakes back where he touched the bow.
-    this.winMindscape();
-    this.run.holdSpawns = true;
-    this.enemies.killAll('shade');
-    // Every orb left on the floor comes to him.
-    this.pickups.callAll();
-    this.ghost.show('Memories restored', Math.max(0.5, story.clearedDelay - 1));
-    this.time.delayedCall(story.clearedDelay * 1000, () => this.travel.go(this.travel.wayBack(DEFAULT_MAP)));
-  }
-
   private startRun(): void {
     this.enemies.clear();
     this.pickups.clear();
     this.pickupsView.clear();
-    this.wolfCame = false;
+    this.mindscape?.reset();
     this.arrows.clear();
     this.breakables.clear();
     this.breakablesView.clear();
@@ -504,47 +410,13 @@ export class ArenaScene extends Phaser.Scene {
     this.camCenter = { x: s.x, y: s.y };
   }
 
-  // A random spot inside one of the map's Shade spawn zones, or along its edge if it has none, far enough from the
-  // player and clear of anything solid.
-  private spawnPoint(): Vec2 {
-    const m = shade.radius * 1.5;
-    const w = this.world.width - m;
-    const h = this.world.height - m;
-    const zones = this.map.objects.filter((o) => o.asset.marker === 'shadeSpawn');
-    const p = { x: 0, y: 0, radius: shade.radius };
-    let best = { x: 0, y: 0 };
-    let bestDist = -1;
-    for (let i = 0; i < 12; i++) {
-      if (zones.length) {
-        const z = zones[Math.floor(Math.random() * zones.length)];
-        const a = Math.random() * Math.PI * 2;
-        const r = Math.sqrt(Math.random()) * run.spawnZoneRadius * z.size;
-        p.x = z.x + Math.cos(a) * r;
-        p.y = z.y + Math.sin(a) * r;
-      } else {
-        const side = Math.floor(Math.random() * 4);
-        const along = Math.random();
-        p.x = side < 2 ? m + along * (w - m) : side === 2 ? m : w;
-        p.y = side < 2 ? (side === 0 ? m : h) : m + along * (h - m);
-      }
-      this.world.resolve(p);
-      const d = Math.hypot(p.x - this.player.x, p.y - this.player.y);
-      if (d > bestDist) {
-        best = { x: p.x, y: p.y };
-        bestDist = d;
-      }
-      if (d >= run.minSpawnDistance) break;
-    }
-    return best;
-  }
-
   update(_time: number, delta: number): void {
     const frameDt = Math.min(delta / 1000, 0.25);
     const input = this.input2;
     const cam = this.cameras.main;
     input.update();
     // Checked here, not in step(), because the sim does not step while the tree pauses a run.
-    if (this.treeOpen && input.justPressed('dash')) this.closeTree();
+    if (this.tree.open && input.justPressed('dash')) this.tree.close();
     this.mapView.reveal(this.player.x, this.player.y);
     this.mapView.render();
     this.aim = input.aim ? toWorld(cam.scrollX + input.aim.x, cam.scrollY + input.aim.y + render.aimHeight) : null;
@@ -598,7 +470,7 @@ export class ArenaScene extends Phaser.Scene {
     this.box.update(frameDt, cam.width, this.player.x, this.player.y);
     this.ghost.update(frameDt, cam.width, cam.height);
     this.hint.update(frameDt, this.player.x, this.player.y, !!this.travel.near && !this.travel.leaving && this.control && this.run.state === 'fighting');
-    const notes = [this.showHitboxes && this.boss.list[0] && `WEREWOLF ${this.boss.list[0].state.toUpperCase()}`, this.paused && !this.treeOpen && 'PAUSED', this.run.holdSpawns && !this.calm && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
+    const notes = [...(this.mindscape?.notes(this.showHitboxes) ?? []), this.paused && !this.tree.open && 'PAUSED', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
     this.debug.clear();
     if (this.showHitboxes) drawHitboxes(this.debug, { hero: this.player, map: this.map, world: this.world, enemies: this.enemies, breakables: this.breakables, arrows: this.arrows });
@@ -607,7 +479,7 @@ export class ArenaScene extends Phaser.Scene {
 
   // A crosshair while the bow can fire; the pointer in menus, during dialogue and before he can shoot.
   private updateCursor(): void {
-    const aiming = this.run.state === 'fighting' && this.control && !this.travel.leaving && !this.treeOpen && !this.story.talking && stats.canFire();
+    const aiming = this.run.state === 'fighting' && this.control && !this.travel.leaving && !this.tree.open && !this.story.talking && stats.canFire();
     const css = cursorCss(aiming ? 'crosshair' : 'pointer');
     if (css === this.cursor) return;
     this.cursor = css;
@@ -623,7 +495,6 @@ export class ArenaScene extends Phaser.Scene {
       this.scene.restart({ map: this.mapId, at: this.arriveAt ?? undefined, door: this.arriveDoor ?? undefined });
       return;
     }
-    if (!this.calm && !this.treeOpen && r.state === 'dead' && r.canRestart) this.openTree();
     this.story.update(dt);
     // While a line is up, click and F move the dialogue on instead of shooting or interacting. The bow stays held
     // back until the button that skipped the last line is let go.
@@ -641,7 +512,7 @@ export class ArenaScene extends Phaser.Scene {
       this.enemies.updateWorld(dt, this.map);
     }
     r.update(dt);
-    if (r.state === 'fighting' && !this.wolfCame && !r.holdSpawns && r.time >= werewolf.arriveTime) this.spawnWolf();
+    this.mindscape?.update();
     this.nav.setGoal(this.player.x, this.player.y);
     this.enemies.update(dt);
     const p = this.player;
