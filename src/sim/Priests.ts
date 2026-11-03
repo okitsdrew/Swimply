@@ -168,7 +168,7 @@ export class Priests {
         continue;
       } else if (p.state === 'windup') {
         if (p.time >= priest.castWindup) {
-          const orb = { x: p.x, y: p.y, vx: (tx / dist) * priest.orbSpeed, vy: (ty / dist) * priest.orbSpeed, age: 0 };
+          const orb = { x: p.x, y: p.y, vx: (tx / dist) * priest.orbStartSpeed, vy: (ty / dist) * priest.orbStartSpeed, age: 0 };
           this.orbs.push(orb);
           this.onCast(p, orb);
           this.enter(p, 'cast');
@@ -198,9 +198,16 @@ export class Priests {
         let d = want - now;
         d = Math.atan2(Math.sin(d), Math.cos(d));
         const a = now + Math.max(-turnMax, Math.min(turnMax, d));
-        o.vx = Math.cos(a) * priest.orbSpeed;
-        o.vy = Math.sin(a) * priest.orbSpeed;
+        const sp = Math.hypot(o.vx, o.vy);
+        o.vx = Math.cos(a) * sp;
+        o.vy = Math.sin(a) * sp;
       }
+      // Speeding up, from start to end speed over the ramp.
+      const k = priest.orbRampTime > 0 ? Math.min(1, o.age / priest.orbRampTime) : 1;
+      const speed = priest.orbStartSpeed + (priest.orbEndSpeed - priest.orbStartSpeed) * k;
+      const len = Math.hypot(o.vx, o.vy) || 1;
+      o.vx = (o.vx / len) * speed;
+      o.vy = (o.vy / len) * speed;
       const step = Math.hypot(o.vx, o.vy) * dt;
       const hit = step > 0 && !priest.orbsThroughWalls ? world.raycast(o.x, o.y, (o.vx * dt) / step, (o.vy * dt) / step, step) : -1;
       const out = o.x < 0 || o.y < 0 || o.x > world.width || o.y > world.height;

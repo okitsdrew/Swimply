@@ -39,7 +39,10 @@ export const priest = defineConfig(
     orbsThroughWalls: false,
     // It only starts a cast when nothing solid is between it and the player; off, being in range is enough.
     needsSight: true,
-    orbSpeed: 260,
+    // An orb leaves slowly and speeds up to its top speed over orbRampTime seconds.
+    orbStartSpeed: 150,
+    orbEndSpeed: 900,
+    orbRampTime: 1.5,
     orbRadius: 9,
     // Seconds an orb flies before it fades out. 0: it flies until it hits him or leaves the map.
     orbLife: 0,
@@ -79,7 +82,9 @@ export const priest = defineConfig(
     firstCast: { min: 0, max: 5, step: 0.1 },
     orbsThroughWalls: 'bool',
     needsSight: 'bool',
-    orbSpeed: { min: 20, max: 1500, step: 10 },
+    orbStartSpeed: { min: 10, max: 2000, step: 10 },
+    orbEndSpeed: { min: 20, max: 3000, step: 10 },
+    orbRampTime: { min: 0, max: 10, step: 0.1 },
     orbRadius: { min: 2, max: 60, step: 1 },
     orbLife: { min: 0, max: 10, step: 0.1 },
     homingTurn: { min: 0, max: 720, step: 5 },
