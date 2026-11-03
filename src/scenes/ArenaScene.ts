@@ -10,10 +10,8 @@ import { breakables as cfgBreakables } from '../config/breakables';
 import { pickups as cfgPickups } from '../config/pickups';
 import { tree } from '../config/tree';
 import { werewolf as cfgElite, werewolfMiniboss as werewolf } from '../config/werewolf';
-import { Circle } from '../core/geometry';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
-import { boxCorners } from '../data/assets';
 import { AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
 import { PickupKind, pickupKinds } from '../data/pickups';
 import { ambienceFor, sounds } from '../data/sounds';
@@ -53,6 +51,8 @@ import { MapWorld } from '../sim/World';
 import { Enemies } from './Enemies';
 import { priestKind, shadeKind, werewolfKind } from './enemyKinds';
 import { StoryRunner } from './StoryRunner';
+import { drawHitboxes } from './hitboxes';
+import { Travel } from './Travel';
 import { TreeSceneData } from './TreeScene';
 
 const DEFAULT_MAP = 'spawn';
@@ -63,12 +63,6 @@ const DEFAULT_MAP = 'spawn';
 //   &calm             no Shades appear, to walk round a map
 // The map is kept in the address, so the reload after a tool saves comes back to the same map.
 const params = new URLSearchParams(location.search);
-
-// Where the player was standing when he last left each map, by map id, so coming back puts him there (back at the
-// bow's pedestal after the Mindscape). Kept while the page is open, not saved.
-const leftFrom = new Map<string, Vec2>();
-// The map he came from, so the Mindscape knows where to send him back.
-let cameFrom = '';
 
 // The arena: a map from src/data/maps, played one of two ways. A map with Shade spawn zones is a run (the
 // Mindscape): Shades that keep coming, death, the upgrade tree, and the next run. Any other map is calm: no Shades,
@@ -95,13 +89,8 @@ export class ArenaScene extends Phaser.Scene {
   private arriveAt: Vec2 | null = null;
   // The door here he came in through, when another map's door sent him; he appears on clear floor beside it.
   private arriveDoor: Vec2 | null = null;
-  // Fading out to another map; input is ignored meanwhile.
-  private leaving = false;
-  // Doors only take him once he has stood clear of every door since arriving, so coming back to the spot by a door
-  // he left through does not send him straight out again.
-  private doorsArmed = false;
-  // The thing next to him that interact would use.
-  private near: Placed | null = null;
+  // Doors, links and the fade to another map.
+  private travel!: Travel;
   private hint!: InteractHint;
   private box!: DialogueBox;
   private ghost!: GhostText;
@@ -187,9 +176,6 @@ export class ArenaScene extends Phaser.Scene {
     }
     this.world = new MapWorld(this.map);
     this.nav = new FlowField(this.map, this.world);
-    this.leaving = false;
-    this.doorsArmed = false;
-    this.near = null;
     this.acc = 0;
     this.paused = false;
     this.stepsQueued = 0;
@@ -213,6 +199,13 @@ export class ArenaScene extends Phaser.Scene {
     this.pickupsView = new PickupsView(this, this.pickups);
     this.pickups.onCollected = (kind) => this.collect(kind);
     this.sfx = new SoundFx(this);
+    this.travel = new Travel(this, this.mapId, this.calm, this.world, this.player, this.sfx);
+    // He got out alive, so what he broke here stays broken.
+    this.travel.onLeave = () => {
+      if (!Object.keys(this.areaFlags).length) return;
+      Object.assign(save.flags, this.areaFlags);
+      writeSave();
+    };
     const kc = { scene: this, fx: this.fx, sfx: this.sfx, freeze: (s: number, force?: boolean) => this.freeze(s, force) };
     const shadeK = shadeKind(kc);
     const bossK = werewolfKind(kc, 'werewolf_miniboss', werewolf, true);
@@ -331,91 +324,6 @@ export class ArenaScene extends Phaser.Scene {
     this.scene.restart({ map: next.id });
   }
 
-  // Fades out and goes to another map. He arrives beside the door there that leads back here; with no such door,
-  // where he stood when he last left that map.
-  private travel(to: string): void {
-    if (this.leaving) return;
-    const next = maps.get(to);
-    if (!next) {
-      console.warn(`[maps] ${this.mapId}: a link goes to unknown map ${JSON.stringify(to)}`);
-      return;
-    }
-    this.leaving = true;
-    // He got out alive, so what he broke here stays broken.
-    if (Object.keys(this.areaFlags).length) {
-      Object.assign(save.flags, this.areaFlags);
-      writeSave();
-    }
-    leftFrom.set(this.mapId, { x: this.player.x, y: this.player.y });
-    cameFrom = this.mapId;
-    // Into the Mindscape (a map Shades spawn in) from somewhere calm, or through a door from one calm map to another.
-    const intoRun = next.objects.some((o) => o.asset.marker === 'shadeSpawn');
-    if (this.calm) this.sfx.play(intoRun ? 'portal' : 'door');
-    const cam = this.cameras.main;
-    cam.fadeOut(story.fadeTime * 1000);
-    const back = next.objects.find((o) => o.asset.marker === 'door' && o.to === this.mapId);
-    const data = back ? { map: next.id, door: { x: back.x, y: back.y } } : { map: next.id, at: leftFrom.get(next.id) };
-    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.restart(data));
-  }
-
-  // A spot beside a door where he can stand: clear of every door, inside the map, and not on blocking or killing
-  // floor or inside anything solid. It tries spots in a ring round the door, the ones towards the middle of the map
-  // first, then wider rings. If nothing fits, the door itself.
-  private besideDoor(door: Vec2): Vec2 {
-    const r = cfgPlayer.bodyRadius;
-    const w = this.world;
-    const doors = this.map.objects.filter((o) => o.asset.marker === 'door');
-    const inward = Math.atan2(w.height / 2 - door.y, w.width / 2 - door.x);
-    const turns = [0];
-    for (let i = 1; i <= 8; i++) turns.push(i, -i);
-    const solid: Circle[] = [];
-    for (const extra of [1, 1.5, 2, 3]) {
-      for (const turn of turns) {
-        const a = inward + (turn * Math.PI) / 8;
-        const d = (story.doorRadius + r) * extra + 8;
-        const x = door.x + Math.cos(a) * d;
-        const y = door.y + Math.sin(a) * d;
-        if (x < r || y < r || x > w.width - r || y > w.height - r) continue;
-        if (doors.some((o) => Math.hypot(o.x - x, o.y - y) < story.doorRadius * o.size + r)) continue;
-        if (w.onBlockingFloor(x, y, r) || w.onHurtingFloor(x, y)) continue;
-        if (w.near(x, y, r, solid).length) continue;
-        return { x, y };
-      }
-    }
-    return { x: door.x, y: door.y };
-  }
-
-  // Where to leave to after the Mindscape: the map he came from, else any map with a link here.
-  private wayBack(): string {
-    if (cameFrom && cameFrom !== this.mapId) return cameFrom;
-    return maps.list().find((m) => m.objects.some((o) => o.to === this.mapId))?.id ?? DEFAULT_MAP;
-  }
-
-  // Doors take him as soon as he walks in. Anything else with a link waits for interact while he is next to it.
-  private checkLinks(): void {
-    const p = this.player;
-    this.near = null;
-    let best = Infinity;
-    let inDoor = false;
-    for (const o of this.map.objects) {
-      if (!o.to) continue;
-      const d = Math.hypot(o.x - p.x, o.y - p.y);
-      if (o.asset.marker === 'door') {
-        if (d >= story.doorRadius * o.size) continue;
-        if (this.doorsArmed) return this.travel(o.to);
-        inDoor = true;
-        continue;
-      }
-      const reach = Math.max(0, ...o.asset.collision.map((c) => Math.hypot(c.x, c.y) + c.radius)) * o.size + story.interactRange;
-      if (d < reach && d < best) {
-        best = d;
-        this.near = o;
-      }
-    }
-    if (!inDoor) this.doorsArmed = true;
-    if (this.near && this.input2.justPressed('interact')) this.travel(this.near.to);
-  }
-
   private moveTimo(target: string): void {
     if (target === 'hero') return this.timo.followHero();
     const o = this.map.objects.find((p) => p.asset.id === target);
@@ -437,8 +345,7 @@ export class ArenaScene extends Phaser.Scene {
     resetTree(false);
     save.shards = 0;
     addShards(0);
-    leftFrom.clear();
-    cameFrom = '';
+    Travel.forget();
     this.scene.restart({ map: DEFAULT_MAP });
   }
 
@@ -543,7 +450,7 @@ export class ArenaScene extends Phaser.Scene {
     this.nav.refresh(this.world.change(removed, added));
     this.mapView.update(next);
     this.map = next;
-    this.near = null;
+    this.travel.near = null;
   }
 
   private onWolfKilled(x: number, y: number): void {
@@ -557,7 +464,7 @@ export class ArenaScene extends Phaser.Scene {
     // Every orb left on the floor comes to him.
     this.pickups.callAll();
     this.ghost.show('Memories restored', Math.max(0.5, story.clearedDelay - 1));
-    this.time.delayedCall(story.clearedDelay * 1000, () => this.travel(this.wayBack()));
+    this.time.delayedCall(story.clearedDelay * 1000, () => this.travel.go(this.travel.wayBack(DEFAULT_MAP)));
   }
 
   private startRun(): void {
@@ -577,7 +484,7 @@ export class ArenaScene extends Phaser.Scene {
     this.enemies.place(this.map);
     // Where the address says, else the map's player start marker, else the middle of the map.
     const at = params.get('at')?.split(',').map(Number);
-    const start = (this.arriveDoor && this.besideDoor(this.arriveDoor)) ?? this.arriveAt ?? (at?.length === 2 && at.every(Number.isFinite) ? { x: at[0], y: at[1] }
+    const start = (this.arriveDoor && this.travel.besideDoor(this.map, this.arriveDoor)) ?? this.arriveAt ?? (at?.length === 2 && at.every(Number.isFinite) ? { x: at[0], y: at[1] }
       : findMarker(this.map, 'playerStart') ?? { x: this.world.width / 2, y: this.world.height / 2 });
     this.player.reset(start.x, start.y);
     this.view.setVisible(true);
@@ -680,16 +587,17 @@ export class ArenaScene extends Phaser.Scene {
     this.loops.update(this.player.x, this.player.y);
     this.box.update(frameDt, cam.width, this.player.x, this.player.y);
     this.ghost.update(frameDt, cam.width, cam.height);
-    this.hint.update(frameDt, this.player.x, this.player.y, !!this.near && !this.leaving && this.control && this.run.state === 'fighting');
+    this.hint.update(frameDt, this.player.x, this.player.y, !!this.travel.near && !this.travel.leaving && this.control && this.run.state === 'fighting');
     const notes = [this.showHitboxes && this.boss.list[0] && `WEREWOLF ${this.boss.list[0].state.toUpperCase()}`, this.paused && !this.treeOpen && 'PAUSED', this.run.holdSpawns && !this.calm && 'SPAWNS HELD', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
-    this.drawDebug();
+    this.debug.clear();
+    if (this.showHitboxes) drawHitboxes(this.debug, { hero: this.player, map: this.map, world: this.world, enemies: this.enemies, breakables: this.breakables, arrows: this.arrows });
     this.updateCursor();
   }
 
   // A crosshair while the bow can fire; the pointer in menus, during dialogue and before he can shoot.
   private updateCursor(): void {
-    const aiming = this.run.state === 'fighting' && this.control && !this.leaving && !this.treeOpen && !this.story.talking && stats.canFire();
+    const aiming = this.run.state === 'fighting' && this.control && !this.travel.leaving && !this.treeOpen && !this.story.talking && stats.canFire();
     const css = cursorCss(aiming ? 'crosshair' : 'pointer');
     if (css === this.cursor) return;
     this.cursor = css;
@@ -700,8 +608,8 @@ export class ArenaScene extends Phaser.Scene {
   private step(dt: number): void {
     const r = this.run;
     // A death in a calm map starts it over from where he came in: everything he broke or cleared here is back.
-    if (this.calm && r.state === 'dead' && r.deadTime >= story.respawnDelay && !this.leaving) {
-      this.leaving = true;
+    if (this.calm && r.state === 'dead' && r.deadTime >= story.respawnDelay && !this.travel.leaving) {
+      this.travel.leaving = true;
       this.scene.restart({ map: this.mapId, at: this.arriveAt ?? undefined, door: this.arriveDoor ?? undefined });
       return;
     }
@@ -716,10 +624,10 @@ export class ArenaScene extends Phaser.Scene {
       this.input2.consume('fire');
     }
     this.player.fireBlocked = this.story.talking || (this.player.fireBlocked && this.input2.isDown('fire'));
-    if (r.state === 'fighting' && !this.leaving && this.control) {
+    if (r.state === 'fighting' && !this.travel.leaving && this.control) {
       this.player.update(dt, this.input2, this.aim);
       if (Math.hypot(this.input2.move.x, this.input2.move.y) > 0.1) this.story.notify('move');
-      this.checkLinks();
+      this.travel.check(this.map, this.input2.justPressed('interact'));
       this.enemies.updateWorld(dt, this.map);
     }
     r.update(dt);
@@ -748,54 +656,5 @@ export class ArenaScene extends Phaser.Scene {
     this.fx.smoke(s.x, s.y - 10 * px, run.deathSmoke, 8 * px);
     this.fx.particle({ x: s.x, y: s.y - 10 * px, life: 0.3, from: 3, to: 0, tint: 0xffe0b0 });
     this.fx.addShake(run.deathShake);
-  }
-
-  // Dev aid: circles and boxes for what actually collides, drawn flat on the ground, and the map's markers.
-  private drawDebug(): void {
-    const g = this.debug;
-    g.clear();
-    if (!this.showHitboxes) return;
-    const ring = (x: number, y: number, r: number, color: number) => {
-      const s = toScreen(x, y);
-      const e = { x: r * render.isoScale * Math.SQRT2, y: r * render.isoScale * Math.SQRT1_2 };
-      g.lineStyle(1, color, 1).strokeEllipse(s.x, s.y, e.x * 2, e.y * 2);
-    };
-    ring(this.player.x, this.player.y, cfgPlayer.bodyRadius, 0x66ccff);
-    ring(this.player.x, this.player.y, cfgPlayer.hitRadius, 0xff4466);
-    if (cfgPickups.roundOnScreen) {
-      const p = toScreen(this.player.x, this.player.y);
-      g.lineStyle(1, 0x7fc8ff, 1).strokeCircle(p.x, p.y, cfgPickups.pickupRadius * render.isoScale * Math.SQRT2);
-    } else ring(this.player.x, this.player.y, cfgPickups.pickupRadius, 0x7fc8ff);
-    // Enemy bodies in yellow, what kills on touch in red.
-    this.enemies.debug({
-      ring: (x, y, r, hurts) => ring(x, y, r, hurts ? 0xff4466 : 0xffcc44),
-      line: (x0, y0, x1, y1) => {
-        const a = toScreen(x0, y0);
-        const b = toScreen(x1, y1);
-        g.lineStyle(1, 0xffcc44, 1).lineBetween(a.x, a.y, b.x, b.y);
-      },
-    });
-    for (const c of this.world.circles) ring(c.x, c.y, c.radius, 0x66ffaa);
-    // What arrows hit, in orange: hit shapes, and the collision circles of things that can break but have none.
-    for (const o of this.map.objects) {
-      const k = o.size;
-      for (const h of o.asset.hit) {
-        if (!h.box) ring(o.x + h.x * k, o.y + h.y * k, h.radius * k, 0xff9933);
-        else g.lineStyle(1, 0xff9933, 1).strokePoints(boxCorners(h).map((c) => toScreen(o.x + c.x * k, o.y + c.y * k)), true);
-      }
-      if (o.asset.hit.length || !this.breakables.canBreak(o)) continue;
-      for (const c of o.asset.collision) ring(o.x + c.x * k, o.y + c.y * k, c.radius * k, 0xff9933);
-    }
-    for (const b of this.world.floorBoxes) {
-      g.lineStyle(1, 0x66ffaa, 0.8).strokePoints([toScreen(b.x0, b.y0), toScreen(b.x1, b.y0), toScreen(b.x1, b.y1), toScreen(b.x0, b.y1)], true);
-    }
-    for (const o of this.map.objects) {
-      if (!o.asset.marker) continue;
-      ring(o.x, o.y, 12, 0xf2d7a6);
-      if (o.asset.marker === 'shadeSpawn') ring(o.x, o.y, run.spawnZoneRadius * o.size, 0xf2d7a6);
-      const s = toScreen(o.x, o.y);
-      g.lineStyle(1, 0xf2d7a6, 1).lineBetween(s.x - 6, s.y, s.x + 6, s.y).lineBetween(s.x, s.y - 6, s.x, s.y + 6);
-    }
-    for (const a of this.arrows.pool.items) if (a.active) ring(a.x, a.y, a.hitRadius, 0xa060ff);
   }
 }
