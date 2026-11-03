@@ -136,11 +136,11 @@ const ranges = {
 
 export const werewolfMiniboss = defineConfig('werewolf_miniboss', 'bosses', wolf, ranges);
 
-// The plain werewolf: smaller, slower to wind up and less eager to attack, and about 15 arrows with the full tree.
+// The plain werewolf: smaller, slower to wind up and less eager to attack, and about 30 arrows with the full tree.
 // arriveTime is not used: he is placed or spawned, not brought in by a run's clock.
 export const werewolf = defineConfig('werewolf', 'enemies', {
   ...wolf,
-  hp: 600,
+  hp: 1250,
   speed: 300,
   scale: 2.25,
   windupTime: 0.6,
@@ -148,9 +148,10 @@ export const werewolf = defineConfig('werewolf', 'enemies', {
   swipeWindup: 0.55,
   attackCooldown: 1.6,
   jumpChance: 0.15,
-  jumpChanceAfterMiss: 0.3,
-  jumpRange: 700,
-  jumpRadius: 85,
+  jumpChanceAfterMiss: 0.15,
+  jumpTriggerRange: 1500,
+  jumpRange: 1500,
+  jumpRadius: 90,
   attackRange: 320,
   attackWidth: 100,
   quickDashCooldown: 4,
