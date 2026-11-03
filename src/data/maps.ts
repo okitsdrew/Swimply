@@ -31,8 +31,8 @@ export interface Placed {
   unless: string;
   // A map id: walking into a door marker, or pressing interact next to anything else, goes there. Empty for none.
   to: string;
-  // A save flag turned on when this is broken (its asset needs health). It is gone while the flag is on, so it stays
-  // broken. Empty: it breaks for this visit only.
+  // A save flag turned on when this is broken (its asset needs health), or, on a placed enemy, when that enemy is
+  // killed. It is gone while the flag is on, so it stays broken (or dead). Empty: it is back next visit.
   onBreak: string;
   // A placed enemy wakes when the player comes this close (world units). 0: the default in the spawners config.
   aggro: number;

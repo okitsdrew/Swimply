@@ -141,6 +141,8 @@ export class ArenaScene extends Phaser.Scene {
   private elites: { wolf: Werewolf; view: WerewolfView }[] = [];
   // Placed enemies still waiting for the player: a werewolf or Priest stands there; a Shade rises when he comes near.
   private sleepers: { o: Placed; wolf: Werewolf | null; priest: Priest | null }[] = [];
+  // The placed marker each placed enemy came from, so its "killed sets" flag turns on when it dies.
+  private placedOf = new Map<object, Placed>();
   // Each spawner's clock and the enemies it has out, so it keeps to its asset's spawnMax.
   private spawning = new Map<Placed, { timer: number; out: Set<object> }>();
   // Whether this run's werewolf has arrived yet.
@@ -299,7 +301,7 @@ export class ArenaScene extends Phaser.Scene {
     this.breakables.onBroken = (thing) => this.onBroken(thing);
     this.shades.onRisen = (s) => this.shadesView.onRisen(s);
     this.shades.onKilled = (x, y, s) => {
-      for (const st of this.spawning.values()) st.out.delete(s);
+      this.enemyDied(s);
       if (this.run.state === 'fighting' && !this.calm) {
         this.run.kills++;
         this.dropShards(x, y, tree.shardsPerKill);
@@ -312,7 +314,7 @@ export class ArenaScene extends Phaser.Scene {
     this.priests.onCast = (_p, orb) => this.priestsView.onCast(orb);
     this.priests.onOrbGone = (x, y) => this.priestsView.onOrbGone(x, y);
     this.priests.onKilled = (x, y, p) => {
-      for (const st of this.spawning.values()) st.out.delete(p);
+      this.enemyDied(p);
       this.priestsView.onKilled(x, y);
       this.fx.addShake(run.killShake);
       this.freeze(run.killHitStop);
@@ -564,11 +566,22 @@ export class ArenaScene extends Phaser.Scene {
       view.onKilled(x, y);
       this.freeze(0.08, true);
       this.elites.splice(this.elites.indexOf(entry), 1);
-      for (const st of this.spawning.values()) st.out.delete(wolf);
+      this.enemyDied(wolf);
       view.destroy();
     };
     this.elites.push(entry);
     return wolf;
+  }
+
+  // A world enemy died: its spawner may send another, and a placed one's "killed sets" flag turns on for this visit.
+  private enemyDied(e: object): void {
+    for (const st of this.spawning.values()) st.out.delete(e);
+    const o = this.placedOf.get(e);
+    if (!o) return;
+    this.placedOf.delete(e);
+    if (!o.onBreak) return;
+    this.areaFlags[o.onBreak] = true;
+    this.showMap();
   }
 
   private clearElites(): void {
@@ -594,14 +607,19 @@ export class ArenaScene extends Phaser.Scene {
   private placeEnemies(): void {
     this.sleepers = [];
     this.spawning.clear();
+    this.placedOf.clear();
     for (const o of this.map.objects) {
       if (o.asset.marker !== 'enemy' || !o.asset.enemy) continue;
       if (o.asset.enemy === 'werewolf') {
         const wolf = this.addElite();
         wolf.wait(o.x, o.y);
+        this.placedOf.set(wolf, o);
         this.sleepers.push({ o, wolf, priest: null });
-      } else if (o.asset.enemy === 'priest') this.sleepers.push({ o, wolf: null, priest: this.priests.wait(o.x, o.y) });
-      else this.sleepers.push({ o, wolf: null, priest: null });
+      } else if (o.asset.enemy === 'priest') {
+        const priest = this.priests.wait(o.x, o.y);
+        this.placedOf.set(priest, o);
+        this.sleepers.push({ o, wolf: null, priest });
+      } else this.sleepers.push({ o, wolf: null, priest: null });
     }
   }
 
@@ -624,7 +642,8 @@ export class ArenaScene extends Phaser.Scene {
         return false;
       }
       if (!near(o)) return true;
-      this.spawnEnemy('shade', o.x, o.y);
+      const made = this.spawnEnemy('shade', o.x, o.y);
+      if (made) this.placedOf.set(made, o);
       return false;
     });
     const here = zoneAt(this.map, p.x, p.y);

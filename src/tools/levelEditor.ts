@@ -1134,6 +1134,8 @@ class LevelEditor {
         ? [
             row('aggro', numberInput(o.aggro ?? 0, 10, (v) => edit(() => (d.map.objects[sel].aggro = Math.max(0, v))), { min: 0 })),
             el('p', { class: 'hint', text: `A ${asset.enemy} waits here until the hero comes inside the red ring, or shoots it. 0 uses the default (${spawners.aggroRadius}, in the dev menu's spawners section). Once awake it chases him anywhere.` }),
+            row('killed sets', textInput(o.onBreak ?? '', (v) => edit(() => (d.map.objects[sel].onBreak = v)))),
+            el('p', { class: 'hint', text: `A flag here turns on when this ${asset.enemy} dies, and it stays dead for good once he leaves the map alive. Empty: it is back next visit. Other things' "only if" / "only unless" can use the same flag.` }),
           ]
         : []),
       ...(asset?.enemy && asset.marker !== 'enemy'
