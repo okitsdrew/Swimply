@@ -13,6 +13,7 @@ export const Tex = {
   // A bigger soft circle for map lights, which are drawn large: the small glow would show its pixels.
   light: 'light',
   pillar: 'pillar',
+  doorRing: 'door_ring',
 } as const;
 
 export const shadeFrames = ['shade_0', 'shade_1'];
@@ -77,6 +78,26 @@ function softCircle(scene: Phaser.Scene, key: string, size: number, color: numbe
   }
   g.generateTexture(key, size, size);
   g.destroy();
+}
+
+// A flat ring seen from the iso view, twice as wide as it is tall, white so it can be tinted: a bright band at the
+// edge and a faint glow filling it.
+function doorRing(scene: Phaser.Scene): void {
+  const w = 96;
+  const h = 48;
+  const g = scene.make.graphics({}, false);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const d = Math.hypot((x + 0.5 - w / 2) / (w / 2), (y + 0.5 - h / 2) / (h / 2));
+      if (d > 1) continue;
+      const band = Math.max(0, 1 - Math.abs(d - 0.88) / 0.12);
+      g.fillStyle(0xffffff, Math.min(1, band + 0.18 * d * d));
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  g.generateTexture(Tex.doorRing, w, h);
+  g.destroy();
+  scene.textures.get(Tex.doorRing).setFilter(Phaser.Textures.FilterMode.LINEAR);
 }
 
 // A low round stump: a side band between two ellipses, drawn pixel by pixel so the edges stay crisp. Its ground
@@ -214,6 +235,7 @@ export function makeCodeArt(scene: Phaser.Scene): void {
   softCircle(scene, Tex.shadow, 16, 0x000000, 0.6);
   softCircle(scene, Tex.smoke, 12, 0x8a8698, 0.9);
   pillar(scene);
+  doorRing(scene);
   // Pickup orbs (memory shards): a small round orb in each kind's colours; the glow is drawn round it in play.
   for (const k of pickupKinds.list()) {
     fromGrid(scene, pickupTexture(k), ['.rrr.', 'rccrr', 'rcccr', 'rrccr', '.rrr.'], { c: k.core, r: k.rim });

@@ -13,16 +13,13 @@ const leftFrom = new Map<string, Vec2>();
 // The map he came from, so the Mindscape knows where to send him back.
 let cameFrom = '';
 
-// Going between maps: doors he walks into, things with a link he uses (F) when next to them, the fade out, and where
+// Going between maps: doors and other things with a link, used with interact (F) inside or next to them, the fade out, and where
 // he arrives in the next map. The arena scene makes one per map.
 export class Travel {
   // Fading out to another map; input is ignored meanwhile.
   leaving = false;
   // The thing next to him that interact would use.
   near: Placed | null = null;
-  // Doors only take him once he has stood clear of every door since arriving, so coming back to the spot by a door
-  // he left through does not send him straight out again.
-  private doorsArmed = false;
   // He is leaving alive, so what he broke here can stay broken.
   onLeave: () => void = () => {};
 
@@ -63,29 +60,25 @@ export class Travel {
     return maps.list().find((m) => m.objects.some((o) => o.to === this.mapId))?.id ?? fallback;
   }
 
-  // Doors take him as soon as he walks in. Anything else with a link waits for interact while he is next to it.
-  check(map: AreaMap, interact: boolean): void {
+  // Whatever link he is inside (a door's ring) or next to is what interact uses; a locked one only says no.
+  check(map: AreaMap, interact: boolean, open: (o: Placed) => boolean): void {
     const p = this.hero;
     this.near = null;
     let best = Infinity;
-    let inDoor = false;
     for (const o of map.objects) {
       if (!o.to) continue;
       const d = Math.hypot(o.x - p.x, o.y - p.y);
-      if (o.asset.marker === 'door') {
-        if (d >= story.doorRadius * o.size) continue;
-        if (this.doorsArmed) return this.go(o.to);
-        inDoor = true;
-        continue;
-      }
-      const reach = Math.max(0, ...o.asset.collision.map((c) => Math.hypot(c.x, c.y) + c.radius)) * o.size + story.interactRange;
+      const reach = o.asset.marker === 'door'
+        ? story.doorRadius * o.size
+        : Math.max(0, ...o.asset.collision.map((c) => Math.hypot(c.x, c.y) + c.radius)) * o.size + story.interactRange;
       if (d < reach && d < best) {
         best = d;
         this.near = o;
       }
     }
-    if (!inDoor) this.doorsArmed = true;
-    if (this.near && interact) this.go(this.near.to);
+    if (!this.near || !interact) return;
+    if (open(this.near)) this.go(this.near.to);
+    else this.sfx.play('deny');
   }
 
   // A spot beside a door where he can stand: clear of every door, inside the map, and not on blocking or killing

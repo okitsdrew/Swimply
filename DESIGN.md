@@ -55,6 +55,7 @@ The **spawn room**, the **Mindscape** and the **throne room** (the hub, the only
 - **Bow** (primary), **dash** (stops at walls and props), **teleport**. Teleport is locked at the start and unlocked shortly after winning the Mindscape (save flag `teleport`; `testing → allowTeleport` in the dev menu bypasses it). Heaven's stats are the starting point; values live in config.
 - Dash and teleport grant invulnerability. Some enemy damage can pierce it (damage carries a flag).
 - **Vestiges** (above): up to 3 equipped skills.
+- **Doors** are glowing rings on the ground: stand in one and press F to go through (walking or dashing into one does nothing, so a fight never ends by accident). A door can stay locked until story flags are on (a boss beaten is a flag) or until every enemy and spawner in the area is gone; a locked door's ring is red, and turns pale blue with a sound when it opens.
 - Dying outside the Mindscape sends him back to the doorway he last came in by, and resets that area and everything done in it (objectives must be redone).
 
 ## Enemies

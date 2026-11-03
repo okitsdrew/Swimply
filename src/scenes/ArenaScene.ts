@@ -12,7 +12,7 @@ import { tree } from '../config/tree';
 import { werewolf as cfgElite, werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
-import { AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
+import { allOn, AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
 import { PickupKind, pickupKinds } from '../data/pickups';
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, storyFlags } from '../data/story';
@@ -31,6 +31,7 @@ import { Eyelids } from '../render/Eyelids';
 import { Fx } from '../render/Fx';
 import { GhostText } from '../render/GhostText';
 import { HeroPose } from '../render/HeroPose';
+import { DoorsView } from '../render/DoorsView';
 import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
 import { PickupsView } from '../render/PickupsView';
@@ -92,6 +93,7 @@ export class ArenaScene extends Phaser.Scene {
   // Doors, links and the fade to another map.
   private travel!: Travel;
   private hint!: InteractHint;
+  private doorsView!: DoorsView;
   private box!: DialogueBox;
   private ghost!: GhostText;
   private story!: StoryRunner;
@@ -231,6 +233,8 @@ export class ArenaScene extends Phaser.Scene {
     this.hud = new RunHud(this, this.run);
     this.hud.showRun = !this.calm;
     this.hint = new InteractHint(this);
+    this.doorsView = new DoorsView(this);
+    this.doorsView.onUnlock = () => this.sfx.play('unlock');
     this.box = new DialogueBox(this);
     this.ghost = new GhostText(this);
     this.timo = new TimoView(this);
@@ -453,6 +457,11 @@ export class ArenaScene extends Phaser.Scene {
     this.travel.near = null;
   }
 
+  // A link is locked until its "opens when" flags are on (this visit's count), and, if it asks, the map is cleared.
+  private isOpen(o: Placed): boolean {
+    return allOn(o.opens, { ...save.flags, ...this.areaFlags }) && (!o.opensWhenClear || this.enemies.cleared(this.map));
+  }
+
   private onWolfKilled(x: number, y: number): void {
     if (this.run.state !== 'fighting') return;
     this.dropShards(x, y, werewolf.shards, true);
@@ -576,6 +585,7 @@ export class ArenaScene extends Phaser.Scene {
     this.arrowsView.render();
     this.enemies.render({ dt: frameDt, simDt: frameDt * (this.paused ? 0 : sim.timeScale), playerX: this.player.x, playerY: this.player.y, world: this.world, width: cam.width });
     this.pickupsView.render(frameDt);
+    this.doorsView.update(frameDt, this.map, (o) => this.isOpen(o));
     this.breakablesView.update(frameDt);
     // A story pose (lying, getting up) stands in for his normal look.
     this.pose.update(frameDt, this.player.x, this.player.y);
@@ -627,7 +637,7 @@ export class ArenaScene extends Phaser.Scene {
     if (r.state === 'fighting' && !this.travel.leaving && this.control) {
       this.player.update(dt, this.input2, this.aim);
       if (Math.hypot(this.input2.move.x, this.input2.move.y) > 0.1) this.story.notify('move');
-      this.travel.check(this.map, this.input2.justPressed('interact'));
+      this.travel.check(this.map, this.input2.justPressed('interact'), (o) => this.isOpen(o));
       this.enemies.updateWorld(dt, this.map);
     }
     r.update(dt);

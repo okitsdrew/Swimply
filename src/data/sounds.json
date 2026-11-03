@@ -41,6 +41,7 @@
     "buy": "ui_buy",
     "deny": "ui_deny",
     "treeOpen": "ui_tree_open",
+    "unlock": "ui_buy",
     "door": "door",
     "wolfAttack": "werewolf_initiate",
     "wolfSmash": "werewolf_smash",

@@ -105,7 +105,7 @@ export interface MapFile {
   cols: number;
   // cols * rows floor ids, row by row.
   tiles: string[];
-  objects: { asset: string; x: number; y: number; size: number; if?: string; unless?: string; to?: string; onBreak?: string; aggro?: number; zone?: string; every?: number; max?: number }[];
+  objects: { asset: string; x: number; y: number; size: number; if?: string; unless?: string; to?: string; opens?: string; opensWhenClear?: boolean; onBreak?: string; aggro?: number; zone?: string; every?: number; max?: number }[];
   // cols * rows zone names, '' for none. Missing on drafts kept from before zones existed.
   zones?: string[];
   legend: Record<string, string>;
@@ -136,7 +136,7 @@ export function mapText(m: MapFile): string {
   }
   const rows: string[] = [];
   for (let i = 0; i < m.tiles.length; i += m.cols) rows.push(m.tiles.slice(i, i + m.cols).map((id) => charOf.get(id)).join(''));
-  const objects = m.objects.map((o) => '    ' + oneLine(compact({ asset: o.asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '', onBreak: o.onBreak ?? '', aggro: o.aggro ?? 0, zone: o.zone ?? '', every: o.every ?? 0, max: o.max ?? 0 }, { size: 1, if: '', unless: '', to: '', onBreak: '', aggro: 0, zone: '', every: 0, max: 0 })));
+  const objects = m.objects.map((o) => '    ' + oneLine(compact({ asset: o.asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '', opens: o.opens ?? '', opensWhenClear: o.opensWhenClear ?? false, onBreak: o.onBreak ?? '', aggro: o.aggro ?? 0, zone: o.zone ?? '', every: o.every ?? 0, max: o.max ?? 0 }, { size: 1, if: '', unless: '', to: '', opens: '', opensWhenClear: false, onBreak: '', aggro: 0, zone: '', every: 0, max: 0 })));
   const legendLines = Object.entries(legend).map(([ch, id]) => `    ${JSON.stringify(ch)}: ${JSON.stringify(id)}`);
   // Zones only appear in the file once one is painted, with a character per zone in order of first use.
   const zones = m.zones ?? [];

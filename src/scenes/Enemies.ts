@@ -127,6 +127,13 @@ export class Enemies {
     return kind.group.spawn(at.x, at.y);
   }
 
+  // Nobody left: no enemy alive or still waiting, and no spawner standing in the map.
+  cleared(map: AreaMap): boolean {
+    if (this.sleepers.length) return false;
+    for (const k of this.kinds.values()) if (k.group.list.length) return false;
+    return !map.objects.some((o) => o.asset.enemy && o.asset.marker !== 'enemy');
+  }
+
   killAll(id: string): void {
     const g = this.kinds.get(id)?.group;
     if (g) [...g.list].forEach((e) => g.kill(e));

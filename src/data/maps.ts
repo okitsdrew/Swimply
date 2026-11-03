@@ -25,12 +25,16 @@ export interface Placed {
   y: number;
   // Scales the asset's art and collision together.
   size: number;
-  // A save flag: the thing is only there while this flag is on. Empty for always.
+  // Save flags, comma separated (see flagList): the thing is only there while all of them are on. Empty for always.
   if: string;
-  // A save flag: the thing is only there while this flag is off. Empty for always.
+  // Save flags, comma separated: the thing is only there while none of them is on. Empty for always.
   unless: string;
-  // A map id: walking into a door marker, or pressing interact next to anything else, goes there. Empty for none.
+  // A map id: pressing interact inside a door marker's ring, or next to anything else, goes there. Empty for none.
   to: string;
+  // Save flags, comma separated: the link stays locked until all of them are on. Empty for open.
+  opens: string;
+  // The link also stays locked while any enemy or spawner is left in the map.
+  opensWhenClear: boolean;
   // A save flag turned on when this is broken (its asset needs health), or, on a placed enemy, when that enemy is
   // killed. It is gone while the flag is on, so it stays broken (or dead). Empty: it is back next visit.
   onBreak: string;
@@ -85,7 +89,17 @@ export function withFlags(map: AreaMap, flags: Record<string, boolean>): AreaMap
 }
 
 export function showsWith(o: { if: string; unless: string; onBreak: string }, flags: Record<string, boolean>): boolean {
-  return (!o.if || !!flags[o.if]) && (!o.unless || !flags[o.unless]) && (!o.onBreak || !flags[o.onBreak]);
+  return allOn(o.if, flags) && !flagList(o.unless).some((f) => flags[f]) && (!o.onBreak || !flags[o.onBreak]);
+}
+
+// A flags field as a list: "a, b" is ["a", "b"], and "" is none.
+export function flagList(text: string): string[] {
+  return text.split(',').map((f) => f.trim()).filter(Boolean);
+}
+
+// Every flag in the list is on (true for an empty list).
+export function allOn(text: string, flags: Record<string, boolean>): boolean {
+  return flagList(text).every((f) => flags[f]);
 }
 
 // migrations[n] turns a format-n map file into format n+1. Add one whenever MAP_FORMAT goes up, so every map
@@ -157,6 +171,7 @@ export function parseMap(id: string, data: unknown, problems: Problems): AreaMap
     objects.push({
       asset, x: num(e.x, 0, `${w}.x`, problems), y: num(e.y, 0, `${w}.y`, problems), size: num(e.size, 1, `${w}.size`, problems),
       if: str(e.if, '', `${w}.if`, problems), unless: str(e.unless, '', `${w}.unless`, problems), to,
+      opens: str(e.opens, '', `${w}.opens`, problems), opensWhenClear: e.opensWhenClear === true,
       onBreak: str(e.onBreak, '', `${w}.onBreak`, problems),
       aggro: Math.max(0, num(e.aggro, 0, `${w}.aggro`, problems)),
       zone: str(e.zone, '', `${w}.zone`, problems),
