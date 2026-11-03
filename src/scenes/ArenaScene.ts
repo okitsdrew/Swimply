@@ -349,6 +349,7 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Max tree', run: () => maxTree() },
       { label: 'Toggle hitboxes', run: () => (this.showHitboxes = !this.showHitboxes) },
       { label: `Next map (${map.name})`, run: () => this.nextMap() },
+      { label: 'Reset this map (unbreak, revive)', run: () => this.resetMapFlags() },
       { label: 'Story: fresh start', run: () => this.storyFresh() },
       { label: 'Story: Mindscape won', run: () => this.storyWon() },
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
@@ -459,6 +460,14 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   // Dev aids for the story: back to waking up, or straight to after the Mindscape.
+  // Dev aid: turns off every "broken sets" / "killed sets" flag this map's things use, then starts the map over
+  // where he stands, so broken spawners and killed enemies are back for testing.
+  private resetMapFlags(): void {
+    for (const o of this.baseMap.objects) if (o.onBreak) delete save.flags[o.onBreak];
+    writeSave();
+    this.scene.restart({ map: this.mapId, at: { x: this.player.x, y: this.player.y } });
+  }
+
   private storyFresh(): void {
     for (const f of storyFlags()) delete save.flags[f];
     resetTree(false);
