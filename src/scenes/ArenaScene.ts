@@ -32,6 +32,7 @@ import { HeroPose } from '../render/HeroPose';
 import { DoorsView } from '../render/DoorsView';
 import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
+import { PedestalsView } from '../render/PedestalsView';
 import { PickupsView } from '../render/PickupsView';
 import { PlayerView } from '../render/PlayerView';
 import { RunHud } from '../render/RunHud';
@@ -119,6 +120,7 @@ export class ArenaScene extends Phaser.Scene {
   private pickups!: Pickups;
   private caster!: VestigeCaster;
   private vestigesView!: VestigesView;
+  private pedestals!: PedestalsView;
   private pickupsView!: PickupsView;
   // Every enemy, of every kind (see enemyKinds.ts).
   private enemies!: Enemies;
@@ -193,6 +195,7 @@ export class ArenaScene extends Phaser.Scene {
     this.sfx = new SoundFx(this);
     this.caster = new VestigeCaster(this.world, this.player);
     this.vestigesView = new VestigesView(this, this.caster, this.fx);
+    this.pedestals = new PedestalsView(this);
     this.caster.onDeny = () => this.sfx.play('deny');
     this.caster.onBlast = (x, y) => this.doomsdayBlast(x, y);
     this.travel = new Travel(this, this.mapId, this.calm, this.world, this.player, this.sfx);
@@ -496,6 +499,7 @@ export class ArenaScene extends Phaser.Scene {
     if (this.pose.active !== this.posed && this.run.state === 'fighting') this.view.setVisible(!this.pose.active);
     this.posed = this.pose.active;
     this.timo.update(frameDt, this.player.x, this.player.y);
+    this.pedestals.update(frameDt, this.map);
     this.vestigesView.update(frameDt, this.player.x, this.player.y, this.run.state === 'fighting' && !this.pose.active, cam.width, cam.height);
     this.lids.update(frameDt, cam.width, cam.height);
     this.ambience.update(frameDt);

@@ -14,6 +14,12 @@ export const vestiges = defineConfig(
     emblemBob: 2,
     // How see-through the slots at the bottom of the screen are when nothing is in them.
     emptySlotAlpha: 0.35,
+    // Over the throne room's pedestals: how high a Vestige hovers (art pixels), how big, and how faint its grey
+    // outline is while he has it equipped.
+    pedestalHeight: 28,
+    pedestalScale: 2,
+    outlineColor: 0x8a8a98,
+    outlineAlpha: 0.5,
   },
   {
     emblemDistance: { min: 0, max: 80, step: 1 },
@@ -22,6 +28,10 @@ export const vestiges = defineConfig(
     emblemSpin: { min: 0, max: 1, step: 0.01 },
     emblemBob: { min: 0, max: 10, step: 0.5 },
     emptySlotAlpha: { min: 0, max: 1, step: 0.05 },
+    pedestalHeight: { min: 0, max: 120, step: 1 },
+    pedestalScale: { min: 0.25, max: 6, step: 0.25 },
+    outlineColor: 'color',
+    outlineAlpha: { min: 0, max: 1, step: 0.05 },
   },
 );
 
