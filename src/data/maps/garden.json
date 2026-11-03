@@ -70,7 +70,7 @@
     "aaaaaaaaaaaaaaaaa"
   ],
   "objects": [
-    { "asset": "door", "x": 1056, "y": 800, "to": "throne" },
+    { "asset": "door", "x": 1056, "y": 800, "to": "throne", "opensWhenClear": true },
     { "asset": "tall-granite-wall-sw", "x": 1088, "y": 32 },
     { "asset": "tall-granite-wall-sw", "x": 1088, "y": 96 },
     { "asset": "tall-granite-wall-sw", "x": 1088, "y": 160 },
@@ -117,7 +117,7 @@
     { "asset": "tall-glass-wall-sw", "x": 0, "y": 1440 },
     { "asset": "tall-glass-wall-sw", "x": 0, "y": 1504 },
     { "asset": "tall-glass-wall-sw", "x": 0, "y": 1568 },
-    { "asset": "door", "x": 32, "y": 800, "to": "western_courtyard", "opens": "garden_p1spawner_broken, garden_p2spawner_broken" },
+    { "asset": "door", "x": 32, "y": 800, "to": "western_courtyard", "opensWhenClear": true },
     { "asset": "small-tree", "x": 1056, "y": 928 },
     { "asset": "small-tree", "x": 1056, "y": 672 },
     { "asset": "small-tree", "x": 32, "y": 928 },
