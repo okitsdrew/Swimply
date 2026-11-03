@@ -29,11 +29,12 @@ export class WerewolfView {
   // Which attack the fading flash belongs to.
   private flashShape: 'slam' | 'land' | 'swipe' = 'slam';
 
-  constructor(scene: Phaser.Scene, private wolf: Werewolf, private fx: Fx) {
+  // `boss` gives him the big named bar under the run's clock; a plain werewolf gets a small one over his head once hurt.
+  constructor(scene: Phaser.Scene, private wolf: Werewolf, private fx: Fx, private boss = true) {
     this.sprite = scene.add.image(0, 0, wolfWalkFrames[0]).setOrigin(0.5, 1).setVisible(false);
     this.shadow = scene.add.image(0, 0, Tex.shadow).setVisible(false);
     this.ground = scene.add.graphics().setDepth(-5e7 + 1);
-    this.bar = scene.add.graphics().setScrollFactor(0).setDepth(2e7);
+    this.bar = scene.add.graphics().setScrollFactor(boss ? 0 : 1).setDepth(2e7);
     this.name = scene.add.text(0, 0, 'THE WEREWOLF', uiText(16)).setOrigin(0.5, 1).setScrollFactor(0).setDepth(2e7).setVisible(false);
   }
 
@@ -85,7 +86,15 @@ export class WerewolfView {
     toScreen(x, y, screen);
     this.fx.smoke(screen.x, screen.y - 12 * px, this.wolf.cfg.deathSmoke, 14 * px);
     this.fx.particle({ x: screen.x, y: screen.y - 12 * px, life: 0.3, from: 4, to: 0, tint: 0xffe0b0, depth: screen.y + 2 });
-    this.fx.addShake(14);
+    this.fx.addShake(this.boss ? 14 : 6);
+  }
+
+  destroy(): void {
+    this.sprite.destroy();
+    this.shadow.destroy();
+    this.ground.destroy();
+    this.bar.destroy();
+    this.name.destroy();
   }
 
   render(dt: number, width: number): void {
@@ -186,6 +195,7 @@ export class WerewolfView {
     }
     const shrink = 1 - 0.5 * (lift / Math.max(w.cfg.jumpHeight, 1));
     this.shadow.setPosition(screen.x, screen.y).setScale(scale * 1.4 * shrink, scale * 0.5 * shrink).setDepth(screen.y - 1000);
+    if (!this.boss) this.drawHeadBar(this.bar);
   }
 
   clear(): void {
@@ -262,6 +272,7 @@ export class WerewolfView {
   private drawBar(width: number): void {
     const w = this.wolf;
     const g = this.bar.clear();
+    if (!this.boss) return;
     const show = w.alive;
     this.name.setVisible(show);
     if (!show) return;
@@ -276,5 +287,19 @@ export class WerewolfView {
     g.fillStyle(ui.deep, 1).fillRect(x, y, bw, 12);
     g.fillStyle(0x8a2030, 1).fillRect(x, y, Math.round(bw * left), 12);
     g.fillStyle(0xc04050, 1).fillRect(x, y, Math.round(bw * left), 3);
+  }
+
+  // A plain werewolf's bar: small, over his head, only once he has been hurt.
+  private drawHeadBar(g: Phaser.GameObjects.Graphics): void {
+    const w = this.wolf;
+    this.name.setVisible(false);
+    if (!w.alive || w.hp >= w.cfg.hp) return;
+    const bw = 48;
+    const x = Math.round(this.sprite.x - bw / 2);
+    const y = Math.round(this.sprite.y - this.sprite.displayHeight - 12);
+    const left = Math.max(0, w.hp / w.cfg.hp);
+    g.fillStyle(ui.ink, 1).fillRect(x - 2, y - 2, bw + 4, 8);
+    g.fillStyle(ui.deep, 1).fillRect(x, y, bw, 4);
+    g.fillStyle(0xc04050, 1).fillRect(x, y, Math.round(bw * left), 4);
   }
 }
