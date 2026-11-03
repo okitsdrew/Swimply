@@ -41,8 +41,8 @@ export const priest = defineConfig(
     needsSight: true,
     // An orb leaves slowly and speeds up to its top speed over orbRampTime seconds.
     orbStartSpeed: 150,
-    orbEndSpeed: 900,
-    orbRampTime: 1.5,
+    orbEndSpeed: 600,
+    orbRampTime: 0.75,
     orbRadius: 9,
     // Seconds an orb flies before it fades out. 0: it flies until it hits him or leaves the map.
     orbLife: 0,
