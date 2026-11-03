@@ -1,13 +1,13 @@
 import { player } from '../config/character';
 import Phaser from 'phaser';
-import { Asset, AssetPart, Light } from '../data/assets';
+import { Asset, AssetPart, ENEMY_KINDS, Light } from '../data/assets';
 import { sounds } from '../data/sounds';
 import { Preview } from './Preview';
 import { button, byName, checkbox, colorInput, el, ID_PATTERN, numberInput, row, select, suggestInput, textInput, uniqueId } from './ui';
 import { Workspace } from './Workspace';
 
 // Markers the game knows about.
-const MARKERS = ['', 'playerStart', 'shadeSpawn'];
+const MARKERS = ['', 'playerStart', 'shadeSpawn', 'door', 'enemy'];
 
 // Edits assets.json: what each placeable thing looks like (its parts) and what is solid (its collision circles).
 // The preview shows it on the floor chosen in the Floors tab, as the game draws it.
@@ -123,6 +123,18 @@ export class AssetTab {
       ),
       el('p', { class: 'hint', text: 'With none, arrows hit the collision circles. With any, arrows hit only these, so a thing can be walked through and still shot, or walked round and shot higher up. A box\'s w runs down-right on screen (like an SE wall) and h down-left; turned, w runs straight across the screen and h up and down it.' }),
 
+      el('h3', { text: a.marker === 'enemy' ? 'Enemy' : 'Spawner' }),
+      row(a.marker === 'enemy' ? 'enemy' : 'spawns', select(['', ...ENEMY_KINDS], a.enemy ?? '', (v) => { a.enemy = v; this.edit(true); })),
+      ...(a.enemy && a.marker !== 'enemy'
+        ? [
+            row('every (s)', numberInput(a.spawnEvery ?? 3, 0.1, (v) => { a.spawnEvery = Math.max(0.1, v); this.edit(); }, { min: 0.1 })),
+            row('max alive', numberInput(a.spawnMax ?? 3, 1, (v) => { a.spawnMax = Math.max(1, Math.round(v)); this.edit(); }, { min: 1 })),
+          ]
+        : []),
+      el('p', { class: 'hint', text: a.marker === 'enemy'
+        ? 'Placed in a map, this enemy waits there until the hero comes within its aggro distance (set per placed one in the level editor) or shoots it.'
+        : 'With "spawns" set, this is a spawner: while the hero stands in its zone (set per placed one in the level editor), it sends out one every so many seconds, up to "max alive" at once. Give it health so it can be broken; broken, it stops.' }),
+
       el('h3', { text: 'Breaking' }),
       row('health', numberInput(a.health ?? 0, 1, (v) => { a.health = Math.max(0, Math.round(v)); this.edit(); }, { min: 0 })),
       el('p', { class: 'hint', text: `Arrow damage it takes to break. 0 can't be broken. ${a.hit?.length || a.collision.length ? '' : 'Give it a hit shape or a collision circle so arrows can hit it. '}After the Mindscape (full tree) an arrow does 40.` }),
@@ -186,7 +198,7 @@ export class AssetTab {
 
   private create(): void {
     const id = uniqueId('asset', this.taken);
-    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], hit: [], marker: '', light: null, sound: '', health: 0 };
+    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], hit: [], marker: '', light: null, sound: '', health: 0, enemy: '', spawnEvery: 3, spawnMax: 3 };
     this.ws.assets.push(a);
     this.ws.touch('assets');
     this.open(a);

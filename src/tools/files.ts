@@ -70,7 +70,10 @@ export function assetsText(list: Asset[]): string {
     light: a.light ? compact({ ...a.light }, { x: 0, y: 0, flicker: 0 }) : null,
     sound: a.sound ?? '',
     health: a.health ?? 0,
-  }, { marker: '', light: null, sound: '', health: 0 })));
+    enemy: a.enemy ?? '',
+    spawnEvery: a.enemy && a.marker !== 'enemy' ? a.spawnEvery : 3,
+    spawnMax: a.enemy && a.marker !== 'enemy' ? a.spawnMax : 3,
+  }, { marker: '', light: null, sound: '', health: 0, enemy: '', spawnEvery: 3, spawnMax: 3 })));
 }
 
 export const hex = (c: number): string => '#' + c.toString(16).padStart(6, '0');
@@ -102,10 +105,15 @@ export interface MapFile {
   cols: number;
   // cols * rows floor ids, row by row.
   tiles: string[];
-  objects: { asset: string; x: number; y: number; size: number; if?: string; unless?: string; to?: string; onBreak?: string }[];
+  objects: { asset: string; x: number; y: number; size: number; if?: string; unless?: string; to?: string; onBreak?: string; aggro?: number; zone?: string }[];
+  // cols * rows zone names, '' for none. Missing on drafts kept from before zones existed.
+  zones?: string[];
   legend: Record<string, string>;
   darkness: number;
 }
+
+// Characters for zones, in order of first use.
+const ZONE_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 // Characters for floors that have none yet: easy to tell apart in a text editor.
 const FLOOR_CHARS = '.~#,:;=+*%&@^-_ox$!?abcdefghijklmnpqrstuvwyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -128,8 +136,28 @@ export function mapText(m: MapFile): string {
   }
   const rows: string[] = [];
   for (let i = 0; i < m.tiles.length; i += m.cols) rows.push(m.tiles.slice(i, i + m.cols).map((id) => charOf.get(id)).join(''));
-  const objects = m.objects.map((o) => '    ' + oneLine(compact({ asset: o.asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '', onBreak: o.onBreak ?? '' }, { size: 1, if: '', unless: '', to: '', onBreak: '' })));
+  const objects = m.objects.map((o) => '    ' + oneLine(compact({ asset: o.asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '', onBreak: o.onBreak ?? '', aggro: o.aggro ?? 0, zone: o.zone ?? '' }, { size: 1, if: '', unless: '', to: '', onBreak: '', aggro: 0, zone: '' })));
   const legendLines = Object.entries(legend).map(([ch, id]) => `    ${JSON.stringify(ch)}: ${JSON.stringify(id)}`);
+  // Zones only appear in the file once one is painted, with a character per zone in order of first use.
+  const zones = m.zones ?? [];
+  const zoneChar = new Map<string, string>();
+  for (const z of zones) if (z && !zoneChar.has(z)) zoneChar.set(z, ZONE_CHARS[zoneChar.size] ?? '?');
+  let zoneText = '';
+  if (zoneChar.size) {
+    const zoneRows: string[] = [];
+    for (let i = 0; i < m.tiles.length; i += m.cols) {
+      let r = '';
+      for (let c = 0; c < m.cols; c++) r += zoneChar.get(zones[i + c] ?? '') ?? '.';
+      zoneRows.push(r);
+    }
+    zoneText = `
+  "zoneLegend": {
+${[...zoneChar].map(([z, ch]) => `    ${JSON.stringify(ch)}: ${JSON.stringify(z)}`).join(',\n')}
+  },
+  "zones": [
+${zoneRows.map((r) => `    ${JSON.stringify(r)}`).join(',\n')}
+  ],`;
+  }
   return `{
   "format": ${MAP_FORMAT},
   "kind": "area",
@@ -140,7 +168,7 @@ ${legendLines.join(',\n')}
   },
   "floor": [
 ${rows.map((r) => `    ${JSON.stringify(r)}`).join(',\n')}
-  ],
+  ],${zoneText}
   "objects": [${objects.length ? `\n${objects.join(',\n')}\n  ` : ''}]
 }
 `;

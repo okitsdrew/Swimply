@@ -8,6 +8,11 @@ import { list, num, obj, Problems, Registry, report, str } from './registry';
 //   "legend": { ".": "stone", "~": "water" },
 //   "floor": ["....", ".~~.", "...."]
 //
+// Zones (named areas for spawners) are painted the same way, with "." for none:
+//
+//   "zoneLegend": { "a": "courtyard_a" },
+//   "zones": ["aa..", "aa..", "...."]
+//
 // The rows are the top-down view: row 0 is world y 0, character 0 is world x 0, each one tile across. On screen
 // the iso projection turns this 45 degrees, so the top-left character is the diamond's top corner.
 
@@ -29,6 +34,10 @@ export interface Placed {
   // A save flag turned on when this is broken (its asset needs health). It is gone while the flag is on, so it stays
   // broken. Empty: it breaks for this visit only.
   onBreak: string;
+  // A placed enemy wakes when the player comes this close (world units). 0: the default in the spawners config.
+  aggro: number;
+  // A spawner spawns while the player stands in this painted zone. Empty: within its aggro distance instead.
+  zone: string;
 }
 
 export interface AreaMap {
@@ -44,6 +53,16 @@ export interface AreaMap {
   objects: Placed[];
   // 0 to 1: how dark the map is away from lights. 0 is no darkness at all.
   darkness: number;
+  // Named areas painted on the tiles, row by row like tiles: a zone name, or '' for none. Spawners use them.
+  zones: string[];
+}
+
+// The zone painted under a world point, or ''.
+export function zoneAt(map: AreaMap, x: number, y: number): string {
+  const col = Math.floor(x / map.tileSize);
+  const row = Math.floor(y / map.tileSize);
+  if (col < 0 || row < 0 || col >= map.cols || row >= map.rows) return '';
+  return map.zones[row * map.cols + col] ?? '';
 }
 
 export function tileAt(map: AreaMap, col: number, row: number): Floor | undefined {
@@ -136,10 +155,30 @@ export function parseMap(id: string, data: unknown, problems: Problems): AreaMap
       asset, x: num(e.x, 0, `${w}.x`, problems), y: num(e.y, 0, `${w}.y`, problems), size: num(e.size, 1, `${w}.size`, problems),
       if: str(e.if, '', `${w}.if`, problems), unless: str(e.unless, '', `${w}.unless`, problems), to,
       onBreak: str(e.onBreak, '', `${w}.onBreak`, problems),
+      aggro: Math.max(0, num(e.aggro, 0, `${w}.aggro`, problems)),
+      zone: str(e.zone, '', `${w}.zone`, problems),
     });
   });
 
-  return { id, name: str(d.name, id, `${where}.name`, problems), tileSize: num(d.tileSize, 64, `${where}.tileSize`, problems), cols, rows, legend: legendIds, tiles, objects, darkness: num(d.darkness, 0, `${where}.darkness`, problems) };
+  const zoneNames = new Map<string, string>();
+  for (const [ch, name] of Object.entries(obj(d.zoneLegend))) {
+    if (ch.length !== 1 || ch === '.') problems.push(`${where}: zoneLegend key "${ch}" must be one character, not "."`);
+    else if (typeof name !== 'string' || !name) problems.push(`${where}: zoneLegend "${ch}" needs a zone name`);
+    else zoneNames.set(ch, name);
+  }
+  const zoneRows = d.zones === undefined ? [] : list(d.zones, `${where}.zones`, problems).map((r) => (typeof r === 'string' ? r : ''));
+  const zones: string[] = [];
+  for (let y = 0; y < rows; y++) {
+    const r = zoneRows[y] ?? '';
+    for (let x = 0; x < cols; x++) {
+      const ch = r[x] ?? '.';
+      const z = ch === '.' ? '' : zoneNames.get(ch);
+      if (z === undefined) problems.push(`${where}: zones row ${y} column ${x} uses "${ch}", which is not in zoneLegend`);
+      zones.push(z ?? '');
+    }
+  }
+
+  return { id, name: str(d.name, id, `${where}.name`, problems), tileSize: num(d.tileSize, 64, `${where}.tileSize`, problems), cols, rows, legend: legendIds, tiles, objects, darkness: num(d.darkness, 0, `${where}.darkness`, problems), zones };
 }
 
 function loadAll(): AreaMap[] {

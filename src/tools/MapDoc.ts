@@ -18,6 +18,8 @@ export interface EditObject {
   unless: string;
   to: string;
   onBreak: string;
+  aggro: number;
+  zone: string;
 }
 
 export interface EditMap extends MapFile {
@@ -36,7 +38,8 @@ export function fromAreaMap(m: AreaMap): EditMap {
     legend: { ...m.legend },
     darkness: m.darkness,
     tiles: m.tiles.map((t) => t.id),
-    objects: m.objects.map((o) => ({ asset: o.asset.id, x: o.x, y: o.y, size: o.size, if: o.if, unless: o.unless, to: o.to, onBreak: o.onBreak })),
+    objects: m.objects.map((o) => ({ asset: o.asset.id, x: o.x, y: o.y, size: o.size, if: o.if, unless: o.unless, to: o.to, onBreak: o.onBreak, aggro: o.aggro, zone: o.zone })),
+    zones: [...m.zones],
   };
 }
 
@@ -67,9 +70,9 @@ export class MapDoc {
     const objects: Placed[] = [];
     for (const o of m.objects) {
       const asset = assets.get(o.asset);
-      if (asset) objects.push({ asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '', onBreak: o.onBreak ?? '' });
+      if (asset) objects.push({ asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '', onBreak: o.onBreak ?? '', aggro: o.aggro ?? 0, zone: o.zone ?? '' });
     }
-    return { id: this.id, name: m.name, tileSize: m.tileSize, cols: m.cols, rows: m.rows, legend: m.legend, tiles: m.tiles.map((id) => floors.get(id) ?? fallback), objects, darkness: m.darkness ?? 0 };
+    return { id: this.id, name: m.name, tileSize: m.tileSize, cols: m.cols, rows: m.rows, legend: m.legend, tiles: m.tiles.map((id) => floors.get(id) ?? fallback), objects, darkness: m.darkness ?? 0, zones: m.tiles.map((_, i) => m.zones?.[i] ?? '') };
   }
 
   // Records an undo step (unless a drag already has one), then lets fn change the map.
@@ -132,6 +135,33 @@ export class MapDoc {
     return true;
   }
 
+  zone(col: number, row: number): string {
+    const m = this.map;
+    if (col < 0 || row < 0 || col >= m.cols || row >= m.rows) return '';
+    return m.zones?.[row * m.cols + col] ?? '';
+  }
+
+  // Paints a box of the zones layer with a zone name ('' rubs it out). Returns true if anything changed.
+  paintZone(c0: number, r0: number, c1: number, r1: number, zone: string): boolean {
+    const m = this.map;
+    const [ca, cb] = [Math.max(0, Math.min(c0, c1)), Math.min(m.cols - 1, Math.max(c0, c1))];
+    const [ra, rb] = [Math.max(0, Math.min(r0, r1)), Math.min(m.rows - 1, Math.max(r0, r1))];
+    let any = false;
+    for (let r = ra; r <= rb; r++) for (let c = ca; c <= cb; c++) if (this.zone(c, r) !== zone) any = true;
+    if (!any) return false;
+    this.change((mm) => {
+      const zones = mm.tiles.map((_, i) => mm.zones?.[i] ?? '');
+      for (let r = ra; r <= rb; r++) for (let c = ca; c <= cb; c++) zones[r * mm.cols + c] = zone;
+      mm.zones = zones;
+    });
+    return true;
+  }
+
+  // Every zone painted in this map, in order of first use.
+  zoneNames(): string[] {
+    return [...new Set((this.map.zones ?? []).filter(Boolean))];
+  }
+
   // Fills the patch of same-floor tiles touching (col, row), along rows and columns, not corners.
   fill(col: number, row: number, floor: string): boolean {
     const from = this.tile(col, row);
@@ -173,13 +203,17 @@ export class MapDoc {
       const dc = side === 'left' ? delta : 0;
       const dr = side === 'top' ? delta : 0;
       const tiles: string[] = [];
+      const zones: string[] = [];
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const oc = c - dc;
           const or = r - dr;
-          tiles.push(oc >= 0 && or >= 0 && oc < mm.cols && or < mm.rows ? mm.tiles[or * mm.cols + oc] : floor);
+          const inside = oc >= 0 && or >= 0 && oc < mm.cols && or < mm.rows;
+          tiles.push(inside ? mm.tiles[or * mm.cols + oc] : floor);
+          zones.push(inside ? (mm.zones?.[or * mm.cols + oc] ?? '') : '');
         }
       }
+      mm.zones = zones;
       mm.objects = mm.objects
         .map((o) => ({ ...o, x: o.x + dc * t, y: o.y + dr * t }))
         .filter((o) => o.x >= 0 && o.y >= 0 && o.x < cols * t && o.y < rows * t);

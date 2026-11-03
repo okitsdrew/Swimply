@@ -36,7 +36,7 @@ export class Shades {
   private nextId = 1;
   private nearby: Circle[] = [];
 
-  onKilled: (x: number, y: number) => void = () => {};
+  onKilled: (x: number, y: number, s: Shade) => void = () => {};
   onRisen: (s: Shade) => void = () => {};
 
   // Shades still to fight, counting ones whose spawn mark is showing.
@@ -71,7 +71,7 @@ export class Shades {
   kill(s: Shade): void {
     s.alive = false;
     this.list.splice(this.list.indexOf(s), 1);
-    this.onKilled(s.x, s.y);
+    this.onKilled(s.x, s.y, s);
   }
 
   // True if a walking Shade overlaps the circle (the player's forgiving hit circle).

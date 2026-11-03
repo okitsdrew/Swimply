@@ -78,9 +78,17 @@ export interface Asset {
   light: Light | null;
   // A looping sound id (sounds.json), heard louder the nearer the player is to one of these (a fire's crackle).
   sound: string;
-  // How much arrow damage breaks it. 0 can't be broken. Only its collision circles can be hit, so it needs some.
+  // How much arrow damage breaks it. 0 can't be broken. Arrows hit its hit shapes, or its collision circles.
   health: number;
+  // An enemy kind (ENEMY_KINDS). On an "enemy" marker it is the enemy placed there; on anything else it makes the
+  // thing a spawner of that enemy, one every spawnEvery seconds, at most spawnMax alive at once.
+  enemy: string;
+  spawnEvery: number;
+  spawnMax: number;
 }
+
+// The enemies a map can place or spawn. The Mindscape's own Shades and boss come from its run, not from these.
+export const ENEMY_KINDS = ['shade', 'werewolf'] as const;
 
 function parseAssets(data: unknown): Asset[] {
   const problems: Problems = [];
@@ -152,11 +160,20 @@ function parseAssets(data: unknown): Asset[] {
       marker: str(e.marker, '', `${id}.marker`, problems),
       sound: str(e.sound, '', `${id}.sound`, problems),
       health: Math.max(0, num(e.health, 0, `${id}.health`, problems)),
+      enemy: enemyKind(str(e.enemy, '', `${id}.enemy`, problems), id, problems),
+      spawnEvery: Math.max(0.1, num(e.spawnEvery, 3, `${id}.spawnEvery`, problems)),
+      spawnMax: Math.max(1, Math.round(num(e.spawnMax, 3, `${id}.spawnMax`, problems))),
       light,
     });
   });
   report('assets', problems);
   return out;
+}
+
+function enemyKind(kind: string, id: string, problems: Problems): string {
+  if (!kind || (ENEMY_KINDS as readonly string[]).includes(kind)) return kind;
+  problems.push(`${id}.enemy is ${JSON.stringify(kind)}, not one of ${ENEMY_KINDS.join(', ')}; ignored`);
+  return '';
 }
 
 export const assets = new Registry<Asset>('assets', parseAssets(raw));
