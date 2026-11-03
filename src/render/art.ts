@@ -22,6 +22,10 @@ export const wolfAttackFrames = ['werewolf_10', 'werewolf_11', 'werewolf_12', 'w
 // Crouch, takeoff, in the air, landing.
 export const wolfJumpFrames = ['werewolf_14', 'werewolf_12', 'werewolf_15', 'werewolf_13'];
 
+// The priest exists only as drawn sprites too: two walk frames, then arms up (the warning) and the cast.
+export const priestWalkFrames = ['priest_0', 'priest_1'];
+export const priestCastFrames = ['priest_11', 'priest_12'];
+
 export const heroWalkFrames = ['hero_walk0', 'hero_walk1', 'hero_walk2', 'hero_walk3'];
 
 type Palette = Record<string, number>;

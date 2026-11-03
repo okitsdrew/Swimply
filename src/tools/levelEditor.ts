@@ -376,7 +376,7 @@ class LevelEditor {
       name: id, tileSize: t, cols: n, rows: n, legend: {}, darkness: 0,
       tiles: Array.from({ length: n * n }, () => this.floor),
       zones: Array.from({ length: n * n }, () => ''),
-      objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1, if: '', unless: '', to: '', onBreak: '', aggro: 0, zone: '' }] : [],
+      objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1, if: '', unless: '', to: '', onBreak: '', aggro: 0, zone: '', every: 0, max: 0 }] : [],
     };
     const d = new MapDoc(id, map, null, true);
     this.docs.push(d);
@@ -501,7 +501,7 @@ class LevelEditor {
         const a = assets.get(this.asset);
         if (!a) return;
         const at = this.place(p);
-        d.change((m) => m.objects.push({ asset: a.id, x: at.x, y: at.y, size: 1, if: '', unless: '', to: '', onBreak: '', aggro: 0, zone: '' }));
+        d.change((m) => m.objects.push({ asset: a.id, x: at.x, y: at.y, size: 1, if: '', unless: '', to: '', onBreak: '', aggro: 0, zone: '', every: 0, max: 0 }));
         this.selection = [d.map.objects.length - 1];
         this.changed();
         break;
@@ -1134,14 +1134,19 @@ class LevelEditor {
         ? [
             row('aggro', numberInput(o.aggro ?? 0, 10, (v) => edit(() => (d.map.objects[sel].aggro = Math.max(0, v))), { min: 0 })),
             el('p', { class: 'hint', text: `A ${asset.enemy} waits here until the hero comes inside the red ring, or shoots it. 0 uses the default (${spawners.aggroRadius}, in the dev menu's spawners section). Once awake it chases him anywhere.` }),
+            row('killed sets', textInput(o.onBreak ?? '', (v) => edit(() => (d.map.objects[sel].onBreak = v)))),
+            el('p', { class: 'hint', text: `A flag here turns on when this ${asset.enemy} dies, and it stays dead for good once he leaves the map alive. Empty: it is back next visit. Other things' "only if" / "only unless" can use the same flag.` }),
           ]
         : []),
       ...(asset?.enemy && asset.marker !== 'enemy'
         ? [
             row('zone', select(['', ...new Set([...d.zoneNames(), o.zone ?? ''].filter(Boolean))], o.zone ?? '', (v) => { edit(() => (d.map.objects[sel].zone = v)); this.buildProps(); })),
             ...(o.zone ? [] : [row('aggro', numberInput(o.aggro ?? 0, 10, (v) => edit(() => (d.map.objects[sel].aggro = Math.max(0, v))), { min: 0 }))]),
+            row('every', numberInput(o.every ?? 0, 0.1, (v) => edit(() => (d.map.objects[sel].every = Math.max(0, v))), { min: 0 })),
+            row('max alive', numberInput(o.max ?? 0, 1, (v) => edit(() => (d.map.objects[sel].max = Math.max(0, Math.round(v)))), { min: 0 })),
+            el('p', { class: 'hint', text: `This spawner's own seconds between spawns and how many it keeps out at once. 0 uses the asset's (${asset.spawnEvery}s, ${asset.spawnMax}).` }),
             el('p', { class: 'hint', text: o.zone
-              ? `Spawns ${asset.enemy}s (one every ${asset.spawnEvery}s, up to ${asset.spawnMax} at once) while the hero is in zone "${o.zone}", shown in its colour.`
+              ? `Spawns ${asset.enemy}s (one every ${o.every || asset.spawnEvery}s, up to ${o.max || asset.spawnMax} at once) while the hero is in zone "${o.zone}", shown in its colour.`
               : `Spawns ${asset.enemy}s while the hero is inside the red ring. Paint a zone with the Zones tool (Z) and pick it here to use an area instead.` }),
           ]
         : []),

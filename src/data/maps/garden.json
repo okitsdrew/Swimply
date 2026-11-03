@@ -39,6 +39,36 @@
     ",,;;#============",
     ",,;;#============"
   ],
+  "zoneLegend": {
+    "a": "garden_a"
+  },
+  "zones": [
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaa"
+  ],
   "objects": [
     { "asset": "door", "x": 1088, "y": 800, "to": "throne" },
     { "asset": "tall-granite-wall-sw", "x": 1088, "y": 32 },
@@ -329,6 +359,9 @@
     { "asset": "planter-box-empty-se", "x": 704, "y": 576 },
     { "asset": "planter-box-empty-se", "x": 704, "y": 608 },
     { "asset": "planter-box-empty-se", "x": 704, "y": 640 },
-    { "asset": "planter-box-empty-se", "x": 704, "y": 672 }
+    { "asset": "planter-box-empty-se", "x": 704, "y": 672 },
+    { "asset": "spawner-werewolf", "x": 480, "y": 800, "unless": "garden_spawner_broken", "onBreak": "garden_wspawner_broken", "zone": "garden_a", "every": 1, "max": 1 },
+    { "asset": "spawner-priest", "x": 160, "y": 992, "unless": "garden_p1spawner_broken", "onBreak": "garden_p1spawner_broken", "zone": "garden_a", "every": 1, "max": 1 },
+    { "asset": "spawner-priest", "x": 416, "y": 352, "unless": "garden_p2spawner_broken", "onBreak": "garden_p2spawner_broken", "zone": "garden_a", "every": 1, "max": 1 }
   ]
 }

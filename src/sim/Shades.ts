@@ -28,8 +28,8 @@ const way = { x: 0, y: 0 };
 // Extra gap kept from a pillar's edge while walking round it.
 const CLEARANCE = 2;
 
-// Shades walk at the player (round water by the navigator's route, round pillars by steering), and push gently
-// off each other. No drawing:
+// Shades walk at the player (round water by the navigator's route, round pillars by steering; or straight through
+// everything with throughWalls), and push gently off each other. No drawing:
 // render/ShadesView reads `list`.
 export class Shades {
   readonly list: Shade[] = [];
@@ -84,7 +84,7 @@ export class Shades {
     return false;
   }
 
-  update(dt: number, world: CollisionWorld, nav: Navigator): void {
+  update(dt: number, world: CollisionWorld, nav: Navigator, goal: { x: number; y: number }): void {
     const turn = 1 - Math.exp(-shade.turnRate * dt);
     const kdecay = Math.exp(-shade.knockbackDecay * dt);
     const sepK = shade.separation * Math.min(1, shade.separationRate * dt);
@@ -102,8 +102,18 @@ export class Shades {
         continue;
       }
 
-      const dist = nav.direction(s.x, s.y, s.radius, way);
-      const [dx, dy] = this.steer(s, way.x, way.y, dist, world);
+      let dx: number;
+      let dy: number;
+      if (shade.throughWalls) {
+        const gx = goal.x - s.x;
+        const gy = goal.y - s.y;
+        const d = Math.hypot(gx, gy) || 1;
+        dx = gx / d;
+        dy = gy / d;
+      } else {
+        const dist = nav.direction(s.x, s.y, s.radius, way);
+        [dx, dy] = this.steer(s, way.x, way.y, dist, world);
+      }
 
       let speed = shade.speed;
       // The iso projection squashes vertical screen travel, so even out on-screen speed the way the player's is.
@@ -138,7 +148,7 @@ export class Shades {
 
       s.x += (s.vx + s.kx) * dt + sx * sepK;
       s.y += (s.vy + s.ky) * dt + sy * sepK;
-      world.resolve(s);
+      if (!shade.throughWalls) world.resolve(s);
     }
   }
 

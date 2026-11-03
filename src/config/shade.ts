@@ -9,6 +9,8 @@ export const shade = defineConfig(
     speed: 120,
     // Keeps on-screen speed equal in every direction, as the player's does.
     uniformScreenSpeed: true,
+    // Walks straight at the player through walls, over water and through anything else, like a ghost.
+    throughWalls: true,
     radius: 20,
     scale: 1,
     // The player dies when his hit circle meets this fraction of the Shade's radius.
@@ -30,11 +32,16 @@ export const shade = defineConfig(
     hemFlicker: 6,
     deathSmoke: 8,
     deathFlash: 0.6,
+    // With throughWalls: a see-through silhouette drawn over everything while a Shade is in or behind something
+    // solid, so it never vanishes inside a wall. Its opacity, and how fast it fades in and out (per second).
+    ghostAlpha: 0.45,
+    ghostFade: 8,
   },
   {
     hp: { min: 1, max: 2000, step: 1 },
     speed: { min: 10, max: 800, step: 5 },
     uniformScreenSpeed: 'bool',
+    throughWalls: 'bool',
     radius: { min: 2, max: 80, step: 1 },
     scale: { min: 0.3, max: 4, step: 0.05 },
     contactScale: { min: 0.1, max: 2, step: 0.05 },
@@ -51,5 +58,7 @@ export const shade = defineConfig(
     hemFlicker: { min: 0, max: 30, step: 1 },
     deathSmoke: { min: 0, max: 60, step: 1 },
     deathFlash: { min: 0, max: 3, step: 0.1 },
+    ghostAlpha: { min: 0, max: 1, step: 0.05 },
+    ghostFade: { min: 0.5, max: 40, step: 0.5 },
   },
 );

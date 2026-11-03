@@ -31,13 +31,16 @@ export interface Placed {
   unless: string;
   // A map id: walking into a door marker, or pressing interact next to anything else, goes there. Empty for none.
   to: string;
-  // A save flag turned on when this is broken (its asset needs health). It is gone while the flag is on, so it stays
-  // broken. Empty: it breaks for this visit only.
+  // A save flag turned on when this is broken (its asset needs health), or, on a placed enemy, when that enemy is
+  // killed. It is gone while the flag is on, so it stays broken (or dead). Empty: it is back next visit.
   onBreak: string;
   // A placed enemy wakes when the player comes this close (world units). 0: the default in the spawners config.
   aggro: number;
   // A spawner spawns while the player stands in this painted zone. Empty: within its aggro distance instead.
   zone: string;
+  // A spawner's own rate (seconds between spawns) and how many it keeps out at once. 0: its asset's.
+  every: number;
+  max: number;
 }
 
 export interface AreaMap {
@@ -157,6 +160,8 @@ export function parseMap(id: string, data: unknown, problems: Problems): AreaMap
       onBreak: str(e.onBreak, '', `${w}.onBreak`, problems),
       aggro: Math.max(0, num(e.aggro, 0, `${w}.aggro`, problems)),
       zone: str(e.zone, '', `${w}.zone`, problems),
+      every: Math.max(0, num(e.every, 0, `${w}.every`, problems)),
+      max: Math.max(0, Math.round(num(e.max, 0, `${w}.max`, problems))),
     });
   });
 

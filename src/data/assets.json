@@ -898,6 +898,33 @@
       "spawnMax": 30
     },
     {
+      "id": "spawner-shade-invincible",
+      "name": "spawner shade invincible",
+      "category": "markers",
+      "parts": [
+        {
+          "texture": "shade_spawner_0",
+          "y": -1,
+          "originY": 0.95,
+          "frames": [
+            "shade_spawner_0",
+            "shade_spawner_1",
+            "shade_spawner_2",
+            "shade_spawner_3",
+            "shade_spawner_4",
+            "shade_spawner_5",
+            "shade_spawner_6",
+            "shade_spawner_7"
+          ]
+        }
+      ],
+      "hit": [{ "box": true, "w": 40, "h": 40 }],
+      "health": 500,
+      "enemy": "shade",
+      "spawnEvery": 2,
+      "spawnMax": 30
+    },
+    {
       "id": "werewolf",
       "name": "Werewolf (placed)",
       "category": "markers",
@@ -910,6 +937,13 @@
       "category": "markers",
       "marker": "enemy",
       "enemy": "shade"
+    },
+    {
+      "id": "priest",
+      "name": "Priest (placed)",
+      "category": "markers",
+      "marker": "enemy",
+      "enemy": "priest"
     },
     {
       "id": "spawner-priest",
@@ -933,7 +967,10 @@
         }
       ],
       "hit": [{ "box": true, "w": 40, "h": 40 }],
-      "health": 500
+      "health": 500,
+      "enemy": "priest",
+      "spawnEvery": 1,
+      "spawnMax": 6
     },
     {
       "id": "spawner-werewolf",

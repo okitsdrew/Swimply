@@ -3,6 +3,7 @@ import { player as cfgPlayer } from '../config/character';
 import { camera } from '../config/feel';
 import { render } from '../config/render';
 import { run } from '../config/run';
+import { priest } from '../config/priest';
 import { shade } from '../config/shade';
 import { spawners } from '../config/spawners';
 import { sim } from '../config/sim';
@@ -38,6 +39,7 @@ import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
 import { PickupsView } from '../render/PickupsView';
 import { PlayerView } from '../render/PlayerView';
+import { PriestsView } from '../render/PriestsView';
 import { clock, RunHud } from '../render/RunHud';
 import { ShadesView } from '../render/ShadesView';
 import { TimoView } from '../render/TimoView';
@@ -46,6 +48,7 @@ import { Arrows } from '../sim/Arrows';
 import { Breakables } from '../sim/Breakables';
 import { Pickups } from '../sim/Pickups';
 import { Player } from '../sim/Player';
+import { Priest, Priests } from '../sim/Priests';
 import { Run } from '../sim/Run';
 import { Shades } from '../sim/Shades';
 import { stats } from '../sim/stats';
@@ -129,14 +132,18 @@ export class ArenaScene extends Phaser.Scene {
   private pickups!: Pickups;
   private pickupsView!: PickupsView;
   private shadesView!: ShadesView;
+  private priests!: Priests;
+  private priestsView!: PriestsView;
   // The Mindscape's mini-boss.
   private wolf!: Werewolf;
   private wolfView!: WerewolfView;
   // Plain werewolves, elites met in the world.
   private elites: { wolf: Werewolf; view: WerewolfView }[] = [];
-  // Placed enemies still waiting for the player: a werewolf stands there; a Shade rises when he comes near.
-  private sleepers: { o: Placed; wolf: Werewolf | null }[] = [];
-  // Each spawner's clock and the enemies it has out (Shades or werewolves), so it keeps to its asset's spawnMax.
+  // Placed enemies still waiting for the player: a werewolf or Priest stands there; a Shade rises when he comes near.
+  private sleepers: { o: Placed; wolf: Werewolf | null; priest: Priest | null }[] = [];
+  // The placed marker each placed enemy came from, so its "killed sets" flag turns on when it dies.
+  private placedOf = new Map<object, Placed>();
+  // Each spawner's clock and the enemies it has out, so it keeps to its max alive (its own, or its asset's).
   private spawning = new Map<Placed, { timer: number; out: Set<object> }>();
   // Whether this run's werewolf has arrived yet.
   private wolfCame = false;
@@ -218,6 +225,8 @@ export class ArenaScene extends Phaser.Scene {
     this.breakablesView = new BreakablesView(this.mapView, this.fx);
     this.shades = new Shades();
     this.shadesView = new ShadesView(this, this.shades, this.fx);
+    this.priests = new Priests();
+    this.priestsView = new PriestsView(this, this.priests, this.fx);
     this.pickups = new Pickups();
     this.pickupsView = new PickupsView(this, this.pickups);
     this.pickups.onCollected = (kind) => this.collect(kind);
@@ -274,6 +283,7 @@ export class ArenaScene extends Phaser.Scene {
       const elite = this.elites.find((e) => e.wolf === target);
       if (target === this.wolf) this.wolf.damage(damage);
       else if (elite) elite.wolf.damage(damage);
+      else if (this.priests.list.includes(target as Priest)) this.priests.damage(target, damage, ax - dx, ay - dy);
       else this.shades.damage(target, damage, ax - dx, ay - dy);
       const s = toScreen(ax, ay);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
@@ -291,13 +301,23 @@ export class ArenaScene extends Phaser.Scene {
     this.breakables.onBroken = (thing) => this.onBroken(thing);
     this.shades.onRisen = (s) => this.shadesView.onRisen(s);
     this.shades.onKilled = (x, y, s) => {
-      for (const st of this.spawning.values()) st.out.delete(s);
+      this.enemyDied(s);
       if (this.run.state === 'fighting' && !this.calm) {
         this.run.kills++;
         this.dropShards(x, y, tree.shardsPerKill);
       }
       this.shadesView.onKilled(x, y);
             this.fx.addShake(run.killShake);
+      this.freeze(run.killHitStop);
+    };
+    this.priests.onRisen = (p) => this.priestsView.onRisen(p);
+    this.priests.onCast = (_p, orb) => this.priestsView.onCast(orb);
+    this.priests.onOrbGone = (x, y) => this.priestsView.onOrbGone(x, y);
+    this.priests.onTeleport = (_p, x0, y0, x1, y1) => this.priestsView.onTeleport(x0, y0, x1, y1);
+    this.priests.onKilled = (x, y, p) => {
+      this.enemyDied(p);
+      this.priestsView.onKilled(x, y);
+      this.fx.addShake(run.killShake);
       this.freeze(run.killHitStop);
     };
     this.wireWolf(this.wolf, this.wolfView);
@@ -317,6 +337,8 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Spawn elite werewolf', run: () => this.spawnElite() },
       { label: 'Kill elite werewolves', run: () => [...this.elites].forEach((e) => e.wolf.damage(e.wolf.hp)) },
       { label: 'Kill all Shades', run: () => [...this.shades.list].forEach((s) => this.shades.kill(s)) },
+      { label: 'Spawn a Priest', run: () => this.spawnPriest() },
+      { label: 'Kill Priests', run: () => [...this.priests.list].forEach((p) => this.priests.kill(p)) },
       { label: 'Hold spawns', run: () => (this.run.holdSpawns = !this.run.holdSpawns) },
       { label: 'Pause', run: () => (this.paused = !this.paused) },
       { label: 'Step', run: () => { this.paused = true; this.stepsQueued++; } },
@@ -327,6 +349,7 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Max tree', run: () => maxTree() },
       { label: 'Toggle hitboxes', run: () => (this.showHitboxes = !this.showHitboxes) },
       { label: `Next map (${map.name})`, run: () => this.nextMap() },
+      { label: 'Reset this map (unbreak, revive)', run: () => this.resetMapFlags() },
       { label: 'Story: fresh start', run: () => this.storyFresh() },
       { label: 'Story: Mindscape won', run: () => this.storyWon() },
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
@@ -437,6 +460,14 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   // Dev aids for the story: back to waking up, or straight to after the Mindscape.
+  // Dev aid: turns off every "broken sets" / "killed sets" flag this map's things use, then starts the map over
+  // where he stands, so broken spawners and killed enemies are back for testing.
+  private resetMapFlags(): void {
+    for (const o of this.baseMap.objects) if (o.onBreak) delete save.flags[o.onBreak];
+    writeSave();
+    this.scene.restart({ map: this.mapId, at: { x: this.player.x, y: this.player.y } });
+  }
+
   private storyFresh(): void {
     for (const f of storyFlags()) delete save.flags[f];
     resetTree(false);
@@ -529,6 +560,12 @@ export class ArenaScene extends Phaser.Scene {
     this.addElite().spawn(p.x, p.y);
   }
 
+  // A Priest rising a few tiles from the player, on clear ground.
+  private spawnPriest(): void {
+    const p = this.clearSpot(this.player.x, this.player.y, 400, priest.radius * priest.scale);
+    this.priests.spawn(p.x, p.y);
+  }
+
   // A new plain werewolf, not yet out: the caller spawns him (he rises) or has him wait (placed).
   private addElite(): Werewolf {
     const wolf = new Werewolf(cfgElite);
@@ -539,11 +576,22 @@ export class ArenaScene extends Phaser.Scene {
       view.onKilled(x, y);
       this.freeze(0.08, true);
       this.elites.splice(this.elites.indexOf(entry), 1);
-      for (const st of this.spawning.values()) st.out.delete(wolf);
+      this.enemyDied(wolf);
       view.destroy();
     };
     this.elites.push(entry);
     return wolf;
+  }
+
+  // A world enemy died: its spawner may send another, and a placed one's "killed sets" flag turns on for this visit.
+  private enemyDied(e: object): void {
+    for (const st of this.spawning.values()) st.out.delete(e);
+    const o = this.placedOf.get(e);
+    if (!o) return;
+    this.placedOf.delete(e);
+    if (!o.onBreak) return;
+    this.areaFlags[o.onBreak] = true;
+    this.showMap();
   }
 
   private clearElites(): void {
@@ -569,13 +617,19 @@ export class ArenaScene extends Phaser.Scene {
   private placeEnemies(): void {
     this.sleepers = [];
     this.spawning.clear();
+    this.placedOf.clear();
     for (const o of this.map.objects) {
       if (o.asset.marker !== 'enemy' || !o.asset.enemy) continue;
       if (o.asset.enemy === 'werewolf') {
         const wolf = this.addElite();
         wolf.wait(o.x, o.y);
-        this.sleepers.push({ o, wolf });
-      } else this.sleepers.push({ o, wolf: null });
+        this.placedOf.set(wolf, o);
+        this.sleepers.push({ o, wolf, priest: null });
+      } else if (o.asset.enemy === 'priest') {
+        const priest = this.priests.wait(o.x, o.y);
+        this.placedOf.set(priest, o);
+        this.sleepers.push({ o, wolf: null, priest });
+      } else this.sleepers.push({ o, wolf: null, priest: null });
     }
   }
 
@@ -584,15 +638,22 @@ export class ArenaScene extends Phaser.Scene {
   private updateWorldEnemies(dt: number): void {
     const p = this.player;
     const near = (o: Placed) => Math.hypot(o.x - p.x, o.y - p.y) < (o.aggro || spawners.aggroRadius);
-    this.sleepers = this.sleepers.filter(({ o, wolf }) => {
+    this.sleepers = this.sleepers.filter(({ o, wolf, priest: pr }) => {
       if (wolf) {
         if (wolf.state !== 'idle') return false;
         if (!near(o)) return true;
         wolf.wake();
         return false;
       }
+      if (pr) {
+        if (pr.state !== 'idle') return false;
+        if (!near(o)) return true;
+        this.priests.wake(pr);
+        return false;
+      }
       if (!near(o)) return true;
-      this.spawnEnemy('shade', o.x, o.y);
+      const made = this.spawnEnemy('shade', o.x, o.y);
+      if (made) this.placedOf.set(made, o);
       return false;
     });
     const here = zoneAt(this.map, p.x, p.y);
@@ -604,13 +665,14 @@ export class ArenaScene extends Phaser.Scene {
       const on = o.zone ? o.zone === here : near(o);
       if (!on) {
         // Coming back in, the first one rises soon after, not a whole spawnEvery later.
-        st.timer = Math.max(0, a.spawnEvery - spawners.firstSpawn);
+        st.timer = Math.max(0, (o.every || a.spawnEvery) - spawners.firstSpawn);
         continue;
       }
       st.timer += dt;
-      if (st.timer < a.spawnEvery || st.out.size >= a.spawnMax) continue;
+      if (st.timer < (o.every || a.spawnEvery) || st.out.size >= (o.max || a.spawnMax)) continue;
       st.timer = 0;
-      const at = this.clearSpot(o.x, o.y, spawners.spawnDistance * o.size, a.enemy === 'werewolf' ? cfgElite.radius * cfgElite.scale : shade.radius);
+      const r = a.enemy === 'werewolf' ? cfgElite.radius * cfgElite.scale : a.enemy === 'priest' ? priest.radius * priest.scale : shade.radius;
+      const at = this.clearSpot(o.x, o.y, spawners.spawnDistance * o.size, r);
       const made = this.spawnEnemy(a.enemy, at.x, at.y);
       if (made) st.out.add(made);
     }
@@ -627,6 +689,7 @@ export class ArenaScene extends Phaser.Scene {
       this.shades.spawn(x, y, shade.hp);
       return this.shades.list[this.shades.list.length - 1];
     }
+    if (kind === 'priest') return this.priests.spawn(x, y);
     return null;
   }
 
@@ -712,6 +775,8 @@ export class ArenaScene extends Phaser.Scene {
   private startRun(): void {
     this.shades.clear();
     this.shadesView.clear();
+    this.priests.clear();
+    this.priestsView.clear();
     this.pickups.clear();
     this.pickupsView.clear();
     this.wolf.clear();
@@ -820,7 +885,8 @@ export class ArenaScene extends Phaser.Scene {
     cam.scrollY = this.camCenter.y - cam.height / 2 + this.fx.shakeOffset.y;
 
     this.arrowsView.render();
-    this.shadesView.render(this.player.x, this.player.y);
+    this.shadesView.render(frameDt * (this.paused ? 0 : sim.timeScale), this.player.x, this.player.y, this.world);
+    this.priestsView.render(frameDt * (this.paused ? 0 : sim.timeScale), this.player.x, this.player.y);
     this.pickupsView.render(frameDt);
     this.wolfView.render(frameDt, cam.width);
     for (const e of this.elites) e.view.render(frameDt, cam.width);
@@ -880,19 +946,21 @@ export class ArenaScene extends Phaser.Scene {
     r.update(dt);
     if (r.state === 'fighting' && !this.wolfCame && !r.holdSpawns && r.time >= werewolf.arriveTime) this.spawnWolf();
     this.nav.setGoal(this.player.x, this.player.y);
-    this.shades.update(dt, this.world, this.nav);
+    this.shades.update(dt, this.world, this.nav, this.player);
+    this.priests.update(dt, this.world, this.nav, this.player);
     for (const w of this.allWolves()) {
       w.update(dt, this.world, this.nav, this.player);
       this.checkWolfAttack(w);
     }
     this.targets.length = 0;
     this.targets.push(...this.shades.list);
+    for (const p of this.priests.list) if (p.alive) this.targets.push(p);
     for (const w of this.allWolves()) if (w.alive && !w.airborne) this.targets.push(w);
     this.arrows.update(dt, this.targets, this.world);
     this.pickups.update(dt, this.player.x, this.player.y, r.state === 'fighting' && this.control);
     if (r.state === 'fighting' && !this.player.safe && !sim.godMode) {
       const { x, y } = this.player;
-      if (this.shades.touching(x, y, cfgPlayer.hitRadius) || this.allWolves().some((w) => w.touching(x, y, cfgPlayer.hitRadius)) || this.world.onHurtingFloor(x, y)) this.die();
+      if (this.shades.touching(x, y, cfgPlayer.hitRadius) || this.priests.touching(x, y, cfgPlayer.hitRadius) || this.allWolves().some((w) => w.touching(x, y, cfgPlayer.hitRadius)) || this.world.onHurtingFloor(x, y)) this.die();
     }
   }
 
@@ -932,6 +1000,12 @@ export class ArenaScene extends Phaser.Scene {
       const b = toScreen(s.x + s.vx * 0.25, s.y + s.vy * 0.25);
       g.lineStyle(1, 0xffcc44, 1).lineBetween(a.x, a.y, b.x, b.y);
     }
+    for (const p of this.priests.list) {
+      if (!p.alive) continue;
+      ring(p.x, p.y, p.radius, 0xffcc44);
+      ring(p.x, p.y, p.radius * priest.contactScale, 0xff4466);
+    }
+    for (const o of this.priests.orbs) ring(o.x, o.y, priest.orbRadius * priest.orbContact, 0xff4466);
     for (const w of this.allWolves()) {
       if (!w.alive) continue;
       ring(w.x, w.y, w.radius, 0xffcc44);

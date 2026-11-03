@@ -140,7 +140,7 @@ export const werewolfMiniboss = defineConfig('werewolf_miniboss', 'bosses', wolf
 // arriveTime is not used: he is placed or spawned, not brought in by a run's clock.
 export const werewolf = defineConfig('werewolf', 'enemies', {
   ...wolf,
-  hp: 1250,
+  hp: 1000,
   speed: 300,
   scale: 2.25,
   windupTime: 0.6,
