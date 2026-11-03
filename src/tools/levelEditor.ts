@@ -7,7 +7,7 @@ import { story } from '../config/story';
 import { ellipseHalfSize, toScreen, Vec2 } from '../core/iso';
 import { Asset, assets } from '../data/assets';
 import { floors } from '../data/floors';
-import { AreaMap, parseMap, showsWith, withFlags } from '../data/maps';
+import { AreaMap, flagList, parseMap, showsWith, withFlags } from '../data/maps';
 import { Problems, report } from '../data/registry';
 import { deleteFile, hex, readFile, readMapFiles, renameInDataFile, saveFile } from './files';
 import { MapCanvas } from './MapCanvas';
@@ -318,7 +318,7 @@ class LevelEditor {
   // Every save flag the open map's things depend on.
   private mapFlags(): string[] {
     const out = new Set<string>();
-    for (const o of this.doc?.map.objects ?? []) for (const f of [o.if, o.unless, o.onBreak]) if (f) out.add(f);
+    for (const o of this.doc?.map.objects ?? []) for (const f of [...flagList(o.if), ...flagList(o.unless), ...flagList(o.opens), o.onBreak]) if (f) out.add(f);
     return [...out].sort();
   }
 
@@ -376,7 +376,7 @@ class LevelEditor {
       name: id, tileSize: t, cols: n, rows: n, legend: {}, darkness: 0,
       tiles: Array.from({ length: n * n }, () => this.floor),
       zones: Array.from({ length: n * n }, () => ''),
-      objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1, if: '', unless: '', to: '', onBreak: '', aggro: 0, zone: '', every: 0, max: 0 }] : [],
+      objects: start ? [{ asset: start.id, x: (n * t) / 2, y: (n * t) / 2, size: 1, if: '', unless: '', to: '', opens: '', opensWhenClear: false, onBreak: '', aggro: 0, zone: '', every: 0, max: 0 }] : [],
     };
     const d = new MapDoc(id, map, null, true);
     this.docs.push(d);
@@ -501,7 +501,7 @@ class LevelEditor {
         const a = assets.get(this.asset);
         if (!a) return;
         const at = this.place(p);
-        d.change((m) => m.objects.push({ asset: a.id, x: at.x, y: at.y, size: 1, if: '', unless: '', to: '', onBreak: '', aggro: 0, zone: '', every: 0, max: 0 }));
+        d.change((m) => m.objects.push({ asset: a.id, x: at.x, y: at.y, size: 1, if: '', unless: '', to: '', opens: '', opensWhenClear: false, onBreak: '', aggro: 0, zone: '', every: 0, max: 0 }));
         this.selection = [d.map.objects.length - 1];
         this.changed();
         break;
@@ -970,7 +970,7 @@ class LevelEditor {
       el('h2', { text: 'Story flags', style: 'margin-top:18px' }),
       flags.length
         ? button(view ? 'Show everything' : 'Preview flags', () => this.setFlagView(view ? null : {}), { class: view ? 'on' : '' })
-        : el('p', { class: 'hint', text: 'Nothing in this map has "only if" or "only unless" set.' }),
+        : el('p', { class: 'hint', text: 'Nothing in this map has "only if", "only unless" or "opens when" set.' }),
       ...(view ? flags.map((f) => el('label', { class: 'row' }, checkbox(!!view[f], (v) => this.setFlagView({ ...view, [f]: v })), ` ${f}`)) : []),
       flags.length ? el('p', { class: 'hint', text: view ? 'Showing the map as the game does with the ticked flags on. Hidden things cannot be picked.' : 'Off: every thing shows, whatever its flags.' }) : '',
     ];
@@ -1125,11 +1125,18 @@ class LevelEditor {
       asset?.marker === 'playerStart' ? el('p', { class: 'hint', text: 'Where a run starts. Only the first player start in a map counts.' }) : '',
       row('goes to', select(['', ...this.docs.map((m) => m.id).filter((id) => id !== d.id)], o.to ?? '', (v) => edit(() => (d.map.objects[sel].to = v)))),
       asset?.marker === 'door'
-        ? el('p', { class: 'hint', text: `Walking into the purple ring goes to the map in "goes to". Size scales it (radius ${story.doorRadius} at size 1, in the dev menu's story section).` })
+        ? el('p', { class: 'hint', text: `Pressing F inside the purple ring goes to the map in "goes to". Size scales it (radius ${story.doorRadius} at size 1, in the dev menu's story section).` })
         : el('p', { class: 'hint', text: 'With "goes to" set, pressing F next to this goes to that map.' }),
+      ...(o.to
+        ? [
+            row('opens when', textInput(o.opens ?? '', (v) => edit(() => (d.map.objects[sel].opens = v)))),
+            el('label', { class: 'row' }, checkbox(!!o.opensWhenClear, (v) => edit(() => (d.map.objects[sel].opensWhenClear = v))), ' opens when cleared'),
+            el('p', { class: 'hint', text: 'Locked (a red ring, F does nothing) until every flag in "opens when" is on, such as a boss\'s "killed sets" flag. Ticked: also locked while any enemy or spawner is left in this map. Empty and unticked: always open.' }),
+          ]
+        : []),
       row('only if', textInput(o.if ?? '', (v) => edit(() => (d.map.objects[sel].if = v)))),
       row('only unless', textInput(o.unless ?? '', (v) => edit(() => (d.map.objects[sel].unless = v)))),
-      el('p', { class: 'hint', text: 'Save flags, such as mindscapeCleared. "Only if" shows it while the flag is on, "only unless" while it is off. Leave empty for always.' }),
+      el('p', { class: 'hint', text: 'Save flags, such as mindscapeCleared; several with commas between them (a, b). "Only if" shows it while all of them are on, "only unless" while none of them is on. Leave empty for always.' }),
       ...(asset?.enemy && asset.marker === 'enemy'
         ? [
             row('aggro', numberInput(o.aggro ?? 0, 10, (v) => edit(() => (d.map.objects[sel].aggro = Math.max(0, v))), { min: 0 })),
