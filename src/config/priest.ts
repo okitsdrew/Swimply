@@ -56,7 +56,10 @@ export const priest = defineConfig(
     spawnTell: 0.7,
     walkFrameTime: 0.25,
     // Seconds per frame when the orb is drawn from sprites named priest_orb_0, priest_orb_1, ...
-    orbFrameTime: 0.1,
+    orbFrameTime: 0.07,
+    // The orb's trail: pixel sparks shed each second, and how long one lasts as it drifts back, falls and darkens.
+    trailSparks: 40,
+    trailLife: 0.4,
     deathSmoke: 10,
   },
   {
@@ -93,6 +96,8 @@ export const priest = defineConfig(
     spawnTell: { min: 0, max: 3, step: 0.05 },
     walkFrameTime: { min: 0.05, max: 1, step: 0.01 },
     orbFrameTime: { min: 0.02, max: 1, step: 0.01 },
+    trailSparks: { min: 0, max: 200, step: 5 },
+    trailLife: { min: 0.05, max: 2, step: 0.05 },
     deathSmoke: { min: 0, max: 60, step: 1 },
   },
 );

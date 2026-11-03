@@ -14,7 +14,24 @@ interface Visual {
 interface OrbVisual {
   halo: Phaser.GameObjects.Image;
   core: Phaser.GameObjects.Image;
+  // Sparks owed to the trail, carried between frames.
+  shed: number;
 }
+
+// One trail spark, in screen pixels.
+interface Spark {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  age: number;
+  life: number;
+  // Where it starts in SPARK_COLORS; it steps down the list as it fades.
+  shade: number;
+}
+
+// White to gold to brown, the orb's own colours.
+const SPARK_COLORS = [0xffffff, 0xfff6d8, 0xffe14a, 0xb08a10, 0x6e4a08];
 
 const screen = { x: 0, y: 0 };
 // The orb's colours: a white core in a gold halo, like the priest's eyes.
@@ -30,10 +47,13 @@ export class PriestsView {
   private visuals = new Map<Priest, Visual>();
   private orbs = new Map<Orb, OrbVisual>();
   private marks: Phaser.GameObjects.Graphics;
+  private trail: Phaser.GameObjects.Graphics;
+  private sparks: Spark[] = [];
   private time = 0;
 
   constructor(private scene: Phaser.Scene, private priests: Priests, private fx: Fx) {
     this.marks = scene.add.graphics().setDepth(-5e7);
+    this.trail = scene.add.graphics().setDepth(1e6 - 2);
   }
 
   onRisen(p: Priest): void {
@@ -147,6 +167,7 @@ export class PriestsView {
         v = {
           halo: this.scene.add.image(0, 0, Tex.glow).setTint(HALO).setBlendMode(Phaser.BlendModes.ADD),
           core: orbFrames.length ? this.scene.add.image(0, 0, orbFrames[0]) : this.scene.add.image(0, 0, Tex.glow).setTint(CORE),
+          shed: 0,
         };
         this.orbs.set(o, v);
       }
@@ -159,6 +180,30 @@ export class PriestsView {
         const f = orbFrames[Math.floor(o.age / Math.max(priest.orbFrameTime, 0.01)) % orbFrames.length];
         v.core.setTexture(f).setPosition(screen.x, y).setScale(px).setAlpha(fade).setDepth(screen.y);
       } else v.core.setPosition(screen.x, y).setScale((r * 2) / 32).setAlpha(fade).setDepth(screen.y);
+      v.shed += priest.trailSparks * dt;
+      for (; v.shed >= 1; v.shed--) {
+        this.sparks.push({
+          x: screen.x + (Math.random() - 0.5) * 3 * px, y: y + (Math.random() - 0.5) * 3 * px,
+          vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20 - 10,
+          age: 0, life: priest.trailLife * (0.6 + Math.random() * 0.4), shade: Math.floor(Math.random() * 4),
+        });
+      }
+    }
+    // The sparks stay where they were shed (the orb flies on), drift a little, fall, and darken as they fade.
+    const t = this.trail.clear();
+    for (let i = this.sparks.length - 1; i >= 0; i--) {
+      const sp = this.sparks[i];
+      sp.age += dt;
+      if (sp.age >= sp.life) {
+        this.sparks.splice(i, 1);
+        continue;
+      }
+      sp.vy += 60 * dt;
+      sp.x += sp.vx * dt;
+      sp.y += sp.vy * dt;
+      const k = sp.age / sp.life;
+      const c = SPARK_COLORS[Math.min(SPARK_COLORS.length - 1, sp.shade + Math.floor(k * 3))];
+      t.fillStyle(c, 1).fillRect(Math.round(sp.x / px) * px, Math.round(sp.y / px) * px, px, px);
     }
   }
 
@@ -174,5 +219,7 @@ export class PriestsView {
     this.visuals.clear();
     this.orbs.clear();
     this.marks.clear();
+    this.sparks.length = 0;
+    this.trail.clear();
   }
 }
