@@ -241,6 +241,8 @@ export function makeCodeArt(scene: Phaser.Scene): void {
   for (const k of pickupKinds.list()) {
     fromGrid(scene, pickupTexture(k), ['.rrr.', 'rccrr', 'rcccr', 'rrccr', '.rrr.'], { c: k.core, r: k.rim });
   }
+  // A stunned enemy's star, white so it can be tinted.
+  fromGrid(scene, 'status_star', ['..w..', '.www.', 'wwwww', '.www.', '.w.w.'], { w: 0xffffff });
   // Vestige emblems: a glowing diamond in each one's colour, until a sprite named vestige_<id> is drawn.
   for (const v of vestiges.list()) {
     const c = Phaser.Display.Color.ValueToColor(v.color);

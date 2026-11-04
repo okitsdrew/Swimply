@@ -7,6 +7,8 @@ export const priest = defineConfig(
   'enemies',
   {
     hp: 250,
+    // How much of a stun, freeze, slow or burn it shrugs off: 0 takes it all, 1 is immune.
+    ccResist: 0,
     speed: 90,
     radius: 18,
     scale: 1.5,
@@ -70,6 +72,7 @@ export const priest = defineConfig(
   },
   {
     hp: { min: 1, max: 2000, step: 1 },
+    ccResist: { min: 0, max: 1, step: 0.05 },
     speed: { min: 10, max: 800, step: 5 },
     radius: { min: 2, max: 80, step: 1 },
     scale: { min: 0.3, max: 4, step: 0.05 },

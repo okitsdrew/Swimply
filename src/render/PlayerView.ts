@@ -170,6 +170,15 @@ export class PlayerView {
     this.fx.addShake(camera.shakeOnCast * 0.5);
   }
 
+  // A Vestige's flight (Doomsday): he vanishes in a puff and reappears in another, with no tear between.
+  onBlink(fromX: number, fromY: number, toX: number, toY: number): void {
+    const a = toScreen(fromX, fromY);
+    const b = toScreen(toX, toY);
+    const lift = 10 * this.px;
+    this.voidPuff(a.x, a.y - lift);
+    this.voidPuff(b.x, b.y - lift);
+  }
+
   onTeleportArrive(x: number, y: number): void {
     const a = toScreen(x, y);
     this.fx.burst(a.x, a.y - 10 * this.px);

@@ -76,14 +76,16 @@ export class Player {
   onDashStart: () => void = () => {};
   onTeleport: (fromX: number, fromY: number, toX: number, toY: number, travelTime: number) => void = () => {};
   onTeleportArrive: (x: number, y: number) => void = () => {};
+  // A Vestige's flight (blink) begins: it has its own look, not the teleport's tear.
+  onBlink: (fromX: number, fromY: number, toX: number, toY: number) => void = () => {};
 
   // What his body and his teleport cannot pass through.
   constructor(private world: CollisionWorld) {}
 
   // Back to a fresh start at (x, y), keeping the callbacks the scene wired up.
   reset(x: number, y: number): void {
-    const { onFire, onDashStart, onTeleport, onTeleportArrive } = this;
-    Object.assign(this, new Player(this.world), { onFire, onDashStart, onTeleport, onTeleportArrive, x, y });
+    const { onFire, onDashStart, onTeleport, onTeleportArrive, onBlink } = this;
+    Object.assign(this, new Player(this.world), { onFire, onDashStart, onTeleport, onTeleportArrive, onBlink, x, y });
   }
 
   get dashing(): boolean {
@@ -273,7 +275,7 @@ export class Player {
     this.vy = 0;
   }
 
-  // A flight straight to (x, y) over `travel` seconds, with the teleport's look, for a Vestige: through anything in
+  // A flight straight to (x, y) over `travel` seconds, for a Vestige: through anything in
   // the way. He cannot be hurt on the way, and lands standing still. The caller has checked he can stand there.
   blink(x: number, y: number, travel: number): void {
     this.phasing = true;
@@ -283,7 +285,7 @@ export class Player {
     this.tpEndVy = 0;
     this.dashTime = 0;
     this.lockTime = 0;
-    this.onTeleport(fromX, fromY, x, y, travel);
+    this.onBlink(fromX, fromY, x, y);
     if (travel > 1e-3) {
       this.teleportTime = travel;
       this.tpVx = (x - fromX) / travel;

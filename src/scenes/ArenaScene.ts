@@ -33,6 +33,7 @@ import { DoorsView } from '../render/DoorsView';
 import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
 import { PedestalsView } from '../render/PedestalsView';
+import { StatusView } from '../render/StatusView';
 import { PickupsView } from '../render/PickupsView';
 import { PlayerView } from '../render/PlayerView';
 import { RunHud } from '../render/RunHud';
@@ -44,6 +45,8 @@ import { Pickups } from '../sim/Pickups';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
 import { stats } from '../sim/stats';
+import { Enemy } from '../sim/enemies';
+import { Effect, EFFECT_KINDS } from '../sim/status';
 import { Target } from '../sim/targets';
 import { FlowField } from '../sim/Nav';
 import { VestigeCaster } from '../sim/Vestiges';
@@ -125,6 +128,8 @@ export class ArenaScene extends Phaser.Scene {
   private caster!: VestigeCaster;
   private vestigesView!: VestigesView;
   private pedestals!: PedestalsView;
+  private statusView!: StatusView;
+  private everyone: Enemy[] = [];
   // The Mindscape menu (Vestiges) is open over the arena.
   private menuOpen = false;
   private pickupsView!: PickupsView;
@@ -202,6 +207,7 @@ export class ArenaScene extends Phaser.Scene {
     this.caster = new VestigeCaster(this.world, this.player, (x, y) => this.nav.reachable(x, y));
     this.vestigesView = new VestigesView(this, this.caster, this.fx);
     this.pedestals = new PedestalsView(this);
+    this.statusView = new StatusView(this, this.fx);
     this.caster.onDeny = () => this.sfx.play('deny');
     this.caster.onBlast = (x, y) => this.doomsdayBlast(x, y);
     this.travel = new Travel(this, this.mapId, this.calm, this.world, this.player, this.sfx);
@@ -225,6 +231,10 @@ export class ArenaScene extends Phaser.Scene {
       this.showMap();
     };
     this.enemies.onKilled = (kind, x, y) => this.mindscape?.onKilled(kind, x, y);
+    this.enemies.onBurn = (e, amount) => {
+      const s = toScreen(e.x, e.y);
+      this.fx.damageNumber(s.x, s.y - render.arrowHeight, amount);
+    };
     this.view.onStep = () => this.sfx.play('step');
     this.run = new Run(shadeK.group);
     this.run.holdSpawns = this.calm || params.has('calm');
@@ -287,6 +297,10 @@ export class ArenaScene extends Phaser.Scene {
       this.story.notify('teleport');
     };
     this.player.onTeleportArrive = (x, y) => this.view.onTeleportArrive(x, y);
+    this.player.onBlink = (x0, y0, x1, y1) => {
+      this.view.onBlink(x0, y0, x1, y1);
+      this.sfx.play('teleport');
+    };
     this.arrows.onHit = (target, damage, ax, ay, dx, dy) => {
       // Knockback pushes away from a point just behind the hit, so along the arrow's flight.
       this.enemies.damage(target, damage, ax - dx, ay - dy);
@@ -335,6 +349,7 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Story: Mindscape won', run: () => this.storyWon() },
       { label: 'Vestige: grant Doomsday', run: () => unlockVestige('doomsday') },
       { label: 'Vestiges: forget all', run: () => forgetVestiges() },
+      ...EFFECT_KINDS.map((kind) => ({ label: `Effect: ${kind} all (3s)`, run: () => this.afflictAll({ kind, seconds: 3, power: kind === 'burn' ? 20 : 0.5 }) })),
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
       { label: 'Level editor', run: () => window.open(`level-editor.html?map=${this.mapId}`, 'swimply-level-editor') },
     ]);
@@ -434,13 +449,19 @@ export class ArenaScene extends Phaser.Scene {
     this.hitStop = Math.max(this.hitStop, seconds);
   }
 
+  // Dev aid: an effect on every enemy out, as its kind lets through.
+  private afflictAll(effect: Effect): void {
+    for (const e of this.enemies.all(this.everyone)) this.enemies.afflict(e, [effect]);
+  }
+
   // Timo's Doomsday Scenario goes off where he landed: enemies and things that break, within reach, are hurt.
   private doomsdayBlast(x: number, y: number): void {
     const number = (ex: number, ey: number, amount: number) => {
       const s = toScreen(ex, ey);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, amount);
     };
-    this.enemies.blast(x, y, doomsday.damageRadius, doomsday.damage, doomsday.knockbackRadius, doomsday.knockback, (e) => number(e.x, e.y, doomsday.damage));
+    const stun = [{ kind: 'stun' as const, seconds: doomsday.stun, power: 0 }];
+    this.enemies.blast(x, y, doomsday.damageRadius, doomsday.damage, doomsday.knockbackRadius, doomsday.knockback, stun, (e) => number(e.x, e.y, doomsday.damage));
     const amount = doomsday.damage * doomsday.breakDamage;
     for (const o of [...this.map.objects]) {
       if (amount <= 0 || !this.breakables.canBreak(o) || Math.hypot(o.x - x, o.y - y) > doomsday.damageRadius) continue;
@@ -590,6 +611,7 @@ export class ArenaScene extends Phaser.Scene {
     }
     this.timo.update(frameDt, this.player.x, this.player.y);
     this.pedestals.update(frameDt, this.map);
+    this.statusView.update(frameDt, this.enemies.all(this.everyone));
     this.vestigesView.update(frameDt, this.player.x, this.player.y, this.run.state === 'fighting' && !this.pose.active, cam.width, cam.height);
     this.lids.update(frameDt, cam.width, cam.height);
     this.ambience.update(frameDt);

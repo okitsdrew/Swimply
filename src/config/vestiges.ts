@@ -45,7 +45,7 @@ export const doomsday = defineConfig(
     // Seconds before it can be used again.
     cooldown: 8,
     // How far from him he can land, in world units.
-    range: 420,
+    range: 600,
     // Seconds the flight there takes (0 is instant). He cannot be hurt on the way.
     travelTime: 0.12,
     // Seconds he gathers energy between landing and the blast, standing still and unhurt, and seconds he stays
@@ -59,6 +59,8 @@ export const doomsday = defineConfig(
     knockback: 700,
     // Also hurts things that break (spawners), at this fraction of the damage.
     breakDamage: 1,
+    // Seconds everything the blast hurts is stunned (bosses shrug some of it off: their ccResist).
+    stun: 1.5,
     shake: 14,
     hitStop: 0.08,
     // The aiming circle's colours: a spot he can land on, and one he cannot.
@@ -67,7 +69,7 @@ export const doomsday = defineConfig(
     aimAlpha: 0.7,
     // The blast's colour, and how big the ball grows while charging (art pixels across).
     blastColor: 0xc58cff,
-    ballSize: 40,
+    ballSize: 80,
   },
   {
     cooldown: { min: 0, max: 30, step: 0.5 },
@@ -80,6 +82,7 @@ export const doomsday = defineConfig(
     knockbackRadius: { min: 10, max: 600, step: 5 },
     knockback: { min: 0, max: 2000, step: 10 },
     breakDamage: { min: 0, max: 5, step: 0.1 },
+    stun: { min: 0, max: 10, step: 0.1 },
     shake: { min: 0, max: 40, step: 1 },
     hitStop: { min: 0, max: 0.3, step: 0.01 },
     okColor: 'color',

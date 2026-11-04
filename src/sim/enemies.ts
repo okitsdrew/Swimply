@@ -1,11 +1,14 @@
 import { Vec2 } from '../core/iso';
 import { Navigator } from './Nav';
+import { Status } from './status';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
 // One enemy of any kind, as arrows and the scene see it.
 export interface Enemy extends Target {
   hp: number;
+  // Stuns, slows, burns (sim/status.ts). While `status.held` it does nothing, and its touch and attacks do not hurt.
+  status: Status;
 }
 
 // Shapes an enemy group reports for the dev menu's hitboxes: `hurts` is what kills the hero on touch.
@@ -21,6 +24,8 @@ export interface EnemyGroup<E extends Enemy = Enemy> {
   readonly list: readonly E[];
   // Body radius, for keeping spawns clear of walls.
   readonly bodyRadius: number;
+  // How much of an effect (stun, slow, burn) its kind shrugs off, 0 to 1.
+  readonly ccResist: number;
 
   // One rising at (x, y): its spawn mark shows first.
   spawn(x: number, y: number): E;

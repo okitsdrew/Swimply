@@ -3,6 +3,7 @@ import { render } from '../config/render';
 import { WolfConfig } from '../config/werewolf';
 import { toScreen, Vec2 } from '../core/iso';
 import { Navigator } from './Nav';
+import { Status } from './status';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
@@ -34,6 +35,7 @@ export class Werewolf implements Target {
   radius: number;
   alive = false;
   hp = 0;
+  readonly status = new Status();
   state: WolfState = 'gone';
   // Seconds spent in the current state.
   time = 0;
@@ -138,6 +140,7 @@ export class Werewolf implements Target {
 
   clear(): void {
     this.alive = false;
+    this.status.clear();
     this.enter('gone');
   }
 
@@ -154,7 +157,7 @@ export class Werewolf implements Target {
 
   // True if he is walking into the circle (the player's hit circle).
   touching(x: number, y: number, r: number): boolean {
-    if (!this.alive || this.airborne) return false;
+    if (!this.alive || this.airborne || this.status.held) return false;
     const min = r + this.radius * this.cfg.contactScale;
     return (this.x - x) ** 2 + (this.y - y) ** 2 < min * min;
   }
@@ -199,6 +202,13 @@ export class Werewolf implements Target {
     if (this.state === 'gone') return;
     this.radius = this.cfg.radius * this.cfg.scale;
     this.landed = false;
+    // Stunned: everything he was doing waits, frozen where it was (in the air, a jump carries on).
+    if (this.status.held && !this.airborne && this.state !== 'rising' && this.state !== 'idle') {
+      this.flash -= dt;
+      this.sweep = null;
+      this.slammed = false;
+      return;
+    }
     this.time += dt;
     this.flash -= dt;
     this.sweep = null;
@@ -434,7 +444,7 @@ export class Werewolf implements Target {
 
   private walk(dt: number, world: CollisionWorld, nav: Navigator, target: Vec2): void {
     nav.direction(this.x, this.y, this.radius, way);
-    let speed = this.cfg.speed;
+    let speed = this.cfg.speed * this.status.speedMult;
     if (this.cfg.uniformScreenSpeed) {
       toScreen(way.x, way.y, off);
       speed *= (render.isoScale * Math.SQRT2) / (Math.hypot(off.x, off.y) || 1);

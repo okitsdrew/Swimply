@@ -24,6 +24,10 @@ export class Werewolves implements EnemyGroup<Werewolf> {
     return this.cfg.radius * this.cfg.scale;
   }
 
+  get ccResist(): number {
+    return this.cfg.ccResist;
+  }
+
   private add(): Werewolf {
     const w = new Werewolf(this.cfg);
     w.onRisen = () => this.onRisen(w);
@@ -87,6 +91,7 @@ export class Werewolves implements EnemyGroup<Werewolf> {
   strikes(x: number, y: number, r: number, safe: boolean): boolean {
     let hit = false;
     for (const w of this.list) {
+      if (w.status.held) continue;
       const caught = w.inDash(x, y, r) || (w.slammed && w.inSlam(x, y, r)) || (w.landed && w.inLanding(x, y, r)) || (w.state === 'swipe' && w.inSwipe(x, y, r));
       if (!caught || (safe && !w.cfg.slamPiercesInvuln)) continue;
       w.struck = true;

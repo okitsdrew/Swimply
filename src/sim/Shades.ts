@@ -5,11 +5,13 @@ import { Circle } from '../core/geometry';
 import { toScreen } from '../core/iso';
 import { DebugDraw, EnemyGroup } from './enemies';
 import { Navigator } from './Nav';
+import { Status } from './status';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
 export interface Shade extends Target {
   hp: number;
+  status: Status;
   vx: number;
   vy: number;
   // Knockback velocity, kept apart from walking so it fades on its own.
@@ -49,9 +51,13 @@ export class Shades implements EnemyGroup<Shade> {
     return shade.radius;
   }
 
+  get ccResist(): number {
+    return shade.ccResist;
+  }
+
   spawn(x: number, y: number, hp = shade.hp): Shade {
     const s: Shade = {
-      id: this.nextId++, x, y, radius: shade.radius, alive: false, hp, vx: 0, vy: 0, kx: 0, ky: 0,
+      id: this.nextId++, x, y, radius: shade.radius, alive: false, hp, status: new Status(), vx: 0, vy: 0, kx: 0, ky: 0,
       rising: Math.max(shade.spawnTell, 1e-4), flash: 0, phase: Math.random() * Math.PI * 2, avoid: null, side: 1,
     };
     this.list.push(s);
@@ -118,7 +124,7 @@ export class Shades implements EnemyGroup<Shade> {
   // True if a walking Shade overlaps the circle (the player's forgiving hit circle).
   touching(x: number, y: number, r: number): boolean {
     for (const s of this.list) {
-      if (!s.alive) continue;
+      if (!s.alive || s.status.held) continue;
       const min = r + s.radius * shade.contactScale;
       if ((s.x - x) ** 2 + (s.y - y) ** 2 < min * min) return true;
     }
@@ -143,9 +149,11 @@ export class Shades implements EnemyGroup<Shade> {
         continue;
       }
 
-      let dx: number;
-      let dy: number;
-      if (shade.throughWalls) {
+      let dx = 0;
+      let dy = 0;
+      if (s.status.held) {
+        // Stunned: no walking, only knockback and being pushed.
+      } else if (shade.throughWalls) {
         const gx = goal.x - s.x;
         const gy = goal.y - s.y;
         const d = Math.hypot(gx, gy) || 1;
@@ -156,7 +164,7 @@ export class Shades implements EnemyGroup<Shade> {
         [dx, dy] = this.steer(s, way.x, way.y, dist, world);
       }
 
-      let speed = shade.speed;
+      let speed = s.status.held ? 0 : shade.speed * s.status.speedMult;
       // The iso projection squashes vertical screen travel, so even out on-screen speed the way the player's is.
       if (shade.uniformScreenSpeed) {
         toScreen(dx, dy, off);
