@@ -105,7 +105,7 @@ export class ArenaScene extends Phaser.Scene {
   private timo!: TimoView;
   private lids!: Eyelids;
   private pose!: HeroPose;
-  // Whether the hero's own look was hidden for a pose last frame.
+  // Whether the hero's own look was hidden (a pose, a Vestige's flight) last frame.
   private posed = false;
   private ambience!: AmbienceView;
   private sfx!: SoundFx;
@@ -297,8 +297,8 @@ export class ArenaScene extends Phaser.Scene {
       this.story.notify('teleport');
     };
     this.player.onTeleportArrive = (x, y) => this.view.onTeleportArrive(x, y);
-    this.player.onBlink = (x0, y0, x1, y1) => {
-      this.view.onBlink(x0, y0, x1, y1);
+    this.player.onBlink = (x0, y0, x1, y1, t) => {
+      this.view.onBlink(x0, y0, x1, y1, t);
       this.sfx.play('teleport');
     };
     this.arrows.onHit = (target, damage, ax, ay, dx, dy) => {
@@ -600,8 +600,9 @@ export class ArenaScene extends Phaser.Scene {
     this.breakablesView.update(frameDt);
     // A story pose (lying, getting up) stands in for his normal look.
     this.pose.update(frameDt, this.player.x, this.player.y);
-    if (this.pose.active !== this.posed && this.run.state === 'fighting') this.view.setVisible(!this.pose.active);
-    this.posed = this.pose.active;
+    const hidden = this.pose.active || this.player.blinking;
+    if (hidden !== this.posed && this.run.state === 'fighting') this.view.setVisible(!hidden);
+    this.posed = hidden;
     if (this.walkTo) {
       // Timo leads the way on a story walk.
       const w = this.walkTo;
@@ -612,7 +613,7 @@ export class ArenaScene extends Phaser.Scene {
     this.timo.update(frameDt, this.player.x, this.player.y);
     this.pedestals.update(frameDt, this.map);
     this.statusView.update(frameDt, this.enemies.all(this.everyone));
-    this.vestigesView.update(frameDt, this.player.x, this.player.y, this.run.state === 'fighting' && !this.pose.active, cam.width, cam.height);
+    this.vestigesView.update(frameDt, this.player.x, this.player.y, this.run.state === 'fighting' && !hidden, cam.width, cam.height);
     this.lids.update(frameDt, cam.width, cam.height);
     this.ambience.update(frameDt);
     this.loops.update(this.player.x, this.player.y);

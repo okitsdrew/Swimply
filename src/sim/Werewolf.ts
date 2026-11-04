@@ -201,6 +201,20 @@ export class Werewolf implements Target {
     return (x - this.jx) ** 2 + (y - this.jy) ** 2 < min * min;
   }
 
+  // Stunned: the attack he was making is dropped, warning and all, and he starts over from walking with his attack
+  // cooldown. Not in the air: a jump always lands.
+  interrupt(): void {
+    const attacking = ['windup', 'dash', 'quickDash', 'crouch', 'swipeWindup', 'swipe', 'slam', 'land', 'recover'];
+    if (!attacking.includes(this.state)) return;
+    this.reach = 0;
+    this.sweep = null;
+    this.slammed = false;
+    this.dashPlanned = false;
+    this.windupScale = 1;
+    this.cooldown = this.cfg.attackCooldown;
+    this.enter('walk');
+  }
+
   // Thrown away from (fromX, fromY) by a blast, as much as he lets himself be.
   push(fromX: number, fromY: number, amount: number): void {
     if (this.airborne) return;

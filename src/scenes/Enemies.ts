@@ -182,7 +182,7 @@ export class Enemies {
   afflict(e: Enemy, effects: readonly Effect[]): void {
     for (const k of this.kinds.values()) {
       if (!k.group.list.includes(e)) continue;
-      for (const fx of effects) e.status.apply(fx, k.group.ccResist);
+      this.applyTo(k, e, effects);
       return;
     }
   }
@@ -214,6 +214,14 @@ export class Enemies {
     this.owners.get(t)?.group.damage(t as Enemy, amount, fromX, fromY);
   }
 
+  // Effects on one of a kind, shortened by its ccResist. A stun that takes also stops the attack it was making.
+  private applyTo(k: AnyKind, e: Enemy, effects: readonly Effect[]): void {
+    for (const fx of effects) {
+      e.status.apply(fx, k.group.ccResist);
+      if (fx.kind === 'stun' && e.status.stun > 0) k.group.interrupt?.(e);
+    }
+  }
+
   // A blast at (x, y): everyone within `radius` takes `amount` (each kind's own hit and knockback) and `effects`, and
   // everyone within `pushRadius` (or `radius`, if bigger) is thrown outward by `push`. Calls `hit` for each one
   // damaged, for numbers and sound.
@@ -224,7 +232,7 @@ export class Enemies {
         const d = Math.hypot(e.x - x, e.y - y) - e.radius;
         if (d < Math.max(pushRadius, radius)) k.group.push?.(e, x, y, push);
         if (d < radius) {
-          for (const fx of effects) e.status.apply(fx, k.group.ccResist);
+          this.applyTo(k, e, effects);
           k.group.damage(e, amount, x, y);
           hit(e);
         }

@@ -77,7 +77,7 @@ export class Player {
   onTeleport: (fromX: number, fromY: number, toX: number, toY: number, travelTime: number) => void = () => {};
   onTeleportArrive: (x: number, y: number) => void = () => {};
   // A Vestige's flight (blink) begins: it has its own look, not the teleport's tear.
-  onBlink: (fromX: number, fromY: number, toX: number, toY: number) => void = () => {};
+  onBlink: (fromX: number, fromY: number, toX: number, toY: number, travelTime: number) => void = () => {};
 
   // What his body and his teleport cannot pass through.
   constructor(private world: CollisionWorld) {}
@@ -90,6 +90,11 @@ export class Player {
 
   get dashing(): boolean {
     return this.dashTime > 0;
+  }
+
+  // In a Vestige's flight: gone from sight until he lands.
+  get blinking(): boolean {
+    return this.phasing;
   }
 
   get teleporting(): boolean {
@@ -285,7 +290,7 @@ export class Player {
     this.tpEndVy = 0;
     this.dashTime = 0;
     this.lockTime = 0;
-    this.onBlink(fromX, fromY, x, y);
+    this.onBlink(fromX, fromY, x, y, travel);
     if (travel > 1e-3) {
       this.teleportTime = travel;
       this.tpVx = (x - fromX) / travel;

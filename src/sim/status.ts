@@ -1,8 +1,8 @@
 // What a Vestige (or anything else) can do to an enemy besides hurting it. Every enemy carries one Status; the scene
 // applies effects and ticks them, and each kind of enemy only asks `held` (stand still, do nothing) and `speedMult`.
 // A new effect is a new kind here, not new code in every enemy.
-//   stun: held for `seconds`
-//   freeze: held for `seconds`, and drawn frozen
+//   stun: held for `seconds`, and whatever attack it was making is cancelled (the scene calls the kind's interrupt)
+//   freeze: held for `seconds`, and drawn frozen; an attack it was making waits and carries on after
 //   slow: moves at (1 - power) of its speed for `seconds`
 //   burn: takes `power` damage a second for `seconds`
 export type EffectKind = 'stun' | 'freeze' | 'slow' | 'burn';

@@ -36,6 +36,8 @@ export interface EnemyGroup<E extends Enemy = Enemy> {
   // Still standing where it was placed, not yet woken.
   waiting(e: E): boolean;
   damage(e: E, amount: number, fromX: number, fromY: number): void;
+  // A stun landed: drop the attack it was making (its warning too). Kinds with no attacks leave this out.
+  interrupt?(e: E): void;
   // Thrown away from (fromX, fromY), as hard as `amount` (a blast). A kind too heavy to move leaves this out.
   push?(e: E, fromX: number, fromY: number, amount: number): void;
   kill(e: E): void;

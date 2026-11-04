@@ -46,8 +46,12 @@ export const doomsday = defineConfig(
     cooldown: 8,
     // How far from him he can land, in world units.
     range: 600,
-    // Seconds the flight there takes (0 is instant). He cannot be hurt on the way.
-    travelTime: 0.12,
+    // Seconds he is gone between the portal closing on him and opening where he lands (0 is instant). He cannot be
+    // hurt meanwhile.
+    travelTime: 0.2,
+    // The portals' size (world units) and seconds they take to open and shut.
+    portalSize: 40,
+    portalTime: 0.3,
     // Seconds he gathers energy between landing and the blast, standing still and unhurt, and seconds he stays
     // unhurt after it.
     chargeTime: 1,
@@ -68,14 +72,19 @@ export const doomsday = defineConfig(
     okColor: 0xc58cff,
     badColor: 0xff2424,
     aimAlpha: 0.7,
-    // The blast's colour, and how big the ball grows while charging (art pixels across).
+    // The blast's colour, how big the ball grows while charging (art pixels across), how high over him it grows (art
+    // pixels), and the last seconds of the charge, in which it drops to the ground and bursts.
     blastColor: 0xc58cff,
     ballSize: 80,
+    ballHeight: 30,
+    dropTime: 0.2,
   },
   {
     cooldown: { min: 0, max: 30, step: 0.5 },
     range: { min: 50, max: 1000, step: 10 },
     travelTime: { min: 0, max: 1, step: 0.01 },
+    portalSize: { min: 5, max: 200, step: 5 },
+    portalTime: { min: 0.05, max: 2, step: 0.05 },
     chargeTime: { min: 0, max: 3, step: 0.05 },
     safeAfter: { min: 0, max: 2, step: 0.05 },
     damage: { min: 0, max: 1000, step: 5 },
@@ -91,5 +100,7 @@ export const doomsday = defineConfig(
     aimAlpha: { min: 0, max: 1, step: 0.05 },
     blastColor: 'color',
     ballSize: { min: 4, max: 200, step: 2 },
+    ballHeight: { min: 0, max: 120, step: 1 },
+    dropTime: { min: 0, max: 1, step: 0.05 },
   },
 );

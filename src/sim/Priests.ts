@@ -138,6 +138,13 @@ export class Priests implements EnemyGroup<Priest> {
     if (p.hp <= 0) this.kill(p);
   }
 
+  // Stunned mid-cast: the cast is dropped, and the next waits its cooldown.
+  interrupt(p: Priest): void {
+    if (p.state !== 'windup' && p.state !== 'cast') return;
+    p.cooldown = priest.castCooldown;
+    this.enter(p, 'walk');
+  }
+
   kill(p: Priest): void {
     p.alive = false;
     this.list.splice(this.list.indexOf(p), 1);

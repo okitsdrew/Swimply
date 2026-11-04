@@ -26,7 +26,6 @@ interface Slot {
 export class VestigesView {
   private emblems: Phaser.GameObjects.Image[] = [];
   private aimInner: Phaser.GameObjects.Image;
-  private rangeRing: Phaser.GameObjects.Image;
   private slots: Slot[] = [];
   private age = 0;
   // Doomsday's ball of energy, gathering over him while it charges: a coloured glow round a white core.
@@ -36,7 +35,6 @@ export class VestigesView {
 
   constructor(private scene: Phaser.Scene, private caster: VestigeCaster, private fx: Fx) {
     const ring = () => scene.add.image(0, 0, Tex.doorRing).setDepth(-4e7).setVisible(false);
-    this.rangeRing = ring();
     this.aimInner = ring();
     this.ball = scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
     this.core = scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffffff).setVisible(false);
@@ -93,14 +91,17 @@ export class VestigesView {
       img.setTexture(vestigeTexture(id)).setScale(px * cfg.emblemScale).setPosition(s.x, s.y - cfg.emblemHeight * px + bob).setDepth(s.y);
     });
 
-    // While Doomsday charges: the ball grows over him, pulsing faster as it fills, and sparks are drawn in to it.
+    // While Doomsday charges: the ball grows over him, pulsing faster as it fills, with sparks drawn in to it, then
+    // drops to the ground for the blast.
     const charging = this.caster.charging;
     this.ball.setVisible(charging);
     this.core.setVisible(charging);
     if (charging) {
       const k = this.caster.chargeProgress;
       const s = toScreen(heroX, heroY);
-      const y = s.y - 12 * px;
+      const left = (1 - k) * doomsday.chargeTime;
+      const fall = doomsday.dropTime > 0 ? Math.max(0, 1 - left / doomsday.dropTime) : 0;
+      const y = s.y - doomsday.ballHeight * px * (1 - fall * fall);
       const pulse = 1 + 0.12 * Math.sin(this.age * (10 + k * 20));
       const size = (doomsday.ballSize * px * (0.2 + 0.8 * k) * pulse) / 32;
       this.ball.setPosition(s.x, y).setDepth(s.y + 2).setScale(size * 1.6).setTint(doomsday.blastColor).setAlpha(0.9);
@@ -115,12 +116,11 @@ export class VestigesView {
       }
     }
 
-    // While aiming: his range, and the blast where it would land, red where he cannot.
+    // While aiming: the blast where it would land, red where he cannot.
     const c = this.caster;
     const aiming = c.aiming >= 0;
-    for (const img of [this.rangeRing, this.aimInner]) img.setVisible(aiming);
+    this.aimInner.setVisible(aiming);
     if (aiming) {
-      const hs = toScreen(heroX, heroY);
       const ts = toScreen(c.target.x, c.target.y);
       const tint = c.targetOk ? doomsday.okColor : doomsday.badColor;
       const pulse = 0.85 + 0.15 * Math.sin(this.age * 8);
@@ -128,8 +128,6 @@ export class VestigesView {
         const half = ellipseHalfSize(r);
         img.setDisplaySize(half.x * 2, half.y * 2);
       };
-      size(this.rangeRing, doomsday.range);
-      this.rangeRing.setPosition(hs.x, hs.y).setTint(doomsday.okColor).setAlpha(doomsday.aimAlpha * 0.15);
       size(this.aimInner, doomsday.damageRadius);
       this.aimInner.setPosition(ts.x, ts.y).setTint(tint).setAlpha(doomsday.aimAlpha * pulse);
     }

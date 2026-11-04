@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { dash, player as cfgPlayer, teleport } from '../config/character';
 import { camera, cloak, feel, heroLook } from '../config/feel';
 import { render } from '../config/render';
+import { doomsday } from '../config/vestiges';
 import { ellipseHalfSize, toScreen, toWorld, Vec2 } from '../core/iso';
 import { Player } from '../sim/Player';
 import { ellipseArc, lerp, solveArm } from './armMath';
@@ -47,7 +48,7 @@ export class PlayerView {
   // Called on each footstep, so sound can be attached later without the view knowing about audio.
   onStep: () => void = () => {};
 
-  constructor(scene: Phaser.Scene, private player: Player, private fx: Fx) {
+  constructor(private scene: Phaser.Scene, private player: Player, private fx: Fx) {
     this.shadow = scene.add.image(0, 0, Tex.shadow);
     this.body = scene.add.image(0, 0, Tex.hero).setOrigin(0.5, 1);
     this.cloak = scene.add.graphics();
@@ -170,13 +171,23 @@ export class PlayerView {
     this.fx.addShake(camera.shakeOnCast * 0.5);
   }
 
-  // A Vestige's flight (Doomsday): he vanishes in a puff and reappears in another, with no tear between.
-  onBlink(fromX: number, fromY: number, toX: number, toY: number): void {
+  // A Vestige's flight (Doomsday): a purple portal opens under him and shuts as he drops through, and another opens
+  // where he lands, with no tear between. Placeholder: the door ring texture, tinted.
+  onBlink(fromX: number, fromY: number, toX: number, toY: number, travel: number): void {
+    this.portal(fromX, fromY, 0);
+    this.portal(toX, toY, travel);
     const a = toScreen(fromX, fromY);
-    const b = toScreen(toX, toY);
-    const lift = 10 * this.px;
-    this.voidPuff(a.x, a.y - lift);
-    this.voidPuff(b.x, b.y - lift);
+    this.voidPuff(a.x, a.y - 4 * this.px);
+  }
+
+  private portal(x: number, y: number, delay: number): void {
+    const s = toScreen(x, y);
+    const half = ellipseHalfSize(doomsday.portalSize);
+    const img = this.scene.add.image(s.x, s.y, Tex.doorRing).setDepth(s.y - 1).setTint(0x9a50ff).setDisplaySize(0, 0).setAlpha(0.95);
+    this.scene.tweens.add({
+      targets: img, displayWidth: half.x * 2, displayHeight: half.y * 2, duration: (doomsday.portalTime * 1000) / 2, delay: delay * 1000,
+      ease: 'Back.easeOut', yoyo: true, onComplete: () => img.destroy(),
+    });
   }
 
   onTeleportArrive(x: number, y: number): void {
