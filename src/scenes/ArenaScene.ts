@@ -199,7 +199,7 @@ export class ArenaScene extends Phaser.Scene {
     this.pickups = new Pickups();
     this.pickupsView = new PickupsView(this, this.pickups);
     this.sfx = new SoundFx(this);
-    this.caster = new VestigeCaster(this.world, this.player);
+    this.caster = new VestigeCaster(this.world, this.player, (x, y) => this.nav.reachable(x, y));
     this.vestigesView = new VestigesView(this, this.caster, this.fx);
     this.pedestals = new PedestalsView(this);
     this.caster.onDeny = () => this.sfx.play('deny');
@@ -637,6 +637,8 @@ export class ArenaScene extends Phaser.Scene {
     this.caster.update(dt, this.input2, this.aim, canAct);
     this.player.fireBlocked = this.story.talking || this.caster.aiming >= 0 || ((aimed || this.player.fireBlocked) && this.input2.isDown('fire'));
     if (this.walkTo && r.state === 'fighting') this.stepWalk(dt);
+    // Charging a Vestige, he holds still.
+    else if (this.caster.charging) this.player.stop();
     else if (r.state === 'fighting' && !this.travel.leaving && this.control) {
       this.player.update(dt, this.input2, this.aim);
       if (Math.hypot(this.input2.move.x, this.input2.move.y) > 0.1) this.story.notify('move');

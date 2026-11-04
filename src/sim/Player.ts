@@ -62,6 +62,10 @@ export class Player {
   readyTimer = 0;
   // Grace period after a dash or teleport ends.
   graceTime = 0;
+  // Seconds he cannot be hurt for some other reason (a Vestige charging).
+  shieldTime = 0;
+  // Flying through walls (a Vestige's teleport): nothing pushes him out of solid things on the way.
+  private phasing = false;
   fireBlocked = false;
   shootSlowTimer = 0;
   private lastMoveX = 0;
@@ -99,9 +103,9 @@ export class Player {
     return this.dashing || this.teleporting;
   }
 
-  // Cannot be killed: mid-dash or teleport, or in the short grace afterwards.
+  // Cannot be killed: mid-dash or teleport, in the short grace afterwards, or shielded.
   get safe(): boolean {
-    return this.invincible || this.graceTime > 0;
+    return this.invincible || this.graceTime > 0 || this.shieldTime > 0;
   }
 
   // 0 right after a shot, rising to 1 as the next shot is about to release.
@@ -138,6 +142,7 @@ export class Player {
     this.dashBuffer -= dt;
     this.armsUpTimer = Math.max(0, this.armsUpTimer - dt);
     this.graceTime = Math.max(0, this.graceTime - dt);
+    this.shieldTime = Math.max(0, this.shieldTime - dt);
 
     this.teleportCooldown = Math.max(0, this.teleportCooldown - dt);
     if (input.justPressed('teleport') && this.teleportCooldown <= 0 && stats.hasTeleport()) {
@@ -155,7 +160,7 @@ export class Player {
     this.body.x = this.x;
     this.body.y = this.y;
     this.body.radius = cfgPlayer.bodyRadius;
-    this.world.resolve(this.body, this.teleporting);
+    if (!this.phasing) this.world.resolve(this.body, this.teleporting);
     this.x = this.body.x;
     this.y = this.body.y;
     this.updateFire(dt, input);
@@ -268,9 +273,10 @@ export class Player {
     this.vy = 0;
   }
 
-  // A flight straight to (x, y) over `travel` seconds, with the teleport's look, for a Vestige. He cannot be hurt on
-  // the way, and lands standing still. The caller has checked he can stand there.
+  // A flight straight to (x, y) over `travel` seconds, with the teleport's look, for a Vestige: through anything in
+  // the way. He cannot be hurt on the way, and lands standing still. The caller has checked he can stand there.
   blink(x: number, y: number, travel: number): void {
+    this.phasing = true;
     const fromX = this.x;
     const fromY = this.y;
     this.tpEndVx = 0;
@@ -315,6 +321,7 @@ export class Player {
 
   // After a teleport (or dash) input is locked briefly and he keeps walking the way he was going.
   private endTeleport(): void {
+    this.phasing = false;
     this.graceTime = cfgPlayer.invulnAfter;
     this.vx = this.tpEndVx;
     this.vy = this.tpEndVy;

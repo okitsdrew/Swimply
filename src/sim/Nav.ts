@@ -98,6 +98,27 @@ export class FlowField implements Navigator {
     return d;
   }
 
+  // True if a walker could get from the goal (the player) to (x, y) on foot right now. A spot right against
+  // something solid sits in a closed cell, so it counts if a cell beside it can be reached.
+  reachable(x: number, y: number): boolean {
+    if (!this.hasBlocks) return true;
+    const goal = this.tileOf(this.gx, this.gy);
+    if (goal !== this.goalTile) {
+      this.goalTile = goal;
+      this.build(goal);
+    }
+    const tile = this.tileOf(x, y);
+    if (this.dist[tile] < Infinity) return true;
+    const c = tile % this.cols;
+    const r = Math.floor(tile / this.cols);
+    for (let i = 0; i < 8; i++) {
+      const nc = c + NX[i];
+      const nr = r + NY[i];
+      if (nc >= 0 && nr >= 0 && nc < this.cols && nr < this.rows && this.dist[nr * this.cols + nc] < Infinity) return true;
+    }
+    return false;
+  }
+
   private tileOf(x: number, y: number): number {
     const c = Math.max(0, Math.min(this.cols - 1, Math.floor(x / this.t)));
     const r = Math.max(0, Math.min(this.rows - 1, Math.floor(y / this.t)));

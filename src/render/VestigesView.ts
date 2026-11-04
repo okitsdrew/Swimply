@@ -30,12 +30,18 @@ export class VestigesView {
   private rangeRing: Phaser.GameObjects.Image;
   private slots: Slot[] = [];
   private age = 0;
+  // Doomsday's ball of energy, gathering over him while it charges: a coloured glow round a white core.
+  private ball: Phaser.GameObjects.Image;
+  private core: Phaser.GameObjects.Image;
+  private sparkTimer = 0;
 
   constructor(private scene: Phaser.Scene, private caster: VestigeCaster, private fx: Fx) {
     const ring = () => scene.add.image(0, 0, Tex.doorRing).setDepth(-4e7).setVisible(false);
     this.rangeRing = ring();
     this.aimOuter = ring();
     this.aimInner = ring();
+    this.ball = scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+    this.core = scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffffff).setVisible(false);
     const fixed = <T extends Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.Components.Depth>(o: T) => o.setScrollFactor(0).setDepth(2e7);
     for (let i = 0; i < VESTIGE_SLOTS; i++) {
       this.slots.push({
@@ -88,6 +94,28 @@ export class VestigesView {
       const bob = Math.sin(this.age * 3 + i * 2) * cfg.emblemBob * px;
       img.setTexture(vestigeTexture(id)).setScale(px * cfg.emblemScale).setPosition(s.x, s.y - cfg.emblemHeight * px + bob).setDepth(s.y);
     });
+
+    // While Doomsday charges: the ball grows over him, pulsing faster as it fills, and sparks are drawn in to it.
+    const charging = this.caster.charging;
+    this.ball.setVisible(charging);
+    this.core.setVisible(charging);
+    if (charging) {
+      const k = this.caster.chargeProgress;
+      const s = toScreen(heroX, heroY);
+      const y = s.y - 12 * px;
+      const pulse = 1 + 0.12 * Math.sin(this.age * (10 + k * 20));
+      const size = (doomsday.ballSize * px * (0.2 + 0.8 * k) * pulse) / 32;
+      this.ball.setPosition(s.x, y).setDepth(s.y + 2).setScale(size * 1.6).setTint(doomsday.blastColor).setAlpha(0.9);
+      this.core.setPosition(s.x, y).setDepth(s.y + 3).setScale(size * 0.6).setAlpha(0.6 + 0.4 * k);
+      this.sparkTimer -= dt;
+      if (this.sparkTimer <= 0) {
+        this.sparkTimer = 0.03;
+        const a = Math.random() * Math.PI * 2;
+        const r = (doomsday.ballSize * 1.5 + 20) * px;
+        const life = 0.25;
+        this.fx.particle({ x: s.x + Math.cos(a) * r, y: y + Math.sin(a) * r * 0.6, life, from: 0.35, to: 0.1, tint: Math.random() < 0.5 ? doomsday.blastColor : 0xffffff, vx: (-Math.cos(a) * r) / life, vy: (-Math.sin(a) * r * 0.6) / life, depth: s.y + 4 });
+      }
+    }
 
     // While aiming: his range, the blast and the knockback where it would land, red where he cannot.
     const c = this.caster;

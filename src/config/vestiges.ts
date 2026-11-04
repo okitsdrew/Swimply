@@ -35,8 +35,9 @@ export const vestiges = defineConfig(
   },
 );
 
-// Timo's Doomsday Scenario: he picks a spot, flashes there and explodes. Damage in a radius, knockback in a bigger
-// one. It cannot land on water, void or roof tiles, or past anything solid, so it never breaks out of a map.
+// Timo's Doomsday Scenario: he picks a spot, flashes there through anything in the way, gathers a ball of energy
+// while enemies close in (he cannot be hurt), and explodes. Damage in a radius, knockback in a bigger one. It only
+// lands where he could have walked to, so it never skips a locked gate or breaks out of a map.
 export const doomsday = defineConfig(
   'doomsday',
   'vestiges',
@@ -47,8 +48,10 @@ export const doomsday = defineConfig(
     range: 420,
     // Seconds the flight there takes (0 is instant). He cannot be hurt on the way.
     travelTime: 0.12,
-    // Seconds between landing and the blast.
-    blastDelay: 0.05,
+    // Seconds he gathers energy between landing and the blast, standing still and unhurt, and seconds he stays
+    // unhurt after it.
+    chargeTime: 1,
+    safeAfter: 0.3,
     damage: 150,
     damageRadius: 130,
     // Everything this close is thrown outward, this hard (werewolves are too heavy to move).
@@ -62,14 +65,16 @@ export const doomsday = defineConfig(
     okColor: 0xc58cff,
     badColor: 0xff2424,
     aimAlpha: 0.7,
-    // The blast's colour.
+    // The blast's colour, and how big the ball grows while charging (art pixels across).
     blastColor: 0xc58cff,
+    ballSize: 40,
   },
   {
     cooldown: { min: 0, max: 30, step: 0.5 },
     range: { min: 50, max: 1000, step: 10 },
     travelTime: { min: 0, max: 1, step: 0.01 },
-    blastDelay: { min: 0, max: 1, step: 0.01 },
+    chargeTime: { min: 0, max: 3, step: 0.05 },
+    safeAfter: { min: 0, max: 2, step: 0.05 },
     damage: { min: 0, max: 1000, step: 5 },
     damageRadius: { min: 10, max: 400, step: 5 },
     knockbackRadius: { min: 10, max: 600, step: 5 },
@@ -81,5 +86,6 @@ export const doomsday = defineConfig(
     badColor: 'color',
     aimAlpha: { min: 0, max: 1, step: 0.05 },
     blastColor: 'color',
+    ballSize: { min: 4, max: 200, step: 2 },
   },
 );

@@ -10,13 +10,15 @@ const SLOT_KEYS: Action[] = ['skill1', 'skill2', 'skill3'];
 
 // Using Vestiges. Pressing a slot's key starts aiming it: a circle on the ground follows the mouse, and a click casts
 // it there (right click or the same key again puts it away). What each Vestige does when cast is here, by its id.
-// Only Timo's Doomsday Scenario exists so far: he flies to the spot and explodes; the scene deals the blast's damage.
+// Only Timo's Doomsday Scenario exists so far: he flies to the spot, charges, and explodes; the scene deals the
+// blast's damage.
 export class VestigeCaster {
   // The slot being aimed, or -1.
   aiming = -1;
   // Where the aimed Vestige would land, and whether it can.
   readonly target: Vec2 = { x: 0, y: 0 };
   targetOk = false;
+  private spot = { x: 0, y: 0, radius: 0 };
   // Seconds left before each Vestige can be used again, by id.
   private cooldowns = new Map<string, number>();
   // Seconds until a Doomsday blast once he has landed, or -1.
@@ -27,7 +29,18 @@ export class VestigeCaster {
   // A key or click that cannot do anything now (an empty slot, cooling down, a spot he cannot land on).
   onDeny: () => void = () => {};
 
-  constructor(private world: CollisionWorld, private player: Player) {}
+  // `reachable` says whether he could walk to a spot from where he stands.
+  constructor(private world: CollisionWorld, private player: Player, private reachable: (x: number, y: number) => boolean) {}
+
+  // Charging a Doomsday blast: he holds still and cannot be hurt.
+  get charging(): boolean {
+    return this.blastIn >= 0 && !this.player.teleporting;
+  }
+
+  // How far the charge has come, 0 to 1.
+  get chargeProgress(): number {
+    return doomsday.chargeTime > 0 ? Math.min(1, 1 - this.blastIn / doomsday.chargeTime) : 1;
+  }
 
   reset(): void {
     this.aiming = -1;
@@ -49,10 +62,12 @@ export class VestigeCaster {
   // cannot use them (dialogue, no control, dead): aiming stops, cooldowns still run.
   update(dt: number, input: Input, aim: Vec2 | null, canAct: boolean): void {
     for (const [id, t] of this.cooldowns) this.cooldowns.set(id, Math.max(0, t - dt));
-    if (this.blastIn >= 0 && !this.player.teleporting) {
+    if (this.charging) {
       this.blastIn -= dt;
+      this.player.shieldTime = Math.max(this.player.shieldTime, this.blastIn + doomsday.safeAfter);
       if (this.blastIn <= 0) {
         this.blastIn = -1;
+        this.player.shieldTime = doomsday.safeAfter;
         this.onBlast(this.player.x, this.player.y);
       }
     }
@@ -83,8 +98,8 @@ export class VestigeCaster {
     }
   }
 
-  // The spot under the mouse, brought within range. He must be able to stand there, off water, void and roofs, with
-  // nothing solid between (he flies over water and void, like a teleport).
+  // The spot under the mouse, brought within range. He must be able to stand there (off water, void, roofs and
+  // anything solid) and be able to walk there from where he is; he flies straight through whatever is between.
   private aimAt(aim: Vec2 | null): void {
     const p = this.player;
     let dx = (aim?.x ?? p.x + p.aimX) - p.x;
@@ -101,7 +116,12 @@ export class VestigeCaster {
     const r = cfgPlayer.bodyRadius;
     const w = this.world;
     const inside = x > r && y > r && x < w.width - r && y < w.height - r;
-    this.targetOk = inside && !w.onBlockingFloor(x, y, r) && !w.onRoof(x, y) && w.sweep(p.x, p.y, dx, dy, r, true) >= 1;
+    this.spot.x = x;
+    this.spot.y = y;
+    this.spot.radius = r;
+    w.resolve(this.spot);
+    const clear = Math.hypot(this.spot.x - x, this.spot.y - y) < 1;
+    this.targetOk = inside && clear && !w.onBlockingFloor(x, y, r) && !w.onRoof(x, y) && this.reachable(x, y);
   }
 
   private cast(id: string): void {
@@ -109,7 +129,7 @@ export class VestigeCaster {
     if (id === 'doomsday') {
       this.cooldowns.set(id, doomsday.cooldown);
       this.player.blink(this.target.x, this.target.y, doomsday.travelTime);
-      this.blastIn = doomsday.blastDelay;
+      this.blastIn = doomsday.chargeTime;
     }
   }
 }
