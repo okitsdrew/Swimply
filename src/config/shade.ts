@@ -5,7 +5,7 @@ export const shade = defineConfig(
   'shade',
   'enemies',
   {
-    hp: 100,
+    hp: 10,
     speed: 120,
     // Keeps on-screen speed equal in every direction, as the player's does.
     uniformScreenSpeed: true,
