@@ -5,8 +5,11 @@ import { GhostText } from '../render/GhostText';
 
 // What a script can do to the scene beyond talking. The scene provides it.
 export interface Stage {
-  // A line starts (speaker id and face) or the box closes (null).
+  // A line starts (speaker id and face), or the script ends (null).
   onLine(speaker: string | null, face: string): void;
+  // A flag step turned a save flag on.
+  flag(flag: string): void;
+  sound(id: string): void;
   setControl(on: boolean): void;
   eyes(open: boolean, seconds: number): void;
   pose(pose: 'asleep' | 'stand', seconds: number, frames: PoseFrame[]): void;
@@ -86,12 +89,10 @@ export class StoryRunner {
     this.time = 0;
     this.events.clear();
     const step = s.steps[this.index];
-    if (step?.kind !== 'say') {
-      this.box.hide();
-      this.stage.onLine(null, '');
-    }
+    if (step?.kind !== 'say') this.box.hide();
     if (!step) {
       this.script = null;
+      this.stage.onLine(null, '');
       return;
     }
     if (step.kind === 'say') {
@@ -101,6 +102,7 @@ export class StoryRunner {
     else if (step.kind === 'flag') {
       save.flags[step.flag] = true;
       writeSave();
+      this.stage.flag(step.flag);
     } else if (step.kind === 'eyes') this.stage.eyes(step.open, step.seconds);
     else if (step.kind === 'control') this.stage.setControl(step.on);
     else if (step.kind === 'pose') this.stage.pose(step.pose, step.seconds, step.frames);
@@ -109,6 +111,7 @@ export class StoryRunner {
     else if (step.kind === 'camera') this.stage.camera(step.target, step.seconds);
     else if (step.kind === 'walk') this.stage.walk(step.target);
     else if (step.kind === 'vestige') this.stage.vestige(step.id);
+    else if (step.kind === 'sound') this.stage.sound(step.id);
     // Steps that finish at once move on in the next update.
   }
 }

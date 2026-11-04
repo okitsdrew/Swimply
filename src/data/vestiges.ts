@@ -1,6 +1,6 @@
 import { save, writeSave } from '../core/save';
 import raw from './vestiges.json';
-import { color, list, num, obj, Problems, Registry, report, str } from './registry';
+import { bool, color, list, num, obj, Problems, Registry, report, str } from './registry';
 
 // Vestiges: the skills he reclaims. Which ones exist lives in vestiges.json; which he holds, and what sits in each
 // of his slots, lives in the save. What each one does is its own code (sim/Vestiges.ts), found by its id.
@@ -12,6 +12,8 @@ export interface Vestige {
   color: number;
   // Which of the throne room's pedestals shows it, counting from 0.
   pedestal: number;
+  // False when something already floating by him stands for it (Timo is his own Vestige's emblem).
+  emblem: boolean;
 }
 
 // Each one is drawn as `vestige_<id>`: code art that a sprite of the same name replaces.
@@ -25,7 +27,7 @@ function parse(data: unknown): { slots: number; list: Vestige[] } {
     const e = obj(entry);
     const id = str(e.id, '', `vestiges.json vestige ${i}`, problems);
     if (!id) return problems.push(`vestiges.json vestige ${i}: has no id, skipped`), [];
-    return [{ id, name: str(e.name, id, `${id}.name`, problems), color: color(e.color ?? '#c58cff', `${id}.color`, problems), pedestal: Math.round(num(e.pedestal, i, `${id}.pedestal`, problems)) }];
+    return [{ id, name: str(e.name, id, `${id}.name`, problems), color: color(e.color ?? '#c58cff', `${id}.color`, problems), pedestal: Math.round(num(e.pedestal, i, `${id}.pedestal`, problems)), emblem: bool(e.emblem, true, `${id}.emblem`, problems) }];
   });
   report('vestiges', problems);
   return { slots, list: out };

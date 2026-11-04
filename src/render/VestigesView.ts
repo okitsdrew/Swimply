@@ -72,11 +72,11 @@ export class VestigesView {
   update(dt: number, heroX: number, heroY: number, heroShown: boolean, width: number, height: number): void {
     this.age += dt;
     const px = render.pixelScale;
-    // The emblems, spaced evenly round him and slowly circling.
+    // The emblems, spaced evenly round him and slowly circling (Timo floats by him already, as his own).
     const equipped: string[] = [];
     for (let i = 0; i < VESTIGE_SLOTS; i++) {
       const v = equippedIn(i);
-      if (v) equipped.push(v.id);
+      if (v?.emblem) equipped.push(v.id);
     }
     while (this.emblems.length < equipped.length) this.emblems.push(this.scene.add.image(0, 0, Tex.glow));
     this.emblems.forEach((img, i) => {

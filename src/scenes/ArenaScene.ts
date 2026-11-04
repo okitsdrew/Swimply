@@ -248,13 +248,15 @@ export class ArenaScene extends Phaser.Scene {
     this.menuOpen = false;
     const walking = () => this.walkTo !== null;
     this.story = new StoryRunner(this.box, this.ghost, {
-      // Timo keeps his face while someone else speaks, and goes back to idling when the talking stops.
+      // Timo keeps his face while someone else speaks or the scene pauses, and goes back to idling when it ends.
       onLine: (speaker, face) => (speaker === 'timo' ? this.timo.setFace(face) : speaker === null && this.timo.setFace('')),
       setControl: (on) => (this.control = on),
       eyes: (open, seconds) => (open ? this.lids.wakeUp(seconds) : this.lids.close()),
       pose: (pose, seconds, frames) => (pose === 'asleep' ? this.pose.asleep() : this.pose.standUp(seconds, frames)),
       moveTimo: (target) => this.moveTimo(target),
       shake: (amount) => this.fx.addShake(amount),
+      flag: () => this.showMap(),
+      sound: (id) => this.sfx.playSound(id),
       camera: (target, seconds) => this.panTo(target, seconds),
       walk: (target) => this.walkToward(target),
       get walking() {

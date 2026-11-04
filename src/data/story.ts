@@ -29,7 +29,8 @@ export interface Speaker {
 //   { "wait": 1 }                                            a pause, in seconds
 //   { "tutorial": "Space to dodge." }                        ghostly words that blow away; the script carries on
 //   { "waitFor": "teleport" }                                waits until the player does it: move, teleport, dash, fire
-//   { "flag": "teleportTaught" }                             sets a save flag
+//   { "flag": "teleportTaught" }                             sets a save flag; things in the map that wait on it
+//                                                            (only if / only unless) come or go at once
 //   { "eyes": "closed" }                                     a black screen (his eyes shut)
 //   { "eyes": "open", "time": 3 }                            opens them with a few heavy blinks; the script waits
 //   { "control": false }                                     the player cannot move (true gives it back)
@@ -48,6 +49,9 @@ export interface Speaker {
 //                                                            (or to a spot, "800,640") on his own; the script waits
 //   { "vestige": "doomsday" }                                he reclaims that Vestige: a banner, and it fills an
 //                                                            empty slot
+//   { "sound": "explosion_medium" }                          plays a sound (an id in sounds.json); carries on
+// Timo keeps the face of his last line (through pauses and others' lines) until a line of his names another, and
+// goes back to idling when the script ends. "timo_idle" is his idle look.
 export type Step =
   | { kind: 'say'; speaker: Speaker; text: string; face: string }
   | { kind: 'wait'; seconds: number }
@@ -61,7 +65,8 @@ export type Step =
   | { kind: 'shake'; amount: number }
   | { kind: 'camera'; target: string; seconds: number }
   | { kind: 'walk'; target: string }
-  | { kind: 'vestige'; id: string };
+  | { kind: 'vestige'; id: string }
+  | { kind: 'sound'; id: string };
 
 // One getting-up frame (hero_getup_<frame>) and how long it shows.
 export interface PoseFrame {
@@ -136,7 +141,8 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
     if (!vestiges.get(id)) return problems.push(`${where}: unknown vestige ${JSON.stringify(id)} (see vestiges.json), skipped`), null;
     return { kind: 'vestige', id };
   }
-  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, vestige), skipped`);
+  if (e.sound !== undefined) return { kind: 'sound', id: str(e.sound, '', `${where}.sound`, problems) };
+  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, vestige, sound), skipped`);
   return null;
 }
 
