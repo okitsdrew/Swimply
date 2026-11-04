@@ -52,15 +52,16 @@ export const doomsday = defineConfig(
     // unhurt after it.
     chargeTime: 1,
     safeAfter: 0.3,
-    damage: 150,
-    damageRadius: 130,
-    // Everything this close is thrown outward, this hard (werewolves are too heavy to move).
+    damage: 250,
+    damageRadius: 150,
+    // Everything this close (the hurt ones too) is thrown outward, this hard, so nothing is left standing on him
+    // (werewolves take part of it: their knockbackTaken). Only the damage circle is drawn.
     knockbackRadius: 230,
     knockback: 700,
     // Also hurts things that break (spawners), at this fraction of the damage.
     breakDamage: 1,
     // Seconds everything the blast hurts is stunned (bosses shrug some of it off: their ccResist).
-    stun: 1.5,
+    stun: 1,
     shake: 14,
     hitStop: 0.08,
     // The aiming circle's colours: a spot he can land on, and one he cannot.

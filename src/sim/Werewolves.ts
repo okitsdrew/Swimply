@@ -67,6 +67,10 @@ export class Werewolves implements EnemyGroup<Werewolf> {
     w.damage(amount);
   }
 
+  push(w: Werewolf, fromX: number, fromY: number, amount: number): void {
+    w.push(fromX, fromY, amount);
+  }
+
   kill(w: Werewolf): void {
     w.damage(w.hp);
   }

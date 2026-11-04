@@ -215,13 +215,14 @@ export class Enemies {
   }
 
   // A blast at (x, y): everyone within `radius` takes `amount` (each kind's own hit and knockback) and `effects`, and
-  // everyone within `pushRadius` is thrown outward by `push`. Calls `hit` for each one damaged, for numbers and sound.
+  // everyone within `pushRadius` (or `radius`, if bigger) is thrown outward by `push`. Calls `hit` for each one
+  // damaged, for numbers and sound.
   blast(x: number, y: number, radius: number, amount: number, pushRadius: number, push: number, effects: readonly Effect[], hit: (e: Enemy) => void): void {
     for (const k of this.kinds.values()) {
       for (const e of [...k.group.list]) {
         if (!e.alive) continue;
         const d = Math.hypot(e.x - x, e.y - y) - e.radius;
-        if (d < pushRadius) k.group.push?.(e, x, y, push);
+        if (d < Math.max(pushRadius, radius)) k.group.push?.(e, x, y, push);
         if (d < radius) {
           for (const fx of effects) e.status.apply(fx, k.group.ccResist);
           k.group.damage(e, amount, x, y);

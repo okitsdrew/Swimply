@@ -26,7 +26,6 @@ interface Slot {
 export class VestigesView {
   private emblems: Phaser.GameObjects.Image[] = [];
   private aimInner: Phaser.GameObjects.Image;
-  private aimOuter: Phaser.GameObjects.Image;
   private rangeRing: Phaser.GameObjects.Image;
   private slots: Slot[] = [];
   private age = 0;
@@ -38,7 +37,6 @@ export class VestigesView {
   constructor(private scene: Phaser.Scene, private caster: VestigeCaster, private fx: Fx) {
     const ring = () => scene.add.image(0, 0, Tex.doorRing).setDepth(-4e7).setVisible(false);
     this.rangeRing = ring();
-    this.aimOuter = ring();
     this.aimInner = ring();
     this.ball = scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
     this.core = scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffffff).setVisible(false);
@@ -62,7 +60,7 @@ export class VestigesView {
     this.fx.smoke(s.x, s.y, 14, ellipseHalfSize(doomsday.damageRadius).x * 0.6);
     this.fx.particle({ x: s.x, y: s.y - 6 * px, life: 0.35, from: 2, to: (ellipseHalfSize(doomsday.damageRadius).x * 2.5) / 32, alpha: 1, tint: doomsday.blastColor });
     this.fx.particle({ x: s.x, y: s.y - 6 * px, life: 0.2, from: 1, to: 6, alpha: 1, tint: 0xffffff });
-    for (const [r, life, alpha] of [[doomsday.damageRadius, 0.3, 1], [doomsday.knockbackRadius, 0.45, 0.5]]) {
+    for (const [r, life, alpha] of [[doomsday.damageRadius, 0.3, 1]]) {
       const half = ellipseHalfSize(r);
       const img = this.scene.add.image(s.x, s.y, Tex.doorRing).setDepth(-4e7).setTint(doomsday.blastColor).setDisplaySize(half.x * 0.4, half.y * 0.4);
       this.scene.tweens.add({ targets: img, displayWidth: half.x * 2, displayHeight: half.y * 2, alpha: { from: alpha, to: 0 }, duration: life * 1000, ease: 'Cubic.easeOut', onComplete: () => img.destroy() });
@@ -117,10 +115,10 @@ export class VestigesView {
       }
     }
 
-    // While aiming: his range, the blast and the knockback where it would land, red where he cannot.
+    // While aiming: his range, and the blast where it would land, red where he cannot.
     const c = this.caster;
     const aiming = c.aiming >= 0;
-    for (const img of [this.rangeRing, this.aimInner, this.aimOuter]) img.setVisible(aiming);
+    for (const img of [this.rangeRing, this.aimInner]) img.setVisible(aiming);
     if (aiming) {
       const hs = toScreen(heroX, heroY);
       const ts = toScreen(c.target.x, c.target.y);
@@ -134,8 +132,6 @@ export class VestigesView {
       this.rangeRing.setPosition(hs.x, hs.y).setTint(doomsday.okColor).setAlpha(doomsday.aimAlpha * 0.15);
       size(this.aimInner, doomsday.damageRadius);
       this.aimInner.setPosition(ts.x, ts.y).setTint(tint).setAlpha(doomsday.aimAlpha * pulse);
-      size(this.aimOuter, doomsday.knockbackRadius);
-      this.aimOuter.setPosition(ts.x, ts.y).setTint(tint).setAlpha(doomsday.aimAlpha * 0.4);
     }
 
     // The slots, bottom middle, once he holds any Vestige.
