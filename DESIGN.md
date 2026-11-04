@@ -22,7 +22,7 @@ All numbers in config are test values and will change.
 - The throne hub has **8 pedestals**: an unlocked Vestige hovers over its pedestal; while it is equipped, the pedestal shows a grey outline instead.
 - **Using one:** press its button, and an area shows where it will hit, following the mouse; click to cast it there. Some are toggles instead (for example, double attack speed and damage for 10 seconds).
 - Skills come before the bosses, so he has them in the boss fights. Made from scratch, not ported from Heaven.
-- **Timo's Doomsday Scenario** (Timo's): teleport to the target spot and explode: damage in a radius, knockback in a larger one. Cannot target water, void floor or roof tiles, so it can't break the map.
+- **Timo's Doomsday Scenario** (Timo's): a true teleport to the target spot, through walls, but only onto ground he could walk to from where he stands (so a locked gate still holds), and never onto water, void or roof tiles. There he gathers a growing ball of purple energy for about a second, unhurt, so enemies close in (a taunt), then explodes: damage in a radius, knockback in a larger one. He stays unhurt 0.3 seconds after. Timo is its emblem.
 - **Flame Torrent** (the fire butterfly's): four fireballs from each side of him (eight in all) cross just in front of him, fly out to their range and come back. Two spots catch all eight: right beside him and at full range. Drew's sketch is in the project files (`vestiges/flame-torrent-sketch.png`).
 
 ## The early game (built)
