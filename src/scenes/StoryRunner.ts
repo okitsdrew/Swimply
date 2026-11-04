@@ -31,6 +31,8 @@ export class StoryRunner {
   private time = 0;
   // Things the player did since the current step began.
   private events = new Set<string>();
+  // Tutorial words on screen that wait for the player to do this, or ''.
+  private heldUntil = '';
 
   constructor(private box: DialogueBox, private ghost: GhostText, private stage: Stage) {}
 
@@ -58,6 +60,10 @@ export class StoryRunner {
   // The player did something a step might be waiting for: "move", "teleport", "dash", "fire".
   notify(event: string): void {
     this.events.add(event);
+    if (event === this.heldUntil) {
+      this.heldUntil = '';
+      this.ghost.release();
+    }
   }
 
   // Click or F: finishes typing a line, or moves on from a typed one. Lines never move on by themselves.
@@ -98,7 +104,10 @@ export class StoryRunner {
     if (step.kind === 'say') {
       this.box.show(step.speaker.name, step.speaker.color, step.face, step.text, step.speaker.bubble, step.speaker.voice, step.speaker.pitch, step.speaker.lineSounds);
       this.stage.onLine(step.speaker.id, step.face);
-    } else if (step.kind === 'tutorial') this.ghost.show(step.text);
+    } else if (step.kind === 'tutorial') {
+      this.heldUntil = step.until;
+      this.ghost.show(step.text, step.until ? Infinity : undefined);
+    }
     else if (step.kind === 'flag') {
       save.flags[step.flag] = true;
       writeSave();

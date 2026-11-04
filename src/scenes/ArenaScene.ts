@@ -4,7 +4,7 @@ import { camera } from '../config/feel';
 import { render } from '../config/render';
 import { run } from '../config/run';
 import { sim } from '../config/sim';
-import { story } from '../config/story';
+import { story, timo } from '../config/story';
 import { breakables as cfgBreakables } from '../config/breakables';
 import { doomsday } from '../config/vestiges';
 import { werewolf as cfgElite, werewolfMiniboss as werewolf } from '../config/werewolf';
@@ -581,6 +581,13 @@ export class ArenaScene extends Phaser.Scene {
     this.pose.update(frameDt, this.player.x, this.player.y);
     if (this.pose.active !== this.posed && this.run.state === 'fighting') this.view.setVisible(!this.pose.active);
     this.posed = this.pose.active;
+    if (this.walkTo) {
+      // Timo leads the way on a story walk.
+      const w = this.walkTo;
+      const d = Math.hypot(w.x - this.player.x, w.y - this.player.y) || 1;
+      const ahead = Math.min(timo.leadDistance, d);
+      this.timo.lead(this.player.x + ((w.x - this.player.x) / d) * ahead, this.player.y + ((w.y - this.player.y) / d) * ahead);
+    }
     this.timo.update(frameDt, this.player.x, this.player.y);
     this.pedestals.update(frameDt, this.map);
     this.vestigesView.update(frameDt, this.player.x, this.player.y, this.run.state === 'fighting' && !this.pose.active, cam.width, cam.height);
@@ -662,6 +669,7 @@ export class ArenaScene extends Phaser.Scene {
     if (left > w.stop && w.stuck < 0.5) return;
     this.walkTo = null;
     this.player.stop();
+    this.timo.followHero();
   }
 
   private die(): void {

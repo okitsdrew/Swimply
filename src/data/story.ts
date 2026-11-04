@@ -28,6 +28,8 @@ export interface Speaker {
 //   { "say": "timo", "text": "...", "face": "timo_happy" }  a line; the script waits until it has been read
 //   { "wait": 1 }                                            a pause, in seconds
 //   { "tutorial": "Space to dodge." }                        ghostly words that blow away; the script carries on
+//   { "tutorial": "Right click to teleport", "until": "teleport" }
+//                                                            ...that stay until the player does it (see waitFor)
 //   { "waitFor": "teleport" }                                waits until the player does it: move, teleport, dash, fire
 //   { "flag": "teleportTaught" }                             sets a save flag; things in the map that wait on it
 //                                                            (only if / only unless) come or go at once
@@ -47,6 +49,7 @@ export interface Speaker {
 //                                                            the script waits. "hero" slides back and follows him
 //   { "walk": "throne" }                                     he walks up to the first placed thing of that asset id
 //                                                            (or to a spot, "800,640") on his own; the script waits
+//                                                            while Timo leads the way
 //   { "vestige": "doomsday" }                                he reclaims that Vestige: a banner, and it fills an
 //                                                            empty slot
 //   { "sound": "explosion_medium" }                          plays a sound (an id in sounds.json); carries on
@@ -55,7 +58,7 @@ export interface Speaker {
 export type Step =
   | { kind: 'say'; speaker: Speaker; text: string; face: string }
   | { kind: 'wait'; seconds: number }
-  | { kind: 'tutorial'; text: string }
+  | { kind: 'tutorial'; text: string; until: string }
   | { kind: 'waitFor'; event: string }
   | { kind: 'flag'; flag: string }
   | { kind: 'eyes'; open: boolean; seconds: number }
@@ -109,7 +112,11 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
     return { kind: 'say', speaker, text: str(e.text, '', `${where}.text`, problems), face: str(e.face, speaker.face, `${where}.face`, problems) };
   }
   if (e.wait !== undefined) return { kind: 'wait', seconds: num(e.wait, 1, `${where}.wait`, problems) };
-  if (e.tutorial !== undefined) return { kind: 'tutorial', text: str(e.tutorial, '', `${where}.tutorial`, problems) };
+  if (e.tutorial !== undefined) {
+    const until = str(e.until, '', `${where}.until`, problems);
+    if (until && !WAIT_EVENTS.includes(until)) return problems.push(`${where}: until ${JSON.stringify(until)} is not one of ${WAIT_EVENTS.join(', ')}, skipped`), null;
+    return { kind: 'tutorial', text: str(e.tutorial, '', `${where}.tutorial`, problems), until };
+  }
   if (e.waitFor !== undefined) {
     const event = str(e.waitFor, '', `${where}.waitFor`, problems);
     if (!WAIT_EVENTS.includes(event)) return problems.push(`${where}: waitFor ${JSON.stringify(event)} is not one of ${WAIT_EVENTS.join(', ')}, skipped`), null;

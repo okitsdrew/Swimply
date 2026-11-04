@@ -86,6 +86,8 @@ export const timo = defineConfig(
     besideY: -32,
     // How quickly he drifts to where he is going (higher is snappier).
     moveRate: 2.5,
+    // On a story walk he leads the way, this far ahead of the hero (world units).
+    leadDistance: 70,
     // His bob up and down: art pixels, and how fast.
     bob: 2,
     bobRate: 2.5,
@@ -96,6 +98,7 @@ export const timo = defineConfig(
     besideX: { min: -150, max: 150, step: 2 },
     besideY: { min: -150, max: 150, step: 2 },
     moveRate: { min: 0.2, max: 20, step: 0.1 },
+    leadDistance: { min: 0, max: 300, step: 5 },
     bob: { min: 0, max: 10, step: 0.5 },
     bobRate: { min: 0, max: 10, step: 0.1 },
   },
