@@ -3,6 +3,7 @@ import { loadSave } from './core/save';
 import { refreshBaseline } from './data/tree';
 import { ArenaScene } from './scenes/ArenaScene';
 import { TreeScene } from './scenes/TreeScene';
+import { VestigeScene } from './scenes/VestigeScene';
 import { loadUiFont } from './render/ui';
 
 loadSave();
@@ -19,7 +20,7 @@ loadUiFont().then(() => {
     pixelArt: true,
     roundPixels: true,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: 1280, height: 800 },
-    scene: [ArenaScene, TreeScene],
+    scene: [ArenaScene, TreeScene, VestigeScene],
   });
 
   // Handy for poking at scenes from the browser console while tuning.

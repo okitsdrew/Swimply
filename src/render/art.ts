@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { pickupKinds, pickupTexture } from '../data/pickups';
 import { rgba, Sprite, sprites } from '../data/sprites';
+import { vestiges, vestigeTexture } from '../data/vestiges';
 
 // Code-drawn placeholder art. Gameplay only refers to these texture keys, so real sprite sheets
 // can be loaded under the same keys later without touching the sim.
@@ -239,5 +240,16 @@ export function makeCodeArt(scene: Phaser.Scene): void {
   // Pickup orbs (memory shards): a small round orb in each kind's colours; the glow is drawn round it in play.
   for (const k of pickupKinds.list()) {
     fromGrid(scene, pickupTexture(k), ['.rrr.', 'rccrr', 'rcccr', 'rrccr', '.rrr.'], { c: k.core, r: k.rim });
+  }
+  // A stunned enemy's star, white so it can be tinted.
+  fromGrid(scene, 'status_star', ['..w..', '.www.', 'wwwww', '.www.', '.w.w.'], { w: 0xffffff });
+  // Vestige emblems: a glowing diamond in each one's colour, until a sprite named vestige_<id> is drawn.
+  for (const v of vestiges.list()) {
+    const c = Phaser.Display.Color.ValueToColor(v.color);
+    const light = Phaser.Display.Color.GetColor((c.red + 255) / 2, (c.green + 255) / 2, (c.blue + 255) / 2);
+    const dark = Phaser.Display.Color.GetColor(c.red / 3, c.green / 3, c.blue / 3);
+    fromGrid(scene, vestigeTexture(v.id), ['....k....', '...kPk...', '..kpPpk..', '.kpPWPpk.', 'kPPWWWPPk', '.kpPWPpk.', '..kpPpk..', '...kPk...', '....k....'], {
+      k: dark, p: v.color, P: light, W: 0xffffff,
+    });
   }
 }

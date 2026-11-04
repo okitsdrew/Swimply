@@ -6,6 +6,11 @@ import { defineConfig } from './store';
 // empowered elite) and the plain werewolf, an elite met in the world. sim/Werewolf.ts takes whichever it is given.
 const wolf = {
   hp: 3000,
+  // How much of a stun, freeze, slow or burn it shrugs off: 0 takes it all, 1 is immune.
+  ccResist: 0.75,
+  // How much of a push (a blast's knockback) moves him, 0 to 1, and how fast it dies away.
+  knockbackTaken: 0.5,
+  knockbackDecay: 8,
   // Seconds into a run when he arrives.
   arriveTime: 45,
   speed: 400,
@@ -128,6 +133,9 @@ const ranges = {
   swipeLunge: { min: 0, max: 300, step: 5 },
   swipeTime: { min: 0.02, max: 1, step: 0.01 },
   slamPiercesInvuln: 'bool',
+  ccResist: { min: 0, max: 1, step: 0.05 },
+  knockbackTaken: { min: 0, max: 1, step: 0.05 },
+  knockbackDecay: { min: 0.5, max: 30, step: 0.5 },
   slamShake: { min: 0, max: 40, step: 1 },
   slamSmoke: { min: 0, max: 100, step: 1 },
   shards: { min: 0, max: 500, step: 5 },
@@ -140,7 +148,8 @@ export const werewolfMiniboss = defineConfig('werewolf_miniboss', 'bosses', wolf
 // arriveTime is not used: he is placed or spawned, not brought in by a run's clock.
 export const werewolf = defineConfig('werewolf', 'enemies', {
   ...wolf,
-  hp: 1000,
+  hp: 700,
+  ccResist: 0.4,
   speed: 300,
   scale: 2.25,
   windupTime: 0.6,

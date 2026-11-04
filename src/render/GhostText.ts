@@ -46,6 +46,11 @@ export class GhostText {
     }
   }
 
+  // The wind comes now (for words held until the player did something).
+  release(): void {
+    this.hold = Math.min(this.hold, this.age);
+  }
+
   get done(): boolean {
     return this.letters.length === 0;
   }

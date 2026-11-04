@@ -6,6 +6,8 @@ export const shade = defineConfig(
   'enemies',
   {
     hp: 10,
+    // How much of a stun, freeze, slow or burn it shrugs off: 0 takes it all, 1 is immune.
+    ccResist: 0,
     speed: 120,
     // Keeps on-screen speed equal in every direction, as the player's does.
     uniformScreenSpeed: true,
@@ -39,6 +41,7 @@ export const shade = defineConfig(
   },
   {
     hp: { min: 1, max: 2000, step: 1 },
+    ccResist: { min: 0, max: 1, step: 0.05 },
     speed: { min: 10, max: 800, step: 5 },
     uniformScreenSpeed: 'bool',
     throughWalls: 'bool',

@@ -58,7 +58,8 @@ export class DialogueBox {
     this.setAlpha(0);
   }
 
-  // `face` is a texture key; a missing one leaves the face empty rather than showing a broken image.
+  // `face` is a texture key, or the name of an animation whose frames are `<face>_0`, `_1`... (its first frame shows);
+  // a missing one leaves the face empty rather than showing a broken image.
   show(name: string, color: string, face: string, text: string, bubble: boolean, voice = '', pitch = 1, lineSounds: string[] = []): void {
     this.text = text;
     this.playLine(lineSounds);
@@ -77,6 +78,7 @@ export class DialogueBox {
     this.name.setText(name.toUpperCase()).setColor(color);
     this.words.setText('').setColor(color);
     this.bubbleWords.setText('').setColor(color);
+    if (face && !this.scene.textures.exists(face) && this.scene.textures.exists(`${face}_0`)) face = `${face}_0`;
     const hasFace = !!face && this.scene.textures.exists(face);
     this.face.setVisible(hasFace);
     if (hasFace) {

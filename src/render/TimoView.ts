@@ -55,6 +55,13 @@ export class TimoView {
     this.ty = y + timo.besideY;
   }
 
+  // Floats to exactly this world point (leading the hero somewhere).
+  lead(x: number, y: number): void {
+    this.follow = false;
+    this.tx = x;
+    this.ty = y;
+  }
+
   // A texture key while he is speaking, '' to go back to idling.
   setFace(face: string): void {
     const want = face && this.scene.textures.exists(face) ? face : '';

@@ -5,13 +5,21 @@ import { GhostText } from '../render/GhostText';
 
 // What a script can do to the scene beyond talking. The scene provides it.
 export interface Stage {
-  // A line starts (speaker id and face) or the box closes (null).
+  // A line starts (speaker id and face), or the script ends (null).
   onLine(speaker: string | null, face: string): void;
+  // A flag step turned a save flag on.
+  flag(flag: string): void;
+  sound(id: string): void;
   setControl(on: boolean): void;
   eyes(open: boolean, seconds: number): void;
   pose(pose: 'asleep' | 'stand', seconds: number, frames: PoseFrame[]): void;
   moveTimo(target: string): void;
   shake(amount: number): void;
+  camera(target: string, seconds: number): void;
+  walk(target: string): void;
+  // Still walking to where a walk step sent him.
+  readonly walking: boolean;
+  vestige(id: string): void;
 }
 
 // Plays one script (data/story.ts) step by step. The scene tells it what the player did (notify) and when F was
@@ -23,6 +31,8 @@ export class StoryRunner {
   private time = 0;
   // Things the player did since the current step began.
   private events = new Set<string>();
+  // Tutorial words on screen that wait for the player to do this, or ''.
+  private heldUntil = '';
 
   constructor(private box: DialogueBox, private ghost: GhostText, private stage: Stage) {}
 
@@ -50,6 +60,10 @@ export class StoryRunner {
   // The player did something a step might be waiting for: "move", "teleport", "dash", "fire".
   notify(event: string): void {
     this.events.add(event);
+    if (event === this.heldUntil) {
+      this.heldUntil = '';
+      this.ghost.release();
+    }
   }
 
   // Click or F: finishes typing a line, or moves on from a typed one. Lines never move on by themselves.
@@ -68,6 +82,8 @@ export class StoryRunner {
       : step.kind === 'wait' ? this.time >= step.seconds
       : step.kind === 'waitFor' ? this.events.has(step.event)
       : step.kind === 'eyes' ? !step.open || this.time >= step.seconds
+      : step.kind === 'camera' ? this.time >= step.seconds
+      : step.kind === 'walk' ? !this.stage.walking
       : true;
     if (done) this.next();
   }
@@ -79,26 +95,32 @@ export class StoryRunner {
     this.time = 0;
     this.events.clear();
     const step = s.steps[this.index];
-    if (step?.kind !== 'say') {
-      this.box.hide();
-      this.stage.onLine(null, '');
-    }
+    if (step?.kind !== 'say') this.box.hide();
     if (!step) {
       this.script = null;
+      this.stage.onLine(null, '');
       return;
     }
     if (step.kind === 'say') {
       this.box.show(step.speaker.name, step.speaker.color, step.face, step.text, step.speaker.bubble, step.speaker.voice, step.speaker.pitch, step.speaker.lineSounds);
       this.stage.onLine(step.speaker.id, step.face);
-    } else if (step.kind === 'tutorial') this.ghost.show(step.text);
+    } else if (step.kind === 'tutorial') {
+      this.heldUntil = step.until;
+      this.ghost.show(step.text, step.until ? Infinity : undefined);
+    }
     else if (step.kind === 'flag') {
       save.flags[step.flag] = true;
       writeSave();
+      this.stage.flag(step.flag);
     } else if (step.kind === 'eyes') this.stage.eyes(step.open, step.seconds);
     else if (step.kind === 'control') this.stage.setControl(step.on);
     else if (step.kind === 'pose') this.stage.pose(step.pose, step.seconds, step.frames);
     else if (step.kind === 'timo') this.stage.moveTimo(step.target);
     else if (step.kind === 'shake') this.stage.shake(step.amount);
+    else if (step.kind === 'camera') this.stage.camera(step.target, step.seconds);
+    else if (step.kind === 'walk') this.stage.walk(step.target);
+    else if (step.kind === 'vestige') this.stage.vestige(step.id);
+    else if (step.kind === 'sound') this.stage.sound(step.id);
     // Steps that finish at once move on in the next update.
   }
 }

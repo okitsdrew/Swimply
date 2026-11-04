@@ -4,8 +4,9 @@ import { camera } from '../config/feel';
 import { render } from '../config/render';
 import { run } from '../config/run';
 import { sim } from '../config/sim';
-import { story } from '../config/story';
+import { story, timo } from '../config/story';
 import { breakables as cfgBreakables } from '../config/breakables';
+import { doomsday } from '../config/vestiges';
 import { werewolf as cfgElite, werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
@@ -13,6 +14,7 @@ import { allOn, AreaMap, findMarker, maps, Placed, withFlags } from '../data/map
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
+import { forgetVestiges, unlockVestige, vestiges } from '../data/vestiges';
 import { save, writeSave } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
 import { AmbienceView } from '../render/AmbienceView';
@@ -30,18 +32,24 @@ import { HeroPose } from '../render/HeroPose';
 import { DoorsView } from '../render/DoorsView';
 import { InteractHint } from '../render/InteractHint';
 import { MapView } from '../render/MapView';
+import { PedestalsView } from '../render/PedestalsView';
+import { StatusView } from '../render/StatusView';
 import { PickupsView } from '../render/PickupsView';
 import { PlayerView } from '../render/PlayerView';
 import { RunHud } from '../render/RunHud';
 import { TimoView } from '../render/TimoView';
+import { VestigesView } from '../render/VestigesView';
 import { Arrows } from '../sim/Arrows';
 import { Breakables } from '../sim/Breakables';
 import { Pickups } from '../sim/Pickups';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
 import { stats } from '../sim/stats';
+import { Enemy } from '../sim/enemies';
+import { Effect, EFFECT_KINDS } from '../sim/status';
 import { Target } from '../sim/targets';
 import { FlowField } from '../sim/Nav';
+import { VestigeCaster } from '../sim/Vestiges';
 import { MapWorld } from '../sim/World';
 import { Enemies } from './Enemies';
 import { priestKind, shadeKind, werewolfKind } from './enemyKinds';
@@ -97,13 +105,17 @@ export class ArenaScene extends Phaser.Scene {
   private timo!: TimoView;
   private lids!: Eyelids;
   private pose!: HeroPose;
-  // Whether the hero's own look was hidden for a pose last frame.
+  // Whether the hero's own look was hidden (a pose, a Vestige) last frame.
   private posed = false;
   private ambience!: AmbienceView;
   private sfx!: SoundFx;
   private loops!: LoopSounds;
   // A script can take control away (the hero lying down, a scene playing out).
   private control = true;
+  // A story walk: where he is going, how close counts as there, and how long he has been stuck.
+  private walkTo: { x: number; y: number; stop: number; stuck: number; last: number } | null = null;
+  // A story camera move, in screen space: from where, to where (null: back to him), seconds in and in all.
+  private pan: { from: Vec2; to: Vec2 | null; time: number; total: number } | null = null;
   private world!: MapWorld;
   private nav!: FlowField;
   private mapView!: MapView;
@@ -113,6 +125,13 @@ export class ArenaScene extends Phaser.Scene {
   private arrows!: Arrows;
   private arrowsView!: ArrowsView;
   private pickups!: Pickups;
+  private caster!: VestigeCaster;
+  private vestigesView!: VestigesView;
+  private pedestals!: PedestalsView;
+  private statusView!: StatusView;
+  private everyone: Enemy[] = [];
+  // The Mindscape menu (Vestiges) is open over the arena.
+  private menuOpen = false;
   private pickupsView!: PickupsView;
   // Every enemy, of every kind (see enemyKinds.ts).
   private enemies!: Enemies;
@@ -185,6 +204,12 @@ export class ArenaScene extends Phaser.Scene {
     this.pickups = new Pickups();
     this.pickupsView = new PickupsView(this, this.pickups);
     this.sfx = new SoundFx(this);
+    this.caster = new VestigeCaster(this.world, this.player, (x, y) => this.nav.reachable(x, y));
+    this.vestigesView = new VestigesView(this, this.caster, this.fx);
+    this.pedestals = new PedestalsView(this);
+    this.statusView = new StatusView(this, this.fx);
+    this.caster.onDeny = () => this.sfx.play('deny');
+    this.caster.onBlast = (x, y) => this.doomsdayBlast(x, y);
     this.travel = new Travel(this, this.mapId, this.calm, this.world, this.player, this.sfx);
     // He got out alive, so what he broke here stays broken.
     this.travel.onLeave = () => {
@@ -206,6 +231,10 @@ export class ArenaScene extends Phaser.Scene {
       this.showMap();
     };
     this.enemies.onKilled = (kind, x, y) => this.mindscape?.onKilled(kind, x, y);
+    this.enemies.onBurn = (e, amount) => {
+      const s = toScreen(e.x, e.y);
+      this.fx.damageNumber(s.x, s.y - render.arrowHeight, amount);
+    };
     this.view.onStep = () => this.sfx.play('step');
     this.run = new Run(shadeK.group);
     this.run.holdSpawns = this.calm || params.has('calm');
@@ -224,14 +253,30 @@ export class ArenaScene extends Phaser.Scene {
     this.pose = new HeroPose(this);
     this.posed = false;
     this.control = true;
+    this.walkTo = null;
+    this.pan = null;
+    this.menuOpen = false;
+    const walking = () => this.walkTo !== null;
     this.story = new StoryRunner(this.box, this.ghost, {
-      // Timo keeps his face while someone else speaks, and goes back to idling when the talking stops.
+      // Timo keeps his face while someone else speaks or the scene pauses, and goes back to idling when it ends.
       onLine: (speaker, face) => (speaker === 'timo' ? this.timo.setFace(face) : speaker === null && this.timo.setFace('')),
       setControl: (on) => (this.control = on),
       eyes: (open, seconds) => (open ? this.lids.wakeUp(seconds) : this.lids.close()),
       pose: (pose, seconds, frames) => (pose === 'asleep' ? this.pose.asleep() : this.pose.standUp(seconds, frames)),
       moveTimo: (target) => this.moveTimo(target),
       shake: (amount) => this.fx.addShake(amount),
+      flag: () => this.showMap(),
+      sound: (id) => this.sfx.playSound(id),
+      camera: (target, seconds) => this.panTo(target, seconds),
+      walk: (target) => this.walkToward(target),
+      get walking() {
+        return walking();
+      },
+      vestige: (id) => {
+        unlockVestige(id);
+        this.hud.announce(`VESTIGE RECLAIMED\n${vestiges.get(id)?.name ?? id}`, story.vestigeBanner);
+        this.sfx.play('unlock');
+      },
     });
 
     this.player.onFire = (_x, _y, dx, dy) => {
@@ -252,6 +297,10 @@ export class ArenaScene extends Phaser.Scene {
       this.story.notify('teleport');
     };
     this.player.onTeleportArrive = (x, y) => this.view.onTeleportArrive(x, y);
+    this.player.onBlink = (x0, y0, x1, y1, t) => {
+      this.view.onBlink(x0, y0, x1, y1, t);
+      this.sfx.play('teleport');
+    };
     this.arrows.onHit = (target, damage, ax, ay, dx, dy) => {
       // Knockback pushes away from a point just behind the hit, so along the arrow's flight.
       this.enemies.damage(target, damage, ax - dx, ay - dy);
@@ -298,19 +347,67 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Reset this map (unbreak, revive)', run: () => this.resetMapFlags() },
       { label: 'Story: fresh start', run: () => this.storyFresh() },
       { label: 'Story: Mindscape won', run: () => this.storyWon() },
+      { label: 'Vestige: grant Doomsday', run: () => unlockVestige('doomsday') },
+      { label: 'Vestiges: forget all', run: () => forgetVestiges() },
+      ...EFFECT_KINDS.map((kind) => ({ label: `Effect: ${kind} all (3s)`, run: () => this.afflictAll({ kind, seconds: 3, power: kind === 'burn' ? 20 : 0.5 }) })),
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
       { label: 'Level editor', run: () => window.open(`level-editor.html?map=${this.mapId}`, 'swimply-level-editor') },
     ]);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input2.destroy();
       this.scene.stop('tree');
+      this.scene.stop('vestiges');
     });
+  }
+
+  // Tab: the Mindscape menu, to equip Vestiges. It opens only once he holds one, and only while no fight is on, no
+  // scene is playing and nothing else is open. The game waits while it is open.
+  private toggleMenu(): void {
+    if (this.menuOpen) {
+      this.menuOpen = false;
+      this.scene.stop('vestiges');
+      this.sfx.play('click');
+      // Clicks in the menu also reached the game's input; drop them so they don't fire an arrow.
+      this.input2.endFrame();
+      this.player.fireBlocked = true;
+      this.paused = false;
+      return;
+    }
+    const can = save.vestiges.length > 0 && this.run.state === 'fighting' && this.control && !this.story.playing && !this.tree.open && !this.travel.leaving && !this.enemies.fighting();
+    if (!can) return void this.sfx.play('deny');
+    this.menuOpen = true;
+    this.caster.aiming = -1;
+    this.paused = true;
+    this.sfx.play('treeOpen');
+    this.scene.launch('vestiges');
   }
 
   private nextMap(): void {
     const all = maps.list();
     const next = all[(all.findIndex((m) => m.id === this.mapId) + 1) % all.length];
     this.scene.restart({ map: next.id });
+  }
+
+  // A spot the story names: "x,y" in world units, or the first placed thing of that asset id, with how far its
+  // collision reaches from its middle.
+  private spotOf(target: string): { x: number; y: number; reach: number } | null {
+    const m = /^\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*$/.exec(target);
+    if (m) return { x: Number(m[1]), y: Number(m[2]), reach: 0 };
+    const o = this.map.objects.find((p) => p.asset.id === target);
+    if (!o) return console.warn(`[story] ${JSON.stringify(target)} is not placed in ${this.mapId}`), null;
+    const reach = Math.max(0, ...o.asset.collision.map((c) => (Math.hypot(c.x, c.y) + c.radius) * o.size));
+    return { x: o.x, y: o.y, reach };
+  }
+
+  private panTo(target: string, seconds: number): void {
+    const to = target === 'hero' ? null : this.spotOf(target);
+    if (target !== 'hero' && !to) return;
+    this.pan = { from: { ...this.camCenter }, to: to ? toScreen(to.x, to.y) : null, time: 0, total: seconds };
+  }
+
+  private walkToward(target: string): void {
+    const s = this.spotOf(target);
+    this.walkTo = s && { x: s.x, y: s.y, stop: s.reach + cfgPlayer.bodyRadius + story.walkStop, stuck: 0, last: Infinity };
   }
 
   private moveTimo(target: string): void {
@@ -334,6 +431,7 @@ export class ArenaScene extends Phaser.Scene {
     resetTree(false);
     save.shards = 0;
     addShards(0);
+    forgetVestiges();
     Travel.forget();
     this.scene.restart({ map: DEFAULT_MAP });
   }
@@ -349,6 +447,30 @@ export class ArenaScene extends Phaser.Scene {
     if (seconds <= 0 || (!force && this.hitStop <= 0 && this.sinceHitStop < run.hitStopGap)) return;
     if (this.hitStop <= 0) this.sinceHitStop = 0;
     this.hitStop = Math.max(this.hitStop, seconds);
+  }
+
+  // Dev aid: an effect on every enemy out, as its kind lets through.
+  private afflictAll(effect: Effect): void {
+    for (const e of this.enemies.all(this.everyone)) this.enemies.afflict(e, [effect]);
+  }
+
+  // Timo's Doomsday Scenario goes off where he landed: enemies and things that break, within reach, are hurt.
+  private doomsdayBlast(x: number, y: number): void {
+    const number = (ex: number, ey: number, amount: number) => {
+      const s = toScreen(ex, ey);
+      this.fx.damageNumber(s.x, s.y - render.arrowHeight, amount);
+    };
+    const stun = [{ kind: 'stun' as const, seconds: doomsday.stun, power: 0 }];
+    this.enemies.blast(x, y, doomsday.damageRadius, doomsday.damage, doomsday.knockbackRadius, doomsday.knockback, stun, (e) => number(e.x, e.y, doomsday.damage));
+    const amount = doomsday.damage * doomsday.breakDamage;
+    for (const o of [...this.map.objects]) {
+      if (amount <= 0 || !this.breakables.canBreak(o) || Math.hypot(o.x - x, o.y - y) > doomsday.damageRadius) continue;
+      number(o.x, o.y, amount);
+      this.breakables.damage(o, amount);
+    }
+    this.vestigesView.blast(x, y);
+    this.sfx.play('doomsday');
+    this.freeze(doomsday.hitStop, true);
   }
 
   // Something gave way: its flag turns on for this visit (or it is just gone, with none), and the map is shown again
@@ -388,6 +510,7 @@ export class ArenaScene extends Phaser.Scene {
     this.pickupsView.clear();
     this.mindscape?.reset();
     this.arrows.clear();
+    this.caster.reset();
     this.breakables.clear();
     this.breakablesView.clear();
     // A new run puts back what the last one broke.
@@ -417,6 +540,10 @@ export class ArenaScene extends Phaser.Scene {
     input.update();
     // Checked here, not in step(), because the sim does not step while the tree pauses a run.
     if (this.tree.open && input.justPressed('dash')) this.tree.close();
+    if (input.justPressed('menu')) {
+      input.consume('menu');
+      this.toggleMenu();
+    }
     this.mapView.reveal(this.player.x, this.player.y);
     this.mapView.render();
     this.aim = input.aim ? toWorld(cam.scrollX + input.aim.x, cam.scrollY + input.aim.y + render.aimHeight) : null;
@@ -448,9 +575,21 @@ export class ArenaScene extends Phaser.Scene {
 
     // The camera follows the player's projected position, with screen shake on top.
     const s = toScreen(this.player.x, this.player.y);
-    const follow = 1 - Math.exp(-camera.followRate * frameDt);
-    this.camCenter.x += (s.x - this.camCenter.x) * follow;
-    this.camCenter.y += (s.y - this.camCenter.y) * follow;
+    if (this.pan) {
+      // A story camera move eases from where the camera was to its spot, or back to him.
+      const pan = this.pan;
+      pan.time += frameDt;
+      const t = pan.total > 0 ? Math.min(1, pan.time / pan.total) : 1;
+      const e = t * t * (3 - 2 * t);
+      const to = pan.to ?? s;
+      this.camCenter.x = pan.from.x + (to.x - pan.from.x) * e;
+      this.camCenter.y = pan.from.y + (to.y - pan.from.y) * e;
+      if (t >= 1 && !pan.to) this.pan = null;
+    } else {
+      const follow = 1 - Math.exp(-camera.followRate * frameDt);
+      this.camCenter.x += (s.x - this.camCenter.x) * follow;
+      this.camCenter.y += (s.y - this.camCenter.y) * follow;
+    }
     cam.scrollX = this.camCenter.x - cam.width / 2 + this.fx.shakeOffset.x;
     cam.scrollY = this.camCenter.y - cam.height / 2 + this.fx.shakeOffset.y;
 
@@ -461,16 +600,28 @@ export class ArenaScene extends Phaser.Scene {
     this.breakablesView.update(frameDt);
     // A story pose (lying, getting up) stands in for his normal look.
     this.pose.update(frameDt, this.player.x, this.player.y);
-    if (this.pose.active !== this.posed && this.run.state === 'fighting') this.view.setVisible(!this.pose.active);
-    this.posed = this.pose.active;
+    // Doomsday hides him from the portal until the blast.
+    const hidden = this.pose.active || this.player.blinking || this.caster.charging;
+    if (hidden !== this.posed && this.run.state === 'fighting') this.view.setVisible(!hidden);
+    this.posed = hidden;
+    if (this.walkTo) {
+      // Timo leads the way on a story walk.
+      const w = this.walkTo;
+      const d = Math.hypot(w.x - this.player.x, w.y - this.player.y) || 1;
+      const ahead = Math.min(timo.leadDistance, d);
+      this.timo.lead(this.player.x + ((w.x - this.player.x) / d) * ahead, this.player.y + ((w.y - this.player.y) / d) * ahead);
+    }
     this.timo.update(frameDt, this.player.x, this.player.y);
+    this.pedestals.update(frameDt, this.map);
+    this.statusView.update(frameDt, this.enemies.all(this.everyone));
+    this.vestigesView.update(frameDt, this.player.x, this.player.y, this.run.state === 'fighting' && !hidden, cam.width, cam.height);
     this.lids.update(frameDt, cam.width, cam.height);
     this.ambience.update(frameDt);
     this.loops.update(this.player.x, this.player.y);
     this.box.update(frameDt, cam.width, this.player.x, this.player.y);
     this.ghost.update(frameDt, cam.width, cam.height);
     this.hint.update(frameDt, this.player.x, this.player.y, !!this.travel.near && !this.travel.leaving && this.control && this.run.state === 'fighting');
-    const notes = [...(this.mindscape?.notes(this.showHitboxes) ?? []), this.paused && !this.tree.open && 'PAUSED', sim.godMode && 'GOD MODE'].filter(Boolean);
+    const notes = [...(this.mindscape?.notes(this.showHitboxes) ?? []), this.paused && !this.tree.open && !this.menuOpen && 'PAUSED', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
     this.debug.clear();
     if (this.showHitboxes) drawHitboxes(this.debug, { hero: this.player, map: this.map, world: this.world, enemies: this.enemies, breakables: this.breakables, arrows: this.arrows });
@@ -479,7 +630,7 @@ export class ArenaScene extends Phaser.Scene {
 
   // A crosshair while the bow can fire; the pointer in menus, during dialogue and before he can shoot.
   private updateCursor(): void {
-    const aiming = this.run.state === 'fighting' && this.control && !this.travel.leaving && !this.tree.open && !this.story.talking && stats.canFire();
+    const aiming = this.run.state === 'fighting' && this.control && !this.travel.leaving && !this.tree.open && !this.menuOpen && !this.story.talking && stats.canFire();
     const css = cursorCss(aiming ? 'crosshair' : 'pointer');
     if (css === this.cursor) return;
     this.cursor = css;
@@ -504,8 +655,15 @@ export class ArenaScene extends Phaser.Scene {
       this.input2.consume('interact');
       this.input2.consume('fire');
     }
-    this.player.fireBlocked = this.story.talking || (this.player.fireBlocked && this.input2.isDown('fire'));
-    if (r.state === 'fighting' && !this.travel.leaving && this.control) {
+    // Vestiges come before his own update, so the click that casts one does not also shoot.
+    const aimed = this.caster.aiming >= 0;
+    const canAct = r.state === 'fighting' && !this.travel.leaving && this.control && !this.story.talking && !this.tree.open && !stats.weak();
+    this.caster.update(dt, this.input2, this.aim, canAct);
+    this.player.fireBlocked = this.story.talking || this.caster.aiming >= 0 || ((aimed || this.player.fireBlocked) && this.input2.isDown('fire'));
+    if (this.walkTo && r.state === 'fighting') this.stepWalk(dt);
+    // Charging a Vestige, he holds still.
+    else if (this.caster.charging) this.player.stop();
+    else if (r.state === 'fighting' && !this.travel.leaving && this.control) {
       this.player.update(dt, this.input2, this.aim);
       if (Math.hypot(this.input2.move.x, this.input2.move.y) > 0.1) this.story.notify('move');
       this.travel.check(this.map, this.input2.justPressed('interact'), (o) => this.isOpen(o));
@@ -526,6 +684,18 @@ export class ArenaScene extends Phaser.Scene {
       const { x, y } = this.player;
       if (this.enemies.touching(x, y, cfgPlayer.hitRadius) || this.world.onHurtingFloor(x, y)) this.die();
     }
+  }
+
+  // One step of a story walk: on until he is close enough, or has made no headway for a moment (something in the way).
+  private stepWalk(dt: number): void {
+    const w = this.walkTo!;
+    const left = this.player.walkToward(dt, w.x, w.y, stats.moveSpeed() * story.walkSpeed);
+    w.stuck = left < w.last - 0.5 ? 0 : w.stuck + dt;
+    w.last = Math.min(w.last, left);
+    if (left > w.stop && w.stuck < 0.5) return;
+    this.walkTo = null;
+    this.player.stop();
+    this.timo.followHero();
   }
 
   private die(): void {

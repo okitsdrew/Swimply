@@ -3,6 +3,7 @@ import { render } from '../config/render';
 import { WolfConfig } from '../config/werewolf';
 import { toScreen, Vec2 } from '../core/iso';
 import { Navigator } from './Nav';
+import { Status } from './status';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
@@ -34,11 +35,15 @@ export class Werewolf implements Target {
   radius: number;
   alive = false;
   hp = 0;
+  readonly status = new Status();
   state: WolfState = 'gone';
   // Seconds spent in the current state.
   time = 0;
   vx = 0;
   vy = 0;
+  // Knockback velocity from a blast, apart from whatever he is doing, fading on its own.
+  kx = 0;
+  ky = 0;
   flash = 0;
   // The attack: where the rectangle (or the swipe's cone) starts, its locked direction, and how far it reaches now.
   ax = 0;
@@ -138,6 +143,7 @@ export class Werewolf implements Target {
 
   clear(): void {
     this.alive = false;
+    this.status.clear();
     this.enter('gone');
   }
 
@@ -154,7 +160,7 @@ export class Werewolf implements Target {
 
   // True if he is walking into the circle (the player's hit circle).
   touching(x: number, y: number, r: number): boolean {
-    if (!this.alive || this.airborne) return false;
+    if (!this.alive || this.airborne || this.status.held) return false;
     const min = r + this.radius * this.cfg.contactScale;
     return (this.x - x) ** 2 + (this.y - y) ** 2 < min * min;
   }
@@ -195,10 +201,49 @@ export class Werewolf implements Target {
     return (x - this.jx) ** 2 + (y - this.jy) ** 2 < min * min;
   }
 
+  // Stunned: the attack he was making is dropped, warning and all, and he starts over from walking with his attack
+  // cooldown. Not in the air: a jump always lands.
+  interrupt(): void {
+    const attacking = ['windup', 'dash', 'quickDash', 'crouch', 'swipeWindup', 'swipe', 'slam', 'land', 'recover'];
+    if (!attacking.includes(this.state)) return;
+    this.reach = 0;
+    this.sweep = null;
+    this.slammed = false;
+    this.dashPlanned = false;
+    this.windupScale = 1;
+    this.cooldown = this.cfg.attackCooldown;
+    this.enter('walk');
+  }
+
+  // Thrown away from (fromX, fromY) by a blast, as much as he lets himself be.
+  push(fromX: number, fromY: number, amount: number): void {
+    if (this.airborne) return;
+    const dx = this.x - fromX;
+    const dy = this.y - fromY;
+    const d = Math.hypot(dx, dy) || 1;
+    this.kx += (dx / d) * amount * this.cfg.knockbackTaken;
+    this.ky += (dy / d) * amount * this.cfg.knockbackTaken;
+  }
+
   update(dt: number, world: CollisionWorld, nav: Navigator, target: Vec2): void {
     if (this.state === 'gone') return;
     this.radius = this.cfg.radius * this.cfg.scale;
     this.landed = false;
+    if (this.kx || this.ky) {
+      this.x += this.kx * dt;
+      this.y += this.ky * dt;
+      const k = Math.exp(-this.cfg.knockbackDecay * dt);
+      this.kx = Math.abs(this.kx * k) < 1 ? 0 : this.kx * k;
+      this.ky = Math.abs(this.ky * k) < 1 ? 0 : this.ky * k;
+      world.resolve(this);
+    }
+    // Stunned: everything he was doing waits, frozen where it was (in the air, a jump carries on).
+    if (this.status.held && !this.airborne && this.state !== 'rising' && this.state !== 'idle') {
+      this.flash -= dt;
+      this.sweep = null;
+      this.slammed = false;
+      return;
+    }
     this.time += dt;
     this.flash -= dt;
     this.sweep = null;
@@ -434,7 +479,7 @@ export class Werewolf implements Target {
 
   private walk(dt: number, world: CollisionWorld, nav: Navigator, target: Vec2): void {
     nav.direction(this.x, this.y, this.radius, way);
-    let speed = this.cfg.speed;
+    let speed = this.cfg.speed * this.status.speedMult;
     if (this.cfg.uniformScreenSpeed) {
       toScreen(way.x, way.y, off);
       speed *= (render.isoScale * Math.SQRT2) / (Math.hypot(off.x, off.y) || 1);

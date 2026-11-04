@@ -2,6 +2,7 @@ import { feel } from '../config/feel';
 import { priest } from '../config/priest';
 import { DebugDraw, EnemyGroup } from './enemies';
 import { Navigator } from './Nav';
+import { Status } from './status';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
@@ -9,6 +10,7 @@ export type PriestState = 'idle' | 'rising' | 'walk' | 'windup' | 'cast' | 'blin
 
 export interface Priest extends Target {
   hp: number;
+  status: Status;
   state: PriestState;
   // Seconds spent in the current state.
   time: number;
@@ -57,7 +59,7 @@ export class Priests implements EnemyGroup<Priest> {
   // One rising at (x, y): the spawn mark shows first.
   spawn(x: number, y: number): Priest {
     const p: Priest = {
-      id: nextId++, x, y, radius: priest.radius * priest.scale, alive: false, hp: priest.hp, state: 'rising', time: 0,
+      id: nextId++, x, y, radius: priest.radius * priest.scale, alive: false, hp: priest.hp, status: new Status(), state: 'rising', time: 0,
       vx: 0, vy: 0, kx: 0, ky: 0, flash: 0, cooldown: priest.firstCast, tpCooldown: priest.firstTeleport, bx: x, by: y,
     };
     this.list.push(p);
@@ -88,6 +90,10 @@ export class Priests implements EnemyGroup<Priest> {
     return priest.radius * priest.scale;
   }
 
+  get ccResist(): number {
+    return priest.ccResist;
+  }
+
   targets(out: Target[]): void {
     for (const p of this.list) if (p.alive) out.push(p);
   }
@@ -111,6 +117,14 @@ export class Priests implements EnemyGroup<Priest> {
     this.orbs.length = 0;
   }
 
+  push(p: Priest, fromX: number, fromY: number, amount: number): void {
+    const dx = p.x - fromX;
+    const dy = p.y - fromY;
+    const d = Math.hypot(dx, dy) || 1;
+    p.kx += (dx / d) * amount;
+    p.ky += (dy / d) * amount;
+  }
+
   damage(p: Priest, amount: number, fromX: number, fromY: number): void {
     if (!p.alive) return;
     this.wake(p);
@@ -124,6 +138,13 @@ export class Priests implements EnemyGroup<Priest> {
     if (p.hp <= 0) this.kill(p);
   }
 
+  // Stunned mid-cast: the cast is dropped, and the next waits its cooldown.
+  interrupt(p: Priest): void {
+    if (p.state !== 'windup' && p.state !== 'cast') return;
+    p.cooldown = priest.castCooldown;
+    this.enter(p, 'walk');
+  }
+
   kill(p: Priest): void {
     p.alive = false;
     this.list.splice(this.list.indexOf(p), 1);
@@ -133,7 +154,7 @@ export class Priests implements EnemyGroup<Priest> {
   // True if a Priest's body or one of the orbs overlaps the circle (the player's forgiving hit circle).
   touching(x: number, y: number, r: number): boolean {
     for (const p of this.list) {
-      if (!p.alive || p.state === 'blinkOut' || p.state === 'blinkIn') continue;
+      if (!p.alive || p.state === 'blinkOut' || p.state === 'blinkIn' || p.status.held) continue;
       const min = r + p.radius * priest.contactScale;
       if ((p.x - x) ** 2 + (p.y - y) ** 2 < min * min) return true;
     }
@@ -160,6 +181,17 @@ export class Priests implements EnemyGroup<Priest> {
         continue;
       }
       if (p.state === 'idle') continue;
+      // Stunned: it stands (a cast it was winding up waits), and only knockback moves it. Mid-teleport it finishes.
+      if (p.status.held && p.state !== 'blinkOut' && p.state !== 'blinkIn') {
+        p.time -= dt;
+        p.vx = p.vy = 0;
+        p.kx *= kdecay;
+        p.ky *= kdecay;
+        p.x += p.kx * dt;
+        p.y += p.ky * dt;
+        world.resolve(p);
+        continue;
+      }
 
       const tx = target.x - p.x;
       const ty = target.y - p.y;
@@ -204,8 +236,8 @@ export class Priests implements EnemyGroup<Priest> {
         this.enter(p, 'walk');
       }
 
-      p.vx += (wantX - p.vx) * turn;
-      p.vy += (wantY - p.vy) * turn;
+      p.vx += (wantX * p.status.speedMult - p.vx) * turn;
+      p.vy += (wantY * p.status.speedMult - p.vy) * turn;
       p.kx *= kdecay;
       p.ky *= kdecay;
       p.x += (p.vx + p.kx) * dt;

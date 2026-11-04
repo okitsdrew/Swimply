@@ -16,6 +16,8 @@ export interface CollisionWorld {
   onBlockingFloor(x: number, y: number, r: number): boolean;
   // True if the floor under (x, y) kills the player who stands on it.
   onHurtingFloor(x: number, y: number): boolean;
+  // True if (x, y) is under a roof tile (the top of a building).
+  onRoof(x: number, y: number): boolean;
   // Distance along a ray (unit direction) to the first solid thing within len, or -1.
   raycast(x: number, y: number, dirX: number, dirY: number, len: number): number;
   // The placed thing whose circle the last raycast stopped at, or null (the map's edge, or nothing).
@@ -120,6 +122,11 @@ export class MapWorld implements CollisionWorld {
   onHurtingFloor(x: number, y: number): boolean {
     const t = this.map.tileSize;
     return !!tileAt(this.map, Math.floor(x / t), Math.floor(y / t))?.hurts;
+  }
+
+  onRoof(x: number, y: number): boolean {
+    const t = this.map.tileSize;
+    return !!tileAt(this.map, Math.floor(x / t), Math.floor(y / t))?.roof;
   }
 
   resolve(c: Circle, overFloors = false): void {

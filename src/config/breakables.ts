@@ -11,7 +11,7 @@ export const breakables = defineConfig(
     // The break: a puff of smoke along its collision circles, a shake and a short freeze.
     breakSmoke: 2,
     breakShake: 0,
-    breakHitStop: 0.05,
+    breakHitStop: 0,
   },
   {
     flashTime: { min: 0, max: 0.5, step: 0.01 },

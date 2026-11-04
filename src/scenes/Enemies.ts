@@ -5,6 +5,7 @@ import { EnemyView, ViewFrame } from '../render/enemies';
 import { DebugDraw, Enemy, EnemyGroup } from '../sim/enemies';
 import { FlowField } from '../sim/Nav';
 import { Target } from '../sim/targets';
+import { Effect } from '../sim/status';
 import { MapWorld } from '../sim/World';
 
 // One kind of enemy as the scene knows it: its id (what an asset's `enemy` names), its sim group and its view.
@@ -38,6 +39,8 @@ export class Enemies {
 
   // A placed enemy with a "killed sets" flag died: the scene turns it on for this visit.
   onFlag: (flag: string) => void = () => {};
+  // Burning hurt one, for damage numbers.
+  onBurn: (e: Enemy, amount: number) => void = () => {};
   // Any enemy died, for the scene's own rules (shards in the Mindscape, winning it).
   onKilled: (kind: string, x: number, y: number, e: Enemy) => void = () => {};
 
@@ -134,6 +137,12 @@ export class Enemies {
     return !map.objects.some((o) => o.asset.enemy && o.asset.marker !== 'enemy');
   }
 
+  // A fight is on: some enemy is up and about (not one still standing where it was placed, nor one rising).
+  fighting(): boolean {
+    for (const k of this.kinds.values()) if (k.group.list.some((e) => e.alive && !k.group.waiting(e))) return true;
+    return false;
+  }
+
   killAll(id: string): void {
     const g = this.kinds.get(id)?.group;
     if (g) [...g.list].forEach((e) => g.kill(e));
@@ -149,7 +158,33 @@ export class Enemies {
   }
 
   update(dt: number): void {
-    for (const k of this.kinds.values()) k.group.update(dt, this.world, this.nav, this.hero);
+    for (const k of this.kinds.values()) {
+      // Effects run down here, for every kind at once; a burn hurts through the kind's own damage.
+      for (const e of [...k.group.list]) {
+        const burn = e.status.tick(dt);
+        if (burn > 0 && e.alive) {
+          k.group.damage(e, burn, e.x, e.y);
+          this.onBurn(e, burn);
+        }
+      }
+      k.group.update(dt, this.world, this.nav, this.hero);
+    }
+  }
+
+  // Every enemy of every kind, for drawing their effects.
+  all(out: Enemy[]): Enemy[] {
+    out.length = 0;
+    for (const k of this.kinds.values()) out.push(...k.group.list);
+    return out;
+  }
+
+  // Puts effects (stun, slow, burn...) on one enemy, as much as its kind lets through.
+  afflict(e: Enemy, effects: readonly Effect[]): void {
+    for (const k of this.kinds.values()) {
+      if (!k.group.list.includes(e)) continue;
+      this.applyTo(k, e, effects);
+      return;
+    }
   }
 
   // Their attacks this step. Every kind is asked, even after one hits, so each marks what it caught.
@@ -177,6 +212,32 @@ export class Enemies {
   // An arrow hit one: its own kind takes the damage, pushed away from (fromX, fromY).
   damage(t: Target, amount: number, fromX: number, fromY: number): void {
     this.owners.get(t)?.group.damage(t as Enemy, amount, fromX, fromY);
+  }
+
+  // Effects on one of a kind, shortened by its ccResist. A stun that takes also stops the attack it was making.
+  private applyTo(k: AnyKind, e: Enemy, effects: readonly Effect[]): void {
+    for (const fx of effects) {
+      e.status.apply(fx, k.group.ccResist);
+      if (fx.kind === 'stun' && e.status.stun > 0) k.group.interrupt?.(e);
+    }
+  }
+
+  // A blast at (x, y): everyone within `radius` takes `amount` (each kind's own hit and knockback) and `effects`, and
+  // everyone within `pushRadius` (or `radius`, if bigger) is thrown outward by `push`. Calls `hit` for each one
+  // damaged, for numbers and sound.
+  blast(x: number, y: number, radius: number, amount: number, pushRadius: number, push: number, effects: readonly Effect[], hit: (e: Enemy) => void): void {
+    for (const k of this.kinds.values()) {
+      for (const e of [...k.group.list]) {
+        if (!e.alive) continue;
+        const d = Math.hypot(e.x - x, e.y - y) - e.radius;
+        if (d < Math.max(pushRadius, radius)) k.group.push?.(e, x, y, push);
+        if (d < radius) {
+          this.applyTo(k, e, effects);
+          k.group.damage(e, amount, x, y);
+          hit(e);
+        }
+      }
+    }
   }
 
   render(f: ViewFrame): void {

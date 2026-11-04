@@ -62,6 +62,10 @@ export class Player {
   readyTimer = 0;
   // Grace period after a dash or teleport ends.
   graceTime = 0;
+  // Seconds he cannot be hurt for some other reason (a Vestige charging).
+  shieldTime = 0;
+  // Flying through walls (a Vestige's teleport): nothing pushes him out of solid things on the way.
+  private phasing = false;
   fireBlocked = false;
   shootSlowTimer = 0;
   private lastMoveX = 0;
@@ -72,18 +76,25 @@ export class Player {
   onDashStart: () => void = () => {};
   onTeleport: (fromX: number, fromY: number, toX: number, toY: number, travelTime: number) => void = () => {};
   onTeleportArrive: (x: number, y: number) => void = () => {};
+  // A Vestige's flight (blink) begins: it has its own look, not the teleport's tear.
+  onBlink: (fromX: number, fromY: number, toX: number, toY: number, travelTime: number) => void = () => {};
 
   // What his body and his teleport cannot pass through.
   constructor(private world: CollisionWorld) {}
 
   // Back to a fresh start at (x, y), keeping the callbacks the scene wired up.
   reset(x: number, y: number): void {
-    const { onFire, onDashStart, onTeleport, onTeleportArrive } = this;
-    Object.assign(this, new Player(this.world), { onFire, onDashStart, onTeleport, onTeleportArrive, x, y });
+    const { onFire, onDashStart, onTeleport, onTeleportArrive, onBlink } = this;
+    Object.assign(this, new Player(this.world), { onFire, onDashStart, onTeleport, onTeleportArrive, onBlink, x, y });
   }
 
   get dashing(): boolean {
     return this.dashTime > 0;
+  }
+
+  // In a Vestige's flight: gone from sight until he lands.
+  get blinking(): boolean {
+    return this.phasing;
   }
 
   get teleporting(): boolean {
@@ -99,9 +110,9 @@ export class Player {
     return this.dashing || this.teleporting;
   }
 
-  // Cannot be killed: mid-dash or teleport, or in the short grace afterwards.
+  // Cannot be killed: mid-dash or teleport, in the short grace afterwards, or shielded.
   get safe(): boolean {
-    return this.invincible || this.graceTime > 0;
+    return this.invincible || this.graceTime > 0 || this.shieldTime > 0;
   }
 
   // 0 right after a shot, rising to 1 as the next shot is about to release.
@@ -138,6 +149,7 @@ export class Player {
     this.dashBuffer -= dt;
     this.armsUpTimer = Math.max(0, this.armsUpTimer - dt);
     this.graceTime = Math.max(0, this.graceTime - dt);
+    this.shieldTime = Math.max(0, this.shieldTime - dt);
 
     this.teleportCooldown = Math.max(0, this.teleportCooldown - dt);
     if (input.justPressed('teleport') && this.teleportCooldown <= 0 && stats.hasTeleport()) {
@@ -155,7 +167,7 @@ export class Player {
     this.body.x = this.x;
     this.body.y = this.y;
     this.body.radius = cfgPlayer.bodyRadius;
-    this.world.resolve(this.body, this.teleporting);
+    if (!this.phasing) this.world.resolve(this.body, this.teleporting);
     this.x = this.body.x;
     this.y = this.body.y;
     this.updateFire(dt, input);
@@ -239,6 +251,57 @@ export class Player {
     }
   }
 
+  // Walks him toward (x, y) on his own (a story scene), at `speed`, round nothing: solid things stop him. Returns how
+  // far is left.
+  walkToward(dt: number, x: number, y: number, speed: number): number {
+    const dx = x - this.x;
+    const dy = y - this.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 1e-3) {
+      this.aimX = dx / d;
+      this.aimY = dy / d;
+    }
+    const step = Math.min(d, speed * dt);
+    this.vx = d > 1e-3 ? (dx / d) * speed : 0;
+    this.vy = d > 1e-3 ? (dy / d) * speed : 0;
+    this.x += this.aimX * step;
+    this.y += this.aimY * step;
+    this.body.x = this.x;
+    this.body.y = this.y;
+    this.body.radius = cfgPlayer.bodyRadius;
+    this.world.resolve(this.body);
+    this.x = this.body.x;
+    this.y = this.body.y;
+    return Math.hypot(x - this.x, y - this.y);
+  }
+
+  stop(): void {
+    this.vx = 0;
+    this.vy = 0;
+  }
+
+  // A flight straight to (x, y) over `travel` seconds, for a Vestige: through anything in
+  // the way. He cannot be hurt on the way, and lands standing still. The caller has checked he can stand there.
+  blink(x: number, y: number, travel: number): void {
+    this.phasing = true;
+    const fromX = this.x;
+    const fromY = this.y;
+    this.tpEndVx = 0;
+    this.tpEndVy = 0;
+    this.dashTime = 0;
+    this.lockTime = 0;
+    this.onBlink(fromX, fromY, x, y, travel);
+    if (travel > 1e-3) {
+      this.teleportTime = travel;
+      this.tpVx = (x - fromX) / travel;
+      this.tpVy = (y - fromY) / travel;
+    } else {
+      this.x = x;
+      this.y = y;
+      this.endTeleport();
+    }
+  }
+
   // How much of a jump he gets (0 to 1). He passes over water but not through pillars or the map's edge, and never
   // lands in water: a jump that would end there is cut back to the last spot where he can stand.
   private clipJump(jx: number, jy: number): number {
@@ -265,6 +328,7 @@ export class Player {
 
   // After a teleport (or dash) input is locked briefly and he keeps walking the way he was going.
   private endTeleport(): void {
+    this.phasing = false;
     this.graceTime = cfgPlayer.invulnAfter;
     this.vx = this.tpEndVx;
     this.vy = this.tpEndVy;
