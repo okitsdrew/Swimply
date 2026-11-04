@@ -105,7 +105,7 @@ export class ArenaScene extends Phaser.Scene {
   private timo!: TimoView;
   private lids!: Eyelids;
   private pose!: HeroPose;
-  // Whether the hero's own look was hidden (a pose, a Vestige's flight) last frame.
+  // Whether the hero's own look was hidden (a pose, a Vestige) last frame.
   private posed = false;
   private ambience!: AmbienceView;
   private sfx!: SoundFx;
@@ -600,7 +600,8 @@ export class ArenaScene extends Phaser.Scene {
     this.breakablesView.update(frameDt);
     // A story pose (lying, getting up) stands in for his normal look.
     this.pose.update(frameDt, this.player.x, this.player.y);
-    const hidden = this.pose.active || this.player.blinking;
+    // Doomsday hides him from the portal until the blast.
+    const hidden = this.pose.active || this.player.blinking || this.caster.charging;
     if (hidden !== this.posed && this.run.state === 'fighting') this.view.setVisible(!hidden);
     this.posed = hidden;
     if (this.walkTo) {
