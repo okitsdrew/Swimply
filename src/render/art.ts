@@ -34,6 +34,8 @@ export const heroWalkFrames = ['hero_walk0', 'hero_walk1', 'hero_walk2', 'hero_w
 // Doomsday's portal (0 to 2 open it, 2 and 3 alternate while open) and its ball dropping to the ground.
 export const portalFrames = ['doomsday_portal_0', 'doomsday_portal_1', 'doomsday_portal_2', 'doomsday_portal_3'];
 export const dropFrames = ['doomsday_drop_0', 'doomsday_drop_1'];
+// Its ball of energy while it charges, churning (0 to 5, looping).
+export const ballFrames = [0, 1, 2, 3, 4, 5].map((i) => `doomsday_ball_${i}`);
 // A stunned enemy's star, spinning clockwise.
 export const starFrames = ['status_star', 'status_star_1', 'status_star_2', 'status_star_3'];
 // The circle on the ground while a Vestige is aimed, in that Vestige's colour (its `ring` in vestiges.json).

@@ -5,7 +5,7 @@ import { save } from '../core/save';
 import { ellipseHalfSize, toScreen } from '../core/iso';
 import { equippedIn, VESTIGE_SLOTS, vestiges, vestigeTexture } from '../data/vestiges';
 import { VestigeCaster } from '../sim/Vestiges';
-import { dropFrames, skillRing, Tex } from './art';
+import { ballFrames, dropFrames, skillRing, Tex } from './art';
 import { Fx } from './Fx';
 import { ui, uiText } from './ui';
 
@@ -29,18 +29,15 @@ export class VestigesView {
   private aimInner: Phaser.GameObjects.Image;
   private slots: Slot[] = [];
   private age = 0;
-  // Doomsday's ball of energy, gathering over him while it charges: a coloured glow round a white core, which turns
-  // into the drawn drop as it falls.
+  // Doomsday's ball of energy, growing and churning over him while it charges, which turns into the drop as it falls.
   private ball: Phaser.GameObjects.Image;
-  private core: Phaser.GameObjects.Image;
   private drop: Phaser.GameObjects.Image;
   private sparkTimer = 0;
 
   constructor(private scene: Phaser.Scene, private caster: VestigeCaster, private fx: Fx) {
     const ring = () => scene.add.image(0, 0, Tex.doorRing).setDepth(-4e7).setVisible(false);
     this.aimInner = ring();
-    this.ball = scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
-    this.core = scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffffff).setVisible(false);
+    this.ball = scene.add.image(0, 0, ballFrames[0]).setVisible(false);
     this.drop = scene.add.image(0, 0, dropFrames[0]).setVisible(false);
     const fixed = <T extends Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.Components.Depth>(o: T) => o.setScrollFactor(0).setDepth(2e7);
     for (let i = 0; i < VESTIGE_SLOTS; i++) {
@@ -99,7 +96,6 @@ export class VestigesView {
     // drops to the ground for the blast.
     const charging = this.caster.charging;
     this.ball.setVisible(charging);
-    this.core.setVisible(charging);
     this.drop.setVisible(false);
     if (charging) {
       const k = this.caster.chargeProgress;
@@ -108,11 +104,11 @@ export class VestigesView {
       const fall = doomsday.dropTime > 0 ? Math.max(0, 1 - left / doomsday.dropTime) : 0;
       const y = s.y - doomsday.ballHeight * px * (1 - fall * fall);
       const pulse = 1 + 0.12 * Math.sin(this.age * (10 + k * 20));
-      const size = (doomsday.ballSize * px * (0.2 + 0.8 * k) * pulse) / 32;
-      this.ball.setPosition(s.x, y).setDepth(s.y + 2).setScale(size * 1.6).setTint(doomsday.blastColor).setAlpha(0.9);
-      this.core.setPosition(s.x, y).setDepth(s.y + 3).setScale(size * 0.6).setAlpha(0.6 + 0.4 * k);
+      const size = doomsday.ballSize * px * (0.2 + 0.8 * k) * pulse;
+      const ballFrame = ballFrames[Math.floor(this.age / doomsday.ballFrameTime) % ballFrames.length];
+      this.ball.setTexture(ballFrame).setDisplaySize(size, size).setPosition(s.x, y).setDepth(s.y + 2);
       if (fall > 0) {
-        this.core.setVisible(false);
+        this.ball.setVisible(false);
         const frame = dropFrames[Math.floor(this.age / doomsday.dropFrameTime) % dropFrames.length];
         this.drop.setVisible(true).setTexture(frame).setPosition(s.x, y).setDepth(s.y + 3).setScale(doomsday.dropScale * px);
       }
