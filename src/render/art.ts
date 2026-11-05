@@ -42,6 +42,13 @@ export const explosionFrames = [0, 1, 2, 3, 4, 5].map((i) => `explosion_${i}`);
 export const EXPLOSION_GROUND = 20 / 32;
 // A stunned enemy's star, spinning clockwise.
 export const starFrames = ['status_star', 'status_star_1', 'status_star_2', 'status_star_3'];
+// How much to blow up an icon so it fits in a box `box` pixels across: a whole number, so its pixels stay square, at
+// most 4.
+export function iconScale(scene: Phaser.Scene, key: string, box: number): number {
+  const f = scene.textures.getFrame(key);
+  return f ? Math.max(1, Math.min(4, Math.floor((box - 8) / Math.max(f.width, f.height)))) : 4;
+}
+
 // The circle on the ground while a Vestige is aimed, in that Vestige's colour (its `ring` in vestiges.json).
 export const skillRing = (n: number): string => `skill_ring_${n}`;
 

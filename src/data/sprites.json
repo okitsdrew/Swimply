@@ -6333,8 +6333,8 @@
       ]
     },
     {
-      "id": "vestige_flame_butterfly",
-      "name": "vestige_flame_butterfly",
+      "id": "vestige_flame_torrent",
+      "name": "vestige_flame_torrent",
       "palette": {
         "k": "#1a0808",
         "r": "#e0301c",
@@ -6361,8 +6361,8 @@
       ]
     },
     {
-      "id": "vestige_flame_butterfly_1",
-      "name": "vestige_flame_butterfly_1",
+      "id": "vestige_flame_torrent_1",
+      "name": "vestige_flame_torrent_1",
       "palette": {
         "k": "#1a0808",
         "r": "#e0301c",
@@ -6389,8 +6389,8 @@
       ]
     },
     {
-      "id": "vestige_flame_butterfly_2",
-      "name": "vestige_flame_butterfly_2",
+      "id": "vestige_flame_torrent_2",
+      "name": "vestige_flame_torrent_2",
       "palette": {
         "k": "#1a0808",
         "r": "#e0301c",

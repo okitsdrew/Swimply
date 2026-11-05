@@ -348,6 +348,7 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Story: fresh start', run: () => this.storyFresh() },
       { label: 'Story: Mindscape won', run: () => this.storyWon() },
       { label: 'Vestige: grant Doomsday', run: () => unlockVestige('doomsday') },
+      { label: 'Vestige: grant Flame Torrent', run: () => unlockVestige('flame_torrent') },
       { label: 'Vestiges: forget all', run: () => forgetVestiges() },
       ...EFFECT_KINDS.map((kind) => ({ label: `Effect: ${kind} all (3s)`, run: () => this.afflictAll({ kind, seconds: 3, power: kind === 'burn' ? 20 : 0.5 }) })),
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },

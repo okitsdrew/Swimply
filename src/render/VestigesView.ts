@@ -3,9 +3,9 @@ import { render } from '../config/render';
 import { doomsday, vestiges as cfg } from '../config/vestiges';
 import { save } from '../core/save';
 import { ellipseHalfSize, toScreen } from '../core/iso';
-import { equippedIn, VESTIGE_SLOTS, vestiges, vestigeTexture } from '../data/vestiges';
+import { equippedIn, Vestige, VESTIGE_SLOTS, vestiges, vestigeTexture } from '../data/vestiges';
 import { VestigeCaster } from '../sim/Vestiges';
-import { ballFrames, dropFrames, skillRing, Tex } from './art';
+import { ballFrames, dropFrames, iconScale, skillRing, Tex } from './art';
 import { Fx } from './Fx';
 import { ui, uiText } from './ui';
 
@@ -25,7 +25,7 @@ interface Slot {
 // aimed (in its own colour, red where he cannot), the blast, and the slots at the bottom of the screen with their
 // keys and cooldowns.
 export class VestigesView {
-  private emblems: Phaser.GameObjects.Image[] = [];
+  private emblems: { img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; frames: string[]; emberTimer: number }[] = [];
   private aimInner: Phaser.GameObjects.Image;
   private slots: Slot[] = [];
   private age = 0;
@@ -49,6 +49,14 @@ export class VestigesView {
         time: fixed(scene.add.text(0, 0, '', uiText(16)).setOrigin(0.5)),
       });
     }
+  }
+
+  // An emblem's frames: the base sprite, then any `_1`, `_2`... that exist, played forward then back.
+  private emblemFrames(id: string): string[] {
+    const base = vestigeTexture(id);
+    const out = [base];
+    for (let n = 1; this.scene.textures.exists(`${base}_${n}`); n++) out.push(`${base}_${n}`);
+    return out.concat(out.slice(1, -1).reverse());
   }
 
   // The blast at (x, y) in the world: a flash, rings and sparks out to its radii.
@@ -75,20 +83,35 @@ export class VestigesView {
     this.age += dt;
     const px = render.pixelScale;
     // The emblems, spaced evenly round him and slowly circling (Timo floats by him already, as his own).
-    const equipped: string[] = [];
+    // Each flaps through its frames with a glow behind it and embers rising off it, all in its colour.
+    const equipped: Vestige[] = [];
     for (let i = 0; i < VESTIGE_SLOTS; i++) {
       const v = equippedIn(i);
-      if (v?.emblem) equipped.push(v.id);
+      if (v?.emblem) equipped.push(v);
     }
-    while (this.emblems.length < equipped.length) this.emblems.push(this.scene.add.image(0, 0, Tex.glow));
-    this.emblems.forEach((img, i) => {
-      const id = equipped[i];
-      img.setVisible(!!id && heroShown);
-      if (!id || !heroShown) return;
+    while (this.emblems.length < equipped.length) {
+      this.emblems.push({ img: this.scene.add.image(0, 0, Tex.glow), glow: this.scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD), frames: [], emberTimer: 0 });
+    }
+    this.emblems.forEach((e, i) => {
+      const v = equipped[i];
+      e.img.setVisible(!!v && heroShown);
+      e.glow.setVisible(!!v && heroShown);
+      if (!v || !heroShown) return;
+      if (e.frames[0] !== vestigeTexture(v.id)) e.frames = this.emblemFrames(v.id);
       const a = this.age * cfg.emblemSpin * Math.PI * 2 + (i / equipped.length) * Math.PI * 2;
       const s = toScreen(heroX + Math.cos(a) * cfg.emblemDistance, heroY + Math.sin(a) * cfg.emblemDistance);
       const bob = Math.sin(this.age * 3 + i * 2) * cfg.emblemBob * px;
-      img.setTexture(vestigeTexture(id)).setScale(px * cfg.emblemScale).setPosition(s.x, s.y - cfg.emblemHeight * px + bob).setDepth(s.y);
+      const y = s.y - cfg.emblemHeight * px + bob;
+      const frame = e.frames[Math.floor(this.age / cfg.emblemFrameTime) % e.frames.length];
+      e.img.setTexture(frame).setScale(px * cfg.emblemScale).setPosition(s.x, y).setDepth(s.y);
+      const flicker = 0.85 + 0.15 * Math.sin(this.age * 9 + i);
+      e.glow.setPosition(s.x, y).setDepth(s.y - 0.1).setScale((cfg.emblemGlow * px * cfg.emblemScale) / 32).setTint(v.color).setAlpha(cfg.emblemGlowAlpha * flicker);
+      e.emberTimer -= dt * cfg.emblemEmbers;
+      while (e.emberTimer < 0) {
+        e.emberTimer += 1;
+        const life = 0.5 + Math.random() * 0.4;
+        this.fx.particle({ x: s.x + (Math.random() - 0.5) * 10 * px, y: y + (Math.random() - 0.2) * 6 * px, life, from: 0.18, to: 0, tint: Math.random() < 0.6 ? v.color : 0xffe45a, vx: (Math.random() - 0.5) * 20, vy: -40 - Math.random() * 30, depth: s.y + 1 });
+      }
     });
 
     // While Doomsday charges: the ball grows over him, pulsing faster as it fills, with sparks drawn in to it, then
@@ -152,7 +175,7 @@ export class VestigesView {
       const cd = v ? c.cooldownFraction(v.id) : 0;
       sl.shade.setVisible(cd > 0).setPosition(x, y + SLOT / 2).setScale(1, cd);
       sl.time.setVisible(cd > 0).setPosition(x, y).setText(v && cd > 0 ? `${Math.ceil(c.cooldownLeft(v.id))}` : '');
-      if (v) sl.icon.setTexture(vestigeTexture(v.id)).setScale(4).setPosition(x, y);
+      if (v) sl.icon.setTexture(vestigeTexture(v.id)).setScale(iconScale(this.scene, vestigeTexture(v.id), SLOT)).setPosition(x, y);
     });
   }
 }

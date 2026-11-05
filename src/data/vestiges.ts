@@ -18,7 +18,8 @@ export interface Vestige {
   emblem: boolean;
 }
 
-// Each one is drawn as `vestige_<id>`: code art that a sprite of the same name replaces.
+// Each one is drawn as `vestige_<id>`: code art that a sprite of the same name replaces. Its emblem can flap or
+// flicker: frames `vestige_<id>_1`, `_2` and so on, played forward and back (0, 1, 2, 1).
 export const vestigeTexture = (id: string): string => `vestige_${id}`;
 
 function parse(data: unknown): { slots: number; list: Vestige[] } {

@@ -12,6 +12,12 @@ export const vestiges = defineConfig(
     // How fast the emblems circle him (turns a second) and bob.
     emblemSpin: 0.12,
     emblemBob: 2,
+    // Seconds per frame of an emblem's flap, and its glow: how big (art pixels across) and how bright. Embers rise
+    // off it in its colour, this many a second.
+    emblemFrameTime: 0.12,
+    emblemGlow: 26,
+    emblemGlowAlpha: 0.45,
+    emblemEmbers: 6,
     // How see-through the slots at the bottom of the screen are when nothing is in them.
     emptySlotAlpha: 0.35,
     // Over the throne room's pedestals: how high a Vestige hovers (art pixels), how big, and how faint its grey
@@ -27,6 +33,10 @@ export const vestiges = defineConfig(
     emblemScale: { min: 0.25, max: 4, step: 0.25 },
     emblemSpin: { min: 0, max: 1, step: 0.01 },
     emblemBob: { min: 0, max: 10, step: 0.5 },
+    emblemFrameTime: { min: 0.03, max: 0.5, step: 0.01 },
+    emblemGlow: { min: 0, max: 100, step: 1 },
+    emblemGlowAlpha: { min: 0, max: 1, step: 0.05 },
+    emblemEmbers: { min: 0, max: 40, step: 1 },
     emptySlotAlpha: { min: 0, max: 1, step: 0.05 },
     pedestalHeight: { min: 0, max: 120, step: 1 },
     pedestalScale: { min: 0.25, max: 6, step: 0.25 },
