@@ -6,9 +6,9 @@ export const sound = defineConfig(
   'sound',
   {
     // Everything, 0 to 1.
-    volume: 0.8,
+    volume: 0.5,
     // A map's background sounds (distant explosions in spawn), on top of volume.
-    ambientVolume: 0.7,
+    ambientVolume: 0.5,
     // Looping sounds from things and floors (a fire's crackle), on top of volume.
     loopVolume: 0.6,
     // How far (world units, a tile is 64) a looping sound carries; it fades to nothing at this distance.

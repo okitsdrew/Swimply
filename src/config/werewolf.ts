@@ -150,6 +150,7 @@ export const werewolf = defineConfig('werewolf', 'enemies', {
   ...wolf,
   hp: 700,
   ccResist: 0.4,
+  knockbackTaken: 1,
   speed: 300,
   scale: 2.25,
   windupTime: 0.6,
