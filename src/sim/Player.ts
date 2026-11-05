@@ -141,8 +141,9 @@ export class Player {
     }
     this.hasCursor = aimWorld !== null;
 
-    if (input.justPressed('dash') && stats.canDash()) this.dashBuffer = Math.max(dash.inputBuffer, 1e-4);
-    if (this.dashBuffer > 0 && !this.dashing && this.dashCooldown <= 0) {
+    // A Vestige's flight cannot be cut short by a dash or teleport.
+    if (input.justPressed('dash') && stats.canDash() && !this.phasing) this.dashBuffer = Math.max(dash.inputBuffer, 1e-4);
+    if (this.dashBuffer > 0 && !this.dashing && !this.phasing && this.dashCooldown <= 0) {
       this.resolveMoveDir(input);
       this.startDash();
     }
@@ -152,7 +153,7 @@ export class Player {
     this.shieldTime = Math.max(0, this.shieldTime - dt);
 
     this.teleportCooldown = Math.max(0, this.teleportCooldown - dt);
-    if (input.justPressed('teleport') && this.teleportCooldown <= 0 && stats.hasTeleport()) {
+    if (input.justPressed('teleport') && this.teleportCooldown <= 0 && stats.hasTeleport() && !this.phasing) {
       this.teleport();
     }
 

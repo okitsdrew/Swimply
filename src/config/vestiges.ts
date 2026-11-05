@@ -93,7 +93,7 @@ export const doomsday = defineConfig(
     range: 600,
     // Seconds from the click to his flight: Timo is thrown at the spot (he can still be hurt meanwhile), arcing this
     // high (art pixels) and spinning this many turns, and the ball starts to form round him there.
-    throwTime: 0.3,
+    throwTime: 0.1,
     throwArc: 30,
     throwSpins: 1,
     // Timo's glow while Doomsday is in use (art pixels across, before the emblems' activeGlow).
@@ -106,7 +106,7 @@ export const doomsday = defineConfig(
     portalTime: 0.3,
     // Seconds he gathers energy between landing and the blast, standing still and unhurt, and seconds he stays
     // unhurt after it.
-    chargeTime: 1.5,
+    chargeTime: 1.25,
     safeAfter: 0.3,
     damage: 250,
     damageRadius: 150,

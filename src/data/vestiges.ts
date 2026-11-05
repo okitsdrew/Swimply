@@ -19,8 +19,10 @@ export interface Vestige {
   // False when it never rests on its pedestal (Timo lives in him: equipped he floats by him, unequipped he is
   // inside him).
   onPedestal: boolean;
-  // The texture its slot and menu icon show; `vestige_<id>` unless the file names another (Timo's face).
+  // The texture its slot and menu icon show; `vestige_<id>` unless the file names another (Timo's face). While it is
+  // in use, its slot shows `activeIcon` instead, if it has one ('' for none).
   icon: string;
+  activeIcon: string;
 }
 
 // Each one is drawn as `vestige_<id>`: code art that a sprite of the same name replaces. Its emblem can flap or
@@ -35,7 +37,7 @@ function parse(data: unknown): { slots: number; list: Vestige[] } {
     const e = obj(entry);
     const id = str(e.id, '', `vestiges.json vestige ${i}`, problems);
     if (!id) return problems.push(`vestiges.json vestige ${i}: has no id, skipped`), [];
-    return [{ id, name: str(e.name, id, `${id}.name`, problems), color: color(e.color ?? '#c58cff', `${id}.color`, problems), ring: Math.round(num(e.ring, 5, `${id}.ring`, problems)), pedestal: Math.round(num(e.pedestal, i, `${id}.pedestal`, problems)), emblem: bool(e.emblem, true, `${id}.emblem`, problems), onPedestal: bool(e.onPedestal, true, `${id}.onPedestal`, problems), icon: str(e.icon, `vestige_${id}`, `${id}.icon`, problems) }];
+    return [{ id, name: str(e.name, id, `${id}.name`, problems), color: color(e.color ?? '#c58cff', `${id}.color`, problems), ring: Math.round(num(e.ring, 5, `${id}.ring`, problems)), pedestal: Math.round(num(e.pedestal, i, `${id}.pedestal`, problems)), emblem: bool(e.emblem, true, `${id}.emblem`, problems), onPedestal: bool(e.onPedestal, true, `${id}.onPedestal`, problems), icon: str(e.icon, `vestige_${id}`, `${id}.icon`, problems), activeIcon: str(e.activeIcon, '', `${id}.activeIcon`, problems) }];
   });
   report('vestiges', problems);
   return { slots, list: out };

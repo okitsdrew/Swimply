@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { render } from '../config/render';
+import { timo } from '../config/story';
 import { doomsday, emblemLook, emblems, vestiges as cfg } from '../config/vestiges';
 import { save } from '../core/save';
 import { ellipseHalfSize, toScreen } from '../core/iso';
@@ -54,6 +55,13 @@ export class VestigesView {
         time: fixed(scene.add.text(0, 0, '', uiText(16)).setOrigin(0.5)),
       });
     }
+  }
+
+  // The frame of a moving icon (`key`, then `key_1`, `key_2`...) to show now, at Timo's face speed.
+  private activeFrame(key: string): string {
+    const frames = [key];
+    for (let n = 1; this.scene.textures.exists(`${key}_${n}`); n++) frames.push(`${key}_${n}`);
+    return frames[Math.floor(this.age * timo.faceFps) % frames.length];
   }
 
   // An emblem's frames: the base sprite, then any `_1`, `_2`... that exist, played forward then back.
@@ -190,7 +198,11 @@ export class VestigesView {
       const cd = v ? c.cooldownFraction(v.id) : 0;
       sl.shade.setVisible(cd > 0).setPosition(x, y + SLOT / 2).setScale(1, cd);
       sl.time.setVisible(cd > 0).setPosition(x, y).setText(v && cd > 0 ? `${Math.ceil(c.cooldownLeft(v.id))}` : '');
-      if (v) sl.icon.setTexture(v.icon).setScale(iconScale(this.scene, v.icon, SLOT)).setPosition(x, y);
+      // While in use, a Vestige can show another icon: Doomsday shows Timo's Doomsday face (its frames, looping).
+      if (v) {
+        const icon = on && v.activeIcon ? this.activeFrame(v.activeIcon) : v.icon;
+        sl.icon.setTexture(icon).setScale(iconScale(this.scene, icon, SLOT)).setPosition(x, y);
+      }
     });
   }
 }
