@@ -72,20 +72,24 @@ const emblemRanges = {
   emblemEmbers: { min: 0, max: 40, step: 1 },
 };
 
-// Flame Torrent, the fire butterfly's Vestige: fireballs from each side of him cross just in front of him, loop out to
-// the aimed spot and come back to him. Right beside him and at the tip of the loop, all of them pass.
+// Flame Torrent, the fire butterfly's Vestige: fireballs from each side of him cross just in front of him and curve
+// out to the aimed tip on paths set where they were shot, then fly straight back to him wherever he is now. A wall
+// turns one back on the way out and puts it out on the way back.
 export const flameTorrent = defineConfig(
   'flame_torrent',
   'vestiges',
   {
     cooldown: 8,
-    // How far out the loop's tip is (world units), how wide the loops swing to each side, and how far to his side
-    // each fireball starts.
-    range: 250,
-    width: 70,
+    // How far out the tip is (world units), how wide the paths swing to each side, and how far to his side each
+    // fireball starts.
+    range: 400,
+    width: 40,
     side: 24,
-    // Seconds for one fireball's loop out and back, how many leave from each side, and seconds between them.
-    loopTime: 0.9,
+    // Seconds a fireball takes to reach the tip, its speed back to him (world units a second), and how close it
+    // must come to him to be caught. How many leave from each side, and seconds between them.
+    outTime: 0.45,
+    returnSpeed: 900,
+    catchRadius: 16,
     perSide: 4,
     gap: 0.06,
     // Each fireball's hit: damage, how close it must pass (world units), and seconds before it can hit the same
@@ -100,17 +104,19 @@ export const flameTorrent = defineConfig(
     // How the fireballs look: height over the ground and size (art pixels), seconds per frame, and trail embers a
     // second for each.
     height: 14,
-    scale: 1,
+    scale: 1.5,
     frameTime: 0.06,
     trail: 40,
     ...emblemDefaults,
   },
   {
     cooldown: { min: 0, max: 30, step: 0.5 },
-    range: { min: 50, max: 800, step: 10 },
+    range: { min: 50, max: 1000, step: 10 },
     width: { min: 0, max: 300, step: 5 },
     side: { min: 0, max: 100, step: 2 },
-    loopTime: { min: 0.2, max: 3, step: 0.05 },
+    outTime: { min: 0.1, max: 2, step: 0.05 },
+    returnSpeed: { min: 100, max: 3000, step: 25 },
+    catchRadius: { min: 2, max: 80, step: 1 },
     perSide: { min: 1, max: 8, step: 1 },
     gap: { min: 0, max: 0.5, step: 0.01 },
     damage: { min: 0, max: 200, step: 1 },

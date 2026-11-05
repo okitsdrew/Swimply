@@ -216,11 +216,15 @@ export class ArenaScene extends Phaser.Scene {
     this.statusView = new StatusView(this, this.fx);
     this.caster.onDeny = () => this.sfx.play('deny');
     this.caster.onBlast = (x, y) => this.doomsdayBlast(x, y);
-    this.fireballs = new Fireballs();
+    this.fireballs = new Fireballs(this.world);
     this.fireballsView = new FireballsView(this, this.fireballs, this.fx);
     this.caster.onTorrent = (dx, dy) => {
       this.fireballs.cast(this.player.x, this.player.y, dx, dy);
       this.sfx.play('flameTorrent');
+    };
+    this.fireballs.onSnuffed = (x, y) => {
+      const s = toScreen(x, y);
+      this.fx.smoke(s.x, s.y - flameTorrent.height * render.pixelScale, 4, 4 * render.pixelScale);
     };
     this.caster.playing = (id) => id === 'flame_torrent' && this.fireballs.active;
     this.vestigesView.emblemAt = (id) => (id === 'flame_torrent' ? this.fireballs.lead : null);
