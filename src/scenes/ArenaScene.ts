@@ -216,7 +216,14 @@ export class ArenaScene extends Phaser.Scene {
     this.statusView = new StatusView(this, this.fx);
     this.caster.onDeny = () => this.sfx.play('deny');
     this.caster.onBlast = (x, y) => this.doomsdayBlast(x, y);
-    this.fireballs = new Fireballs(this.world);
+    this.fireballs = new Fireballs(this.world, (o) => this.breakables.canBreak(o));
+    this.fireballs.onHitThing = (thing, damage) => {
+      const s = toScreen(thing.x, thing.y);
+      this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
+      this.sfx.play('hit');
+      this.breakables.burn(thing, flameTorrent.burn, flameTorrent.burnPower);
+      this.breakables.damage(thing, damage);
+    };
     this.fireballsView = new FireballsView(this, this.fireballs, this.fx);
     this.caster.onTorrent = (dx, dy) => {
       this.fireballs.cast(this.player.x, this.player.y, dx, dy);
@@ -625,7 +632,7 @@ export class ArenaScene extends Phaser.Scene {
     this.enemies.render({ dt: frameDt, simDt: frameDt * (this.paused ? 0 : sim.timeScale), playerX: this.player.x, playerY: this.player.y, world: this.world, width: cam.width });
     this.pickupsView.render(frameDt);
     this.doorsView.update(frameDt, this.map, (o) => this.isOpen(o));
-    this.breakablesView.update(frameDt);
+    this.breakablesView.update(frameDt, this.breakables.burning());
     // A story pose (lying, getting up) stands in for his normal look.
     this.pose.update(frameDt, this.player.x, this.player.y);
     // Doomsday hides him from the portal until the blast.
@@ -729,6 +736,7 @@ export class ArenaScene extends Phaser.Scene {
     this.enemies.targets(this.targets);
     this.arrows.update(dt, this.targets, this.world);
     this.fireballs.update(dt, this.player.x, this.player.y, this.targets);
+    this.breakables.update(dt);
     this.pickups.update(dt, this.player.x, this.player.y, r.state === 'fighting' && this.control);
     if (r.state === 'fighting' && !this.player.safe && !sim.godMode) {
       const { x, y } = this.player;

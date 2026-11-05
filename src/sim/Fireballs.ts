@@ -1,5 +1,6 @@
 import { flameTorrent as cfg } from '../config/vestiges';
 import { Vec2 } from '../core/iso';
+import { Placed } from '../data/maps';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
@@ -20,8 +21,8 @@ export interface Fireball {
   // Its heading this step, for drawing.
   velX: number;
   velY: number;
-  // When it may next hit each enemy, by id.
-  hitAt: Map<number, number>;
+  // When it may next hit each enemy (by id) and each breakable thing.
+  hitAt: Map<number | Placed, number>;
 }
 
 const next = { x: 0, y: 0 };
@@ -37,10 +38,13 @@ export class Fireballs {
   private time = 0;
 
   onHit: (target: Target, damage: number, x: number, y: number) => void = () => {};
+  // It passed through something that breaks.
+  onHitThing: (thing: Placed, damage: number, x: number, y: number) => void = () => {};
   // One went out against a wall on its way back.
   onSnuffed: (x: number, y: number) => void = () => {};
 
-  constructor(private world: CollisionWorld) {}
+  // `breaks` says which placed things it can hit (the ones with health); it flies through them.
+  constructor(private world: CollisionWorld, private breaks: (o: Placed) => boolean) {}
 
   get active(): boolean {
     return this.list.length > 0;
@@ -115,6 +119,7 @@ export class Fireballs {
           } else f.back = true;
         }
       }
+      this.hitThings(f, next.x, next.y);
       f.velX = next.x - f.x;
       f.velY = next.y - f.y;
       f.x = next.x;
@@ -126,6 +131,25 @@ export class Fireballs {
         this.onHit(target, cfg.damage, f.x, f.y);
       }
       if (gone) this.list.splice(i, 1);
+    }
+  }
+
+  // Breakable things along its step, from where it was to (x, y), on three lines as wide as its hit radius.
+  private hitThings(f: Fireball, x: number, y: number): void {
+    const mx = x - f.x;
+    const my = y - f.y;
+    const len = Math.hypot(mx, my);
+    if (len < 1e-6) return;
+    const ux = mx / len;
+    const uy = my / len;
+    for (const off of [0, cfg.hitRadius, -cfg.hitRadius]) {
+      const sx = f.x - uy * off;
+      const sy = f.y + ux * off;
+      if (this.world.raycast(sx, sy, ux, uy, len, this.breaks) < 0) continue;
+      const thing = this.world.lastHit;
+      if (!thing || (f.hitAt.get(thing) ?? 0) > this.time) continue;
+      f.hitAt.set(thing, this.time + cfg.rehitTime);
+      this.onHitThing(thing, cfg.damage, x, y);
     }
   }
 

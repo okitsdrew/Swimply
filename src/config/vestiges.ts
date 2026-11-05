@@ -95,11 +95,11 @@ export const flameTorrent = defineConfig(
     gap: 0.06,
     // Each fireball's hit: damage, how close it must pass (world units), and seconds before it can hit the same
     // enemy again (so the way out and the way back both count). A burn: seconds, and damage a second.
-    damage: 25,
+    damage: 20,
     hitRadius: 20,
     rehitTime: 0.4,
-    burn: 2,
-    burnPower: 5,
+    burn: 3,
+    burnPower: 10,
     // The aiming ring at the loop's tip (world units across, as a radius).
     tipRadius: 45,
     // How the fireballs look: height over the ground and size (art pixels), seconds per frame, and trail embers a
