@@ -10,7 +10,8 @@ import { Tex } from './art';
 const PEDESTALS = ['pedestal', 'empty_pedestal'];
 
 // The throne room's pedestals: each Vestige he holds hovers over its own (its `pedestal` number in vestiges.json),
-// and while it is equipped only a grey outline of it is there. Display only. The pedestals are the map's `pedestal`
+// and while it is equipped only a grey outline of it is there. One with `onPedestal` false (Timo, who lives in him)
+// never shows there. Display only. The pedestals are the map's `pedestal`
 // and `empty_pedestal` things round its `throne`, numbered clockwise as seen on screen, starting at the top.
 export class PedestalsView {
   private shown: { v: string; at: Placed; img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image }[] = [];
@@ -35,7 +36,7 @@ export class PedestalsView {
     const order = PedestalsView.order(map);
     const want = order.length ? save.vestiges.flatMap((id) => {
       const v = vestiges.get(id);
-      const at = v && order[v.pedestal];
+      const at = v?.onPedestal && order[v.pedestal];
       return at ? [{ v: id, at }] : [];
     }) : [];
     if (want.length !== this.shown.length || want.some((w, i) => w.v !== this.shown[i].v || w.at !== this.shown[i].at)) {
@@ -54,7 +55,7 @@ export class PedestalsView {
       const v = vestiges.get(s.v)!;
       const out = isEquipped(s.v);
       const p = toScreen(s.at.x, s.at.y);
-      const y = p.y - (cfg.pedestalHeight + Math.sin(this.age * 2 + i) * cfg.emblemBob) * px;
+      const y = p.y - (cfg.pedestalHeight + Math.sin(this.age * 2 + i) * cfg.pedestalBob) * px;
       s.img.setPosition(p.x, y).setScale(px * cfg.pedestalScale).setDepth(p.y + 1);
       if (out) s.img.setTintFill(cfg.outlineColor).setAlpha(cfg.outlineAlpha);
       else s.img.clearTint().setAlpha(1);

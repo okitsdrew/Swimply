@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { render } from '../config/render';
-import { doomsday, vestiges as cfg } from '../config/vestiges';
+import { doomsday, emblemLook, emblems, vestiges as cfg } from '../config/vestiges';
 import { save } from '../core/save';
 import { ellipseHalfSize, toScreen } from '../core/iso';
 import { equippedIn, Vestige, VESTIGE_SLOTS, vestiges, vestigeTexture } from '../data/vestiges';
@@ -29,6 +29,8 @@ export class VestigesView {
   private aimInner: Phaser.GameObjects.Image;
   private slots: Slot[] = [];
   private age = 0;
+  // The middle of the emblems' ring: it trails him and catches up.
+  private ring = { x: 0, y: 0, placed: false };
   // Doomsday's ball of energy, growing and churning over him while it charges, which turns into the drop as it falls.
   private ball: Phaser.GameObjects.Image;
   private drop: Phaser.GameObjects.Image;
@@ -83,6 +85,11 @@ export class VestigesView {
     this.age += dt;
     const px = render.pixelScale;
     // The emblems, spaced evenly round him and slowly circling (Timo floats by him already, as his own).
+    const k = 1 - Math.exp(-emblems.followRate * dt);
+    const far = Math.hypot(heroX - this.ring.x, heroY - this.ring.y) > 1000;
+    this.ring.x = !this.ring.placed || far ? heroX : this.ring.x + (heroX - this.ring.x) * k;
+    this.ring.y = !this.ring.placed || far ? heroY : this.ring.y + (heroY - this.ring.y) * k;
+    this.ring.placed = true;
     // Each flaps through its frames with a glow behind it and embers rising off it, all in its colour.
     const equipped: Vestige[] = [];
     for (let i = 0; i < VESTIGE_SLOTS; i++) {
@@ -98,15 +105,16 @@ export class VestigesView {
       e.glow.setVisible(!!v && heroShown);
       if (!v || !heroShown) return;
       if (e.frames[0] !== vestigeTexture(v.id)) e.frames = this.emblemFrames(v.id);
-      const a = this.age * cfg.emblemSpin * Math.PI * 2 + (i / equipped.length) * Math.PI * 2;
-      const s = toScreen(heroX + Math.cos(a) * cfg.emblemDistance, heroY + Math.sin(a) * cfg.emblemDistance);
-      const bob = Math.sin(this.age * 3 + i * 2) * cfg.emblemBob * px;
-      const y = s.y - cfg.emblemHeight * px + bob;
-      const frame = e.frames[Math.floor(this.age / cfg.emblemFrameTime) % e.frames.length];
-      e.img.setTexture(frame).setScale(px * cfg.emblemScale).setPosition(s.x, y).setDepth(s.y);
+      const look = emblemLook(v.id);
+      const a = this.age * emblems.spin * Math.PI * 2 + (i / equipped.length) * Math.PI * 2;
+      const s = toScreen(this.ring.x + Math.cos(a) * emblems.distance, this.ring.y + Math.sin(a) * emblems.distance);
+      const bob = Math.sin(this.age * 3 + i * 2) * emblems.bob * px;
+      const y = s.y - emblems.height * px + bob;
+      const frame = e.frames[Math.floor(this.age / look.emblemFrameTime) % e.frames.length];
+      e.img.setTexture(frame).setScale(px * look.emblemScale).setPosition(s.x, y).setDepth(s.y);
       const flicker = 0.85 + 0.15 * Math.sin(this.age * 9 + i);
-      e.glow.setPosition(s.x, y).setDepth(s.y - 0.1).setScale((cfg.emblemGlow * px * cfg.emblemScale) / 32).setTint(v.color).setAlpha(cfg.emblemGlowAlpha * flicker);
-      e.emberTimer -= dt * cfg.emblemEmbers;
+      e.glow.setPosition(s.x, y).setDepth(s.y - 0.1).setScale((look.emblemGlow * px * look.emblemScale) / 32).setTint(v.color).setAlpha(look.emblemGlowAlpha * flicker);
+      e.emberTimer -= dt * look.emblemEmbers;
       while (e.emberTimer < 0) {
         e.emberTimer += 1;
         const life = 0.5 + Math.random() * 0.4;
@@ -175,7 +183,7 @@ export class VestigesView {
       const cd = v ? c.cooldownFraction(v.id) : 0;
       sl.shade.setVisible(cd > 0).setPosition(x, y + SLOT / 2).setScale(1, cd);
       sl.time.setVisible(cd > 0).setPosition(x, y).setText(v && cd > 0 ? `${Math.ceil(c.cooldownLeft(v.id))}` : '');
-      if (v) sl.icon.setTexture(vestigeTexture(v.id)).setScale(iconScale(this.scene, vestigeTexture(v.id), SLOT)).setPosition(x, y);
+      if (v) sl.icon.setTexture(v.icon).setScale(iconScale(this.scene, v.icon, SLOT)).setPosition(x, y);
     });
   }
 }

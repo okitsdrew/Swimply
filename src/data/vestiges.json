@@ -1,7 +1,7 @@
 {
   "slots": 3,
   "vestiges": [
-    { "id": "doomsday", "name": "Timo's Doomsday Scenario", "color": "#c58cff", "ring": 1, "pedestal": 0, "emblem": false },
+    { "id": "doomsday", "name": "Timo's Doomsday Scenario", "color": "#c58cff", "ring": 1, "pedestal": 0, "emblem": false, "onPedestal": false, "icon": "timo" },
     { "id": "flame_torrent", "name": "Flame Torrent", "color": "#ff9a2a", "ring": 2, "pedestal": 1, "emblem": true }
   ]
 }

@@ -1,49 +1,80 @@
 import { defineConfig } from './store';
 
-// Vestiges (skills) in general: how many he can hold ready, and how they float by him.
+// Vestiges (skills) in general: the slots at the bottom of the screen, and the throne room's pedestals.
 export const vestiges = defineConfig(
   'vestiges',
   'vestiges',
   {
-    // How far from him the equipped emblems hover, in world units, and how high, in art pixels.
-    emblemDistance: 26,
-    emblemHeight: 34,
-    emblemScale: 1,
-    // How fast the emblems circle him (turns a second) and bob.
-    emblemSpin: 0.12,
-    emblemBob: 2,
-    // Seconds per frame of an emblem's flap, and its glow: how big (art pixels across) and how bright. Embers rise
-    // off it in its colour, this many a second.
-    emblemFrameTime: 0.12,
-    emblemGlow: 26,
-    emblemGlowAlpha: 0.45,
-    emblemEmbers: 6,
     // How see-through the slots at the bottom of the screen are when nothing is in them.
     emptySlotAlpha: 0.35,
-    // Over the throne room's pedestals: how high a Vestige hovers (art pixels), how big, and how faint its grey
-    // outline is while he has it equipped.
+    // Over the throne room's pedestals: how high a Vestige hovers (art pixels), how big, how much it bobs, and how
+    // faint its grey outline is while he has it equipped.
     pedestalHeight: 28,
-    pedestalScale: 2,
+    pedestalScale: 1,
+    pedestalBob: 2,
     outlineColor: 0x8a8a98,
-    outlineAlpha: 0.5,
+    outlineAlpha: 0.75,
   },
   {
-    emblemDistance: { min: 0, max: 80, step: 1 },
-    emblemHeight: { min: 0, max: 80, step: 1 },
-    emblemScale: { min: 0.25, max: 4, step: 0.25 },
-    emblemSpin: { min: 0, max: 1, step: 0.01 },
-    emblemBob: { min: 0, max: 10, step: 0.5 },
-    emblemFrameTime: { min: 0.03, max: 0.5, step: 0.01 },
-    emblemGlow: { min: 0, max: 100, step: 1 },
-    emblemGlowAlpha: { min: 0, max: 1, step: 0.05 },
-    emblemEmbers: { min: 0, max: 40, step: 1 },
     emptySlotAlpha: { min: 0, max: 1, step: 0.05 },
     pedestalHeight: { min: 0, max: 120, step: 1 },
     pedestalScale: { min: 0.25, max: 6, step: 0.25 },
+    pedestalBob: { min: 0, max: 10, step: 0.5 },
     outlineColor: 'color',
     outlineAlpha: { min: 0, max: 1, step: 0.05 },
   },
 );
+
+// The emblems of the equipped Vestiges circling him. They share one ring round him, so where it is and how it moves
+// is set once here; how each emblem looks is in its own Vestige's section (EmblemLook).
+export const emblems = defineConfig(
+  'emblems',
+  'vestiges',
+  {
+    // How far from him they circle (world units), how high (art pixels), how fast (turns a second) and how much
+    // they bob.
+    distance: 26,
+    height: 34,
+    spin: 0.12,
+    bob: 2,
+    // How quickly the ring catches up when he moves (higher is snappier), like Timo's moveRate.
+    followRate: 4,
+  },
+  {
+    distance: { min: 0, max: 80, step: 1 },
+    height: { min: 0, max: 80, step: 1 },
+    spin: { min: 0, max: 1, step: 0.01 },
+    bob: { min: 0, max: 10, step: 0.5 },
+    followRate: { min: 0.2, max: 30, step: 0.1 },
+  },
+);
+
+// How one Vestige's emblem looks: its size, seconds per frame of its flap, its glow (art pixels across, and how
+// bright), and embers rising off it in its colour, this many a second.
+export interface EmblemLook {
+  emblemScale: number;
+  emblemFrameTime: number;
+  emblemGlow: number;
+  emblemGlowAlpha: number;
+  emblemEmbers: number;
+}
+
+const emblemDefaults: EmblemLook = { emblemScale: 1, emblemFrameTime: 0.16, emblemGlow: 15, emblemGlowAlpha: 0.45, emblemEmbers: 6 };
+const emblemRanges = {
+  emblemScale: { min: 0.25, max: 4, step: 0.25 },
+  emblemFrameTime: { min: 0.03, max: 0.5, step: 0.01 },
+  emblemGlow: { min: 0, max: 100, step: 1 },
+  emblemGlowAlpha: { min: 0, max: 1, step: 0.05 },
+  emblemEmbers: { min: 0, max: 40, step: 1 },
+};
+
+// Flame Torrent, the fire butterfly's Vestige. For now only its emblem; the fireballs come next.
+export const flameTorrent = defineConfig('flame_torrent', 'vestiges', { ...emblemDefaults }, emblemRanges);
+
+// Each Vestige's emblem look, by its id. A new Vestige with an emblem gets its own section and a line here; one with
+// no entry uses the defaults.
+const looks: Record<string, EmblemLook> = { flame_torrent: flameTorrent };
+export const emblemLook = (id: string): EmblemLook => looks[id] ?? emblemDefaults;
 
 // Timo's Doomsday Scenario: he picks a spot, flashes there through anything in the way, gathers a ball of energy
 // while enemies close in (he cannot be hurt), and explodes. Damage in a radius, knockback in a bigger one. It only

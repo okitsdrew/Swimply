@@ -14,7 +14,7 @@ import { allOn, AreaMap, findMarker, maps, Placed, withFlags } from '../data/map
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
-import { forgetVestiges, unlockVestige, vestiges } from '../data/vestiges';
+import { forgetVestiges, isEquipped, unlockVestige, vestiges } from '../data/vestiges';
 import { save, writeSave } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
 import { AmbienceView } from '../render/AmbienceView';
@@ -612,6 +612,9 @@ export class ArenaScene extends Phaser.Scene {
       const ahead = Math.min(timo.leadDistance, d);
       this.timo.lead(this.player.x + ((w.x - this.player.x) / d) * ahead, this.player.y + ((w.y - this.player.y) / d) * ahead);
     }
+    // Once Timo's Vestige is his, Timo floats by him only while it is equipped; otherwise he is inside him, coming
+    // out only to talk.
+    if (this.calm) this.timo.setVisible(this.story.playing || !save.vestiges.includes('doomsday') || isEquipped('doomsday'));
     this.timo.update(frameDt, this.player.x, this.player.y);
     this.pedestals.update(frameDt, this.map);
     this.statusView.update(frameDt, this.enemies.all(this.everyone));
