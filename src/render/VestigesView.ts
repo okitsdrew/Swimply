@@ -14,6 +14,8 @@ const SLOT = 56;
 const GAP = 12;
 
 interface Slot {
+  // Glows in its Vestige's colour while that Vestige is in use.
+  glow: Phaser.GameObjects.Image;
   box: Phaser.GameObjects.Rectangle;
   icon: Phaser.GameObjects.Image;
   shade: Phaser.GameObjects.Rectangle;
@@ -44,6 +46,7 @@ export class VestigesView {
     const fixed = <T extends Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.Components.Depth>(o: T) => o.setScrollFactor(0).setDepth(2e7);
     for (let i = 0; i < VESTIGE_SLOTS; i++) {
       this.slots.push({
+        glow: scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD).setScrollFactor(0).setDepth(2e7 - 1),
         box: fixed(scene.add.rectangle(0, 0, SLOT, SLOT, ui.deep, 0.8).setStrokeStyle(3, ui.mid)),
         icon: fixed(scene.add.image(0, 0, Tex.glow).setScale(4)),
         shade: fixed(scene.add.rectangle(0, 0, SLOT, SLOT, 0x000000, 0.65).setOrigin(0.5, 1)),
@@ -113,7 +116,8 @@ export class VestigesView {
       const frame = e.frames[Math.floor(this.age / look.emblemFrameTime) % e.frames.length];
       e.img.setTexture(frame).setScale(px * look.emblemScale).setPosition(s.x, y).setDepth(s.y);
       const flicker = 0.85 + 0.15 * Math.sin(this.age * 9 + i);
-      e.glow.setPosition(s.x, y).setDepth(s.y - 0.1).setScale((look.emblemGlow * px * look.emblemScale) / 32).setTint(v.color).setAlpha(look.emblemGlowAlpha * flicker);
+      const boost = this.caster.active(v.id) ? emblems.activeGlow : 1;
+      e.glow.setPosition(s.x, y).setDepth(s.y - 0.1).setScale((look.emblemGlow * px * look.emblemScale * boost) / 32).setTint(v.color).setAlpha(Math.min(1, look.emblemGlowAlpha * flicker * boost));
       e.emberTimer -= dt * look.emblemEmbers;
       while (e.emberTimer < 0) {
         e.emberTimer += 1;
@@ -122,15 +126,15 @@ export class VestigesView {
       }
     });
 
-    // While Doomsday charges: the ball grows over him, pulsing faster as it fills, with sparks drawn in to it, then
+    // From Timo's throw to the blast: the ball grows over the spot (and him, once he is in it), pulsing faster as it fills, with sparks drawn in to it, then
     // drops to the ground for the blast (no more sparks once it falls).
-    const charging = this.caster.charging;
+    const charging = this.caster.blastPending;
     this.ball.setVisible(charging);
     this.drop.setVisible(false);
     if (charging) {
       const k = this.caster.chargeProgress;
-      const s = toScreen(heroX, heroY);
-      const left = (1 - k) * doomsday.chargeTime;
+      const s = toScreen(this.caster.target.x, this.caster.target.y);
+      const left = this.caster.blastLeft;
       const fall = doomsday.dropTime > 0 ? Math.max(0, 1 - left / doomsday.dropTime) : 0;
       const y = s.y - doomsday.ballHeight * px * (1 - fall * fall);
       const pulse = 1 + 0.12 * Math.sin(this.age * (10 + k * 20));
@@ -175,9 +179,12 @@ export class VestigesView {
     this.slots.forEach((sl, i) => {
       const v = equippedIn(i);
       const x = x0 + i * (SLOT + GAP);
-      for (const o of [sl.box, sl.icon, sl.shade, sl.key, sl.time]) o.setVisible(show);
+      for (const o of [sl.glow, sl.box, sl.icon, sl.shade, sl.key, sl.time]) o.setVisible(show);
       if (!show) return;
-      sl.box.setPosition(x, y).setStrokeStyle(3, c.aiming === i ? ui.lilac : ui.mid).setAlpha(v ? 1 : cfg.emptySlotAlpha);
+      const on = !!v && c.active(v.id);
+      sl.glow.setVisible(on);
+      if (v && on) sl.glow.setPosition(x, y).setTint(v.color).setScale((SLOT * 2) / 32).setAlpha(0.6 + 0.25 * Math.sin(this.age * 8));
+      sl.box.setPosition(x, y).setStrokeStyle(3, on && v ? v.color : ui.mid).setAlpha(v ? 1 : cfg.emptySlotAlpha);
       sl.key.setPosition(x - SLOT / 2 + 5, y - SLOT / 2 + 5).setAlpha(v ? 1 : cfg.emptySlotAlpha);
       sl.icon.setVisible(!!v);
       const cd = v ? c.cooldownFraction(v.id) : 0;

@@ -10,8 +10,8 @@ const SLOT_KEYS: Action[] = ['skill1', 'skill2', 'skill3'];
 
 // Using Vestiges. Pressing a slot's key starts aiming it: a circle on the ground follows the mouse, and a click casts
 // it there (right click or the same key again puts it away). What each Vestige does when cast is here, by its id.
-// Only Timo's Doomsday Scenario exists so far: he flies to the spot, charges, and explodes; the scene deals the
-// blast's damage.
+// Only Timo's Doomsday Scenario exists so far: he throws Timo at the spot, where the ball starts to form, flies into
+// it, charges, and explodes; the scene deals the blast's damage.
 export class VestigeCaster {
   // The slot being aimed, or -1.
   aiming = -1;
@@ -21,8 +21,10 @@ export class VestigeCaster {
   private spot = { x: 0, y: 0, radius: 0 };
   // Seconds left before each Vestige can be used again, by id.
   private cooldowns = new Map<string, number>();
-  // Seconds until a Doomsday blast once he has landed, or -1.
+  // Seconds until a Doomsday blast, from the throw on, or -1.
   private blastIn = -1;
+  // Seconds left of Timo's throw, before he flies after him (0 when not throwing).
+  private throwIn = 0;
 
   // The blast goes off at (x, y).
   onBlast: (x: number, y: number) => void = () => {};
@@ -32,19 +34,47 @@ export class VestigeCaster {
   // `reachable` says whether he could walk to a spot from where he stands.
   constructor(private world: CollisionWorld, private player: Player, private reachable: (x: number, y: number) => boolean) {}
 
-  // Charging a Doomsday blast: he holds still and cannot be hurt.
-  get charging(): boolean {
-    return this.blastIn >= 0 && !this.player.teleporting;
+  // Throwing Timo at the spot: he holds still, and can still be hurt.
+  get throwing(): boolean {
+    return this.throwIn > 0;
   }
 
-  // How far the charge has come, 0 to 1.
+  // How far Timo has flown, 0 to 1.
+  get throwProgress(): number {
+    return doomsday.throwTime > 0 ? 1 - this.throwIn / doomsday.throwTime : 1;
+  }
+
+  // Charging a Doomsday blast where he landed: he holds still and cannot be hurt.
+  get charging(): boolean {
+    return this.blastIn >= 0 && this.throwIn <= 0 && !this.player.teleporting;
+  }
+
+  // From the throw to the blast: the ball is there.
+  get blastPending(): boolean {
+    return this.blastIn >= 0;
+  }
+
+  // Seconds until the blast.
+  get blastLeft(): number {
+    return Math.max(0, this.blastIn);
+  }
+
+  // How far the ball has grown, 0 to 1, from the throw to the blast.
   get chargeProgress(): number {
-    return doomsday.chargeTime > 0 ? Math.min(1, 1 - this.blastIn / doomsday.chargeTime) : 1;
+    const total = doomsday.throwTime + doomsday.travelTime + doomsday.chargeTime;
+    return total > 0 ? Math.min(1, 1 - this.blastIn / total) : 1;
+  }
+
+  // Whether a Vestige is in use: being aimed, or cast and not over yet.
+  active(id: string): boolean {
+    if (this.aiming >= 0 && equippedIn(this.aiming)?.id === id) return true;
+    return id === 'doomsday' && this.blastIn >= 0;
   }
 
   reset(): void {
     this.aiming = -1;
     this.blastIn = -1;
+    this.throwIn = 0;
     this.cooldowns.clear();
   }
 
@@ -62,13 +92,22 @@ export class VestigeCaster {
   // cannot use them (dialogue, no control, dead): aiming stops, cooldowns still run.
   update(dt: number, input: Input, aim: Vec2 | null, canAct: boolean): void {
     for (const [id, t] of this.cooldowns) this.cooldowns.set(id, Math.max(0, t - dt));
-    if (this.charging) {
-      this.blastIn -= dt;
-      this.player.shieldTime = Math.max(this.player.shieldTime, this.blastIn + doomsday.safeAfter);
-      if (this.blastIn <= 0) {
-        this.blastIn = -1;
-        this.player.shieldTime = doomsday.safeAfter;
-        this.onBlast(this.player.x, this.player.y);
+    if (this.throwIn > 0) {
+      this.throwIn -= dt;
+      if (this.throwIn <= 0) {
+        this.throwIn = 0;
+        this.player.blink(this.target.x, this.target.y, doomsday.travelTime);
+      }
+    }
+    if (this.blastIn >= 0) {
+      this.blastIn = Math.max(0, this.blastIn - dt);
+      if (this.charging) {
+        this.player.shieldTime = Math.max(this.player.shieldTime, this.blastIn + doomsday.safeAfter);
+        if (this.blastIn <= 0) {
+          this.blastIn = -1;
+          this.player.shieldTime = doomsday.safeAfter;
+          this.onBlast(this.player.x, this.player.y);
+        }
       }
     }
     if (!canAct) {
@@ -128,8 +167,9 @@ export class VestigeCaster {
     this.aiming = -1;
     if (id === 'doomsday') {
       this.cooldowns.set(id, doomsday.cooldown);
-      this.player.blink(this.target.x, this.target.y, doomsday.travelTime);
-      this.blastIn = doomsday.chargeTime;
+      this.blastIn = doomsday.throwTime + doomsday.travelTime + doomsday.chargeTime;
+      this.throwIn = doomsday.throwTime;
+      if (this.throwIn <= 0) this.player.blink(this.target.x, this.target.y, doomsday.travelTime);
     }
   }
 }

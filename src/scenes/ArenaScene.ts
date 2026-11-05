@@ -103,6 +103,8 @@ export class ArenaScene extends Phaser.Scene {
   private ghost!: GhostText;
   private story!: StoryRunner;
   private timo!: TimoView;
+  // Whether Timo was thrown (a Doomsday on its way) last frame.
+  private timoThrown = false;
   private lids!: Eyelids;
   private pose!: HeroPose;
   // Whether the hero's own look was hidden (a pose, a Vestige) last frame.
@@ -612,9 +614,27 @@ export class ArenaScene extends Phaser.Scene {
       const ahead = Math.min(timo.leadDistance, d);
       this.timo.lead(this.player.x + ((w.x - this.player.x) / d) * ahead, this.player.y + ((w.y - this.player.y) / d) * ahead);
     }
-    // Once Timo's Vestige is his, Timo floats by him only while it is equipped; otherwise he is inside him, coming
-    // out only to talk.
-    if (this.calm) this.timo.setVisible(this.story.playing || !save.vestiges.includes('doomsday') || isEquipped('doomsday'));
+    // Timo is Doomsday's emblem: in his Doomsday face and glowing while it is in use, thrown at the spot (even in the
+    // Mindscape), inside the ball until the blast, then back by him. Once Timo's Vestige is his, he floats by him only
+    // while it is equipped; otherwise he is inside him, coming out only to talk.
+    const c = this.caster;
+    const doom = c.active('doomsday');
+    if (c.throwing) {
+      this.timo.setVisible(true);
+      this.timo.throwAt(c.target.x, c.target.y, c.throwProgress);
+    } else if (c.blastPending) this.timo.setVisible(false);
+    else {
+      const shown = this.calm && (this.story.playing || !save.vestiges.includes('doomsday') || isEquipped('doomsday'));
+      if (this.timoThrown) {
+        this.timo.popBack(this.player.x, this.player.y);
+        const s = toScreen(this.timo.x, this.timo.y);
+        if (shown) this.fx.smoke(s.x, s.y - 12 * render.pixelScale, 6, 6 * render.pixelScale);
+      }
+      this.timo.setVisible(shown);
+    }
+    this.timoThrown = c.blastPending;
+    if (!this.story.playing) this.timo.setFace(doom ? 'timo_doom' : '');
+    this.timo.setGlow(doom ? doomsday.blastColor : -1);
     this.timo.update(frameDt, this.player.x, this.player.y);
     this.pedestals.update(frameDt, this.map);
     this.statusView.update(frameDt, this.enemies.all(this.everyone));
@@ -663,10 +683,10 @@ export class ArenaScene extends Phaser.Scene {
     const aimed = this.caster.aiming >= 0;
     const canAct = r.state === 'fighting' && !this.travel.leaving && this.control && !this.story.talking && !this.tree.open && !stats.weak();
     this.caster.update(dt, this.input2, this.aim, canAct);
-    this.player.fireBlocked = this.story.talking || this.caster.aiming >= 0 || ((aimed || this.player.fireBlocked) && this.input2.isDown('fire'));
+    this.player.fireBlocked = this.story.talking || this.caster.aiming >= 0 || this.caster.throwing || ((aimed || this.player.fireBlocked) && this.input2.isDown('fire'));
     if (this.walkTo && r.state === 'fighting') this.stepWalk(dt);
     // Charging a Vestige, he holds still.
-    else if (this.caster.charging) this.player.stop();
+    else if (this.caster.charging || this.caster.throwing) this.player.stop();
     else if (r.state === 'fighting' && !this.travel.leaving && this.control) {
       this.player.update(dt, this.input2, this.aim);
       if (Math.hypot(this.input2.move.x, this.input2.move.y) > 0.1) this.story.notify('move');

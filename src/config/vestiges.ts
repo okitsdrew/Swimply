@@ -39,6 +39,9 @@ export const emblems = defineConfig(
     bob: 2,
     // How quickly the ring catches up when he moves (higher is snappier), like Timo's moveRate.
     followRate: 4,
+    // While its Vestige is in use (aimed, or cast and not over), an emblem's glow (and Timo's) is this many times
+    // bigger and brighter.
+    activeGlow: 2,
   },
   {
     distance: { min: 0, max: 80, step: 1 },
@@ -46,6 +49,7 @@ export const emblems = defineConfig(
     spin: { min: 0, max: 1, step: 0.01 },
     bob: { min: 0, max: 10, step: 0.5 },
     followRate: { min: 0.2, max: 30, step: 0.1 },
+    activeGlow: { min: 1, max: 5, step: 0.1 },
   },
 );
 
@@ -87,6 +91,13 @@ export const doomsday = defineConfig(
     cooldown: 8,
     // How far from him he can land, in world units.
     range: 600,
+    // Seconds from the click to his flight: Timo is thrown at the spot (he can still be hurt meanwhile), arcing this
+    // high (art pixels) and spinning this many turns, and the ball starts to form round him there.
+    throwTime: 0.3,
+    throwArc: 30,
+    throwSpins: 1,
+    // Timo's glow while Doomsday is in use (art pixels across, before the emblems' activeGlow).
+    timoGlow: 15,
     // Seconds he is gone between the portal closing on him and opening where he lands (0 is instant). He cannot be
     // hurt meanwhile.
     travelTime: 0.2,
@@ -126,6 +137,10 @@ export const doomsday = defineConfig(
   {
     cooldown: { min: 0, max: 30, step: 0.5 },
     range: { min: 50, max: 1000, step: 10 },
+    throwTime: { min: 0, max: 1, step: 0.05 },
+    throwArc: { min: 0, max: 120, step: 1 },
+    throwSpins: { min: 0, max: 5, step: 0.25 },
+    timoGlow: { min: 0, max: 100, step: 1 },
     travelTime: { min: 0, max: 1, step: 0.01 },
     portalSize: { min: 5, max: 200, step: 5 },
     portalTime: { min: 0.05, max: 2, step: 0.05 },
