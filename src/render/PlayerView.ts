@@ -171,11 +171,10 @@ export class PlayerView {
     this.fx.addShake(camera.shakeOnCast * 0.5);
   }
 
-  // A Vestige's flight (Doomsday): a purple portal opens under him and shuts as he drops through, and another opens
-  // where he lands, with no tear between.
-  onBlink(fromX: number, fromY: number, toX: number, toY: number, travel: number): void {
+  // A Vestige's flight (Doomsday): a purple portal opens under him and shuts as he drops through. Nothing shows where
+  // he lands; the skill itself does.
+  onBlink(fromX: number, fromY: number, _toX: number, _toY: number, _travel: number): void {
     this.portal(fromX, fromY, 0);
-    this.portal(toX, toY, travel);
     const a = toScreen(fromX, fromY);
     this.voidPuff(a.x, a.y - 4 * this.px);
   }
