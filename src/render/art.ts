@@ -15,6 +15,7 @@ export const Tex = {
   light: 'light',
   pillar: 'pillar',
   doorRing: 'door_ring',
+  doorRingClosed: 'door_ring_closed',
 } as const;
 
 export const shadeFrames = ['shade_0', 'shade_1'];
@@ -29,6 +30,27 @@ export const priestWalkFrames = ['priest_0', 'priest_1'];
 export const priestCastFrames = ['priest_11', 'priest_12'];
 
 export const heroWalkFrames = ['hero_walk0', 'hero_walk1', 'hero_walk2', 'hero_walk3'];
+
+// Doomsday's portal (0 to 2 open it, 2 and 3 alternate while open) and its ball dropping to the ground.
+export const portalFrames = ['doomsday_portal_0', 'doomsday_portal_1', 'doomsday_portal_2', 'doomsday_portal_3'];
+export const dropFrames = ['doomsday_drop_0', 'doomsday_drop_1'];
+// Its ball of energy while it charges, churning (0 to 5, looping).
+export const ballFrames = [0, 1, 2, 3, 4, 5].map((i) => `doomsday_ball_${i}`);
+// The shared explosion, drawn white and grey so each blast tints it its own colour. Its ground point is 20 of its 32
+// rows down.
+export const explosionFrames = [0, 1, 2, 3, 4, 5].map((i) => `explosion_${i}`);
+export const EXPLOSION_GROUND = 20 / 32;
+// A stunned enemy's star, spinning clockwise.
+export const starFrames = ['status_star', 'status_star_1', 'status_star_2', 'status_star_3'];
+// How much to blow up an icon so it fits in a box `box` pixels across: a whole number, so its pixels stay square, at
+// most 4.
+export function iconScale(scene: Phaser.Scene, key: string, box: number): number {
+  const f = scene.textures.getFrame(key);
+  return f ? Math.max(1, Math.min(4, Math.floor((box - 8) / Math.max(f.width, f.height)))) : 4;
+}
+
+// The circle on the ground while a Vestige is aimed, in that Vestige's colour (its `ring` in vestiges.json).
+export const skillRing = (n: number): string => `skill_ring_${n}`;
 
 type Palette = Record<string, number>;
 
@@ -82,8 +104,8 @@ function softCircle(scene: Phaser.Scene, key: string, size: number, color: numbe
 }
 
 // A flat ring seen from the iso view, twice as wide as it is tall, white so it can be tinted: a bright band at the
-// edge and a faint glow filling it.
-function doorRing(scene: Phaser.Scene): void {
+// edge and a faint glow filling it. Only a stand-in: drawn ring sprites of the same names replace it.
+function doorRing(scene: Phaser.Scene, key: string): void {
   const w = 96;
   const h = 48;
   const g = scene.make.graphics({}, false);
@@ -96,9 +118,9 @@ function doorRing(scene: Phaser.Scene): void {
       g.fillRect(x, y, 1, 1);
     }
   }
-  g.generateTexture(Tex.doorRing, w, h);
+  g.generateTexture(key, w, h);
   g.destroy();
-  scene.textures.get(Tex.doorRing).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
 }
 
 // A low round stump: a side band between two ellipses, drawn pixel by pixel so the edges stay crisp. Its ground
@@ -236,7 +258,8 @@ export function makeCodeArt(scene: Phaser.Scene): void {
   softCircle(scene, Tex.shadow, 16, 0x000000, 0.6);
   softCircle(scene, Tex.smoke, 12, 0x8a8698, 0.9);
   pillar(scene);
-  doorRing(scene);
+  doorRing(scene, Tex.doorRing);
+  doorRing(scene, Tex.doorRingClosed);
   // Pickup orbs (memory shards): a small round orb in each kind's colours; the glow is drawn round it in play.
   for (const k of pickupKinds.list()) {
     fromGrid(scene, pickupTexture(k), ['.rrr.', 'rccrr', 'rcccr', 'rrccr', '.rrr.'], { c: k.core, r: k.rim });

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { save } from '../core/save';
-import { equip, equippedIn, VESTIGE_SLOTS, vestiges, vestigeTexture } from '../data/vestiges';
-import { Tex } from '../render/art';
+import { equip, equippedIn, VESTIGE_SLOTS, vestiges } from '../data/vestiges';
+import { iconScale, Tex } from '../render/art';
 import { cursorCss } from '../render/Cursors';
 import { SoundFx } from '../render/SoundFx';
 import { ui, uiText } from '../render/ui';
@@ -64,7 +64,7 @@ export class VestigeScene extends Phaser.Scene {
       const x = cx + ((i % cols) - (cols - 1) / 2) * CELL;
       const y = gridTop + Math.floor(i / cols) * CELL + CELL / 2;
       const box = this.add.rectangle(x, y, CELL - 10, CELL - 10, ui.deep, id ? 1 : 0.4).setStrokeStyle(2, ui.dark);
-      const icon = this.add.image(x, y, id ? vestigeTexture(id) : Tex.glow).setScale(4).setVisible(!!id);
+      const icon = this.add.image(x, y, id && v ? v.icon : Tex.glow).setScale(id && v ? iconScale(this, v.icon, CELL - 10) : 4).setVisible(!!id);
       if (id) {
         box.setInteractive(pointer);
         box.on('pointerover', () => (this.hovered = id));
@@ -87,7 +87,7 @@ export class VestigeScene extends Phaser.Scene {
       const v = equippedIn(i);
       s.box.setStrokeStyle(3, i === this.selected ? ui.lilac : ui.mid);
       s.icon.setVisible(!!v);
-      if (v) s.icon.setTexture(vestigeTexture(v.id));
+      if (v) s.icon.setTexture(v.icon).setScale(iconScale(this, v.icon, SLOT));
     });
     for (const p of this.places) {
       if (!p.id) continue;

@@ -71,14 +71,13 @@ export class WerewolfView {
 
   onLand(): void {
     const w = this.wolf;
-    const px = render.pixelScale;
     this.sinceSlam = 0;
     this.flashShape = 'land';
     this.slamAt = { x: w.jx, y: w.jy };
     this.fx.addShake(w.cfg.slamShake * 1.3);
     toScreen(w.jx, w.jy, screen);
     this.fx.smoke(screen.x, screen.y, Math.round(w.cfg.slamSmoke * 1.5), w.cfg.jumpRadius * 0.6);
-    this.fx.particle({ x: screen.x, y: screen.y - 4 * px, life: 0.22, from: 3.5, to: 0, tint: 0xffd0a0, depth: screen.y + 2 });
+    this.fx.explosion(screen.x, screen.y, w.cfg.jumpRadius, w.cfg.landColor);
   }
 
   onKilled(x: number, y: number): void {

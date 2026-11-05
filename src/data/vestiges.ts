@@ -10,13 +10,23 @@ export interface Vestige {
   name: string;
   // Its colour, for its slot and emblem glow.
   color: number;
+  // Which skill ring (skill_ring_1 to _5) shows where it is aimed: 1 purple, 2 orange, 3 green, 4 yellow, 5 white.
+  ring: number;
   // Which of the throne room's pedestals shows it, counting from 0.
   pedestal: number;
   // False when something already floating by him stands for it (Timo is his own Vestige's emblem).
   emblem: boolean;
+  // False when it never rests on its pedestal (Timo lives in him: equipped he floats by him, unequipped he is
+  // inside him).
+  onPedestal: boolean;
+  // The texture its slot and menu icon show; `vestige_<id>` unless the file names another (Timo's face). While it is
+  // in use, its slot shows `activeIcon` instead, if it has one ('' for none).
+  icon: string;
+  activeIcon: string;
 }
 
-// Each one is drawn as `vestige_<id>`: code art that a sprite of the same name replaces.
+// Each one is drawn as `vestige_<id>`: code art that a sprite of the same name replaces. Its emblem can flap or
+// flicker: frames `vestige_<id>_1`, `_2` and so on, played forward and back (0, 1, 2, 1).
 export const vestigeTexture = (id: string): string => `vestige_${id}`;
 
 function parse(data: unknown): { slots: number; list: Vestige[] } {
@@ -27,7 +37,7 @@ function parse(data: unknown): { slots: number; list: Vestige[] } {
     const e = obj(entry);
     const id = str(e.id, '', `vestiges.json vestige ${i}`, problems);
     if (!id) return problems.push(`vestiges.json vestige ${i}: has no id, skipped`), [];
-    return [{ id, name: str(e.name, id, `${id}.name`, problems), color: color(e.color ?? '#c58cff', `${id}.color`, problems), pedestal: Math.round(num(e.pedestal, i, `${id}.pedestal`, problems)), emblem: bool(e.emblem, true, `${id}.emblem`, problems) }];
+    return [{ id, name: str(e.name, id, `${id}.name`, problems), color: color(e.color ?? '#c58cff', `${id}.color`, problems), ring: Math.round(num(e.ring, 5, `${id}.ring`, problems)), pedestal: Math.round(num(e.pedestal, i, `${id}.pedestal`, problems)), emblem: bool(e.emblem, true, `${id}.emblem`, problems), onPedestal: bool(e.onPedestal, true, `${id}.onPedestal`, problems), icon: str(e.icon, `vestige_${id}`, `${id}.icon`, problems), activeIcon: str(e.activeIcon, '', `${id}.activeIcon`, problems) }];
   });
   report('vestiges', problems);
   return { slots, list: out };

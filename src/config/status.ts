@@ -12,7 +12,8 @@ export const status = defineConfig(
     stunWidth: 10,
     headHeight: 1.6,
     headExtra: 14,
-    starColor: 0xffe14a,
+    // Seconds each frame of a star's spin shows.
+    starFrameTime: 0.08,
     // Frozen, slowed and burning: a glow on it in these colours.
     freezeColor: 0x9ad8ff,
     slowColor: 0x6a7ab0,
@@ -24,7 +25,7 @@ export const status = defineConfig(
     stunWidth: { min: 0, max: 40, step: 1 },
     headHeight: { min: 0, max: 6, step: 0.1 },
     headExtra: { min: 0, max: 80, step: 1 },
-    starColor: 'color',
+    starFrameTime: { min: 0.02, max: 0.5, step: 0.01 },
     freezeColor: 'color',
     slowColor: 'color',
     burnColor: 'color',

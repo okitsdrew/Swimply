@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { dash, teleport } from '../config/character';
-import { camera, feel } from '../config/feel';
+import { camera, explosion, feel } from '../config/feel';
+import { ellipseHalfSize } from '../core/iso';
 import { render } from '../config/render';
 import { Pool } from '../core/pool';
-import { Tex } from './art';
+import { EXPLOSION_GROUND, explosionFrames, Tex } from './art';
 
 interface Fading {
   active: boolean;
@@ -59,7 +60,7 @@ export class Fx {
   private numbersAlive = 0;
   readonly shakeOffset = { x: 0, y: 0 };
 
-  constructor(scene: Phaser.Scene) {
+  constructor(private scene: Phaser.Scene) {
     this.streakGfx = scene.add.graphics().setDepth(1e6 - 1);
     const fading = (obj: Fading['obj']): Fading => ({
       active: false,
@@ -170,6 +171,18 @@ export class Fx {
       const v = teleport.burstSpeed * (0.7 + Math.random() * 0.6);
       this.bits.push({ x: x / px, y: y / px, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6, age: 0, life: teleport.burstLife * (0.6 + Math.random() * 0.4), size: 2, drag: 4 });
     }
+  }
+
+  // An explosion on the ground at screen (x, y), as wide as a blast of `radius` (world units), tinted `color`. Every
+  // blast uses this one, so a new attack gets it in a line.
+  explosion(x: number, y: number, radius: number, color: number): void {
+    const w = ellipseHalfSize(radius).x * 2 * explosion.size;
+    const img = this.scene.add.image(x, y, explosionFrames[0]).setOrigin(0.5, EXPLOSION_GROUND).setDisplaySize(w, w).setTint(color).setAlpha(explosion.alpha).setDepth(y + 1);
+    this.scene.tweens.addCounter({
+      from: 0, to: explosionFrames.length - 0.001, duration: explosion.frameTime * explosionFrames.length * 1000,
+      onUpdate: (t) => img.setTexture(explosionFrames[Math.floor(t.getValue() ?? 0)]).setDisplaySize(w, w),
+      onComplete: () => img.destroy(),
+    });
   }
 
   smoke(x: number, y: number, count: number, spread: number): void {

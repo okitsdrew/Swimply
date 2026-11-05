@@ -111,6 +111,24 @@ export const cloak = defineConfig(
   },
 );
 
+// The shared explosion (Fx.explosion), used by every blast: Doomsday, the werewolf's jump landing. Each caller gives
+// its own place, size and colour; these are how it plays. Seconds per frame, its size against the blast's radius,
+// and how solid it is.
+export const explosion = defineConfig(
+  'explosion',
+  'look and feel',
+  {
+    frameTime: 0.06,
+    size: 1,
+    alpha: 1,
+  },
+  {
+    frameTime: { min: 0.02, max: 0.3, step: 0.01 },
+    size: { min: 0.25, max: 3, step: 0.05 },
+    alpha: { min: 0, max: 1, step: 0.05 },
+  },
+);
+
 export const camera = defineConfig(
   'camera',
   'look and feel',

@@ -6,7 +6,7 @@ import { doomsday } from '../config/vestiges';
 import { ellipseHalfSize, toScreen, toWorld, Vec2 } from '../core/iso';
 import { Player } from '../sim/Player';
 import { ellipseArc, lerp, solveArm } from './armMath';
-import { heroWalkFrames, Tex } from './art';
+import { heroWalkFrames, portalFrames, Tex } from './art';
 import { BOW_STRING, BowView } from './BowView';
 import { Fx } from './Fx';
 
@@ -171,22 +171,25 @@ export class PlayerView {
     this.fx.addShake(camera.shakeOnCast * 0.5);
   }
 
-  // A Vestige's flight (Doomsday): a purple portal opens under him and shuts as he drops through, and another opens
-  // where he lands, with no tear between. Placeholder: the door ring texture, tinted.
-  onBlink(fromX: number, fromY: number, toX: number, toY: number, travel: number): void {
+  // A Vestige's flight (Doomsday): a purple portal opens under him and shuts as he drops through. Nothing shows where
+  // he lands; the skill itself does.
+  onBlink(fromX: number, fromY: number, _toX: number, _toY: number, _travel: number): void {
     this.portal(fromX, fromY, 0);
-    this.portal(toX, toY, travel);
     const a = toScreen(fromX, fromY);
     this.voidPuff(a.x, a.y - 4 * this.px);
   }
 
+  // Opens (frames 0, 1, 2), flickers between 2 and 3, and shuts (2, 1, 0), all within portalTime.
   private portal(x: number, y: number, delay: number): void {
     const s = toScreen(x, y);
     const half = ellipseHalfSize(doomsday.portalSize);
-    const img = this.scene.add.image(s.x, s.y, Tex.doorRing).setDepth(s.y - 1).setTint(0x9a50ff).setDisplaySize(0, 0).setAlpha(0.95);
-    this.scene.tweens.add({
-      targets: img, displayWidth: half.x * 2, displayHeight: half.y * 2, duration: (doomsday.portalTime * 1000) / 2, delay: delay * 1000,
-      ease: 'Back.easeOut', yoyo: true, onComplete: () => img.destroy(),
+    const order = [0, 1, 2, 3, 2, 3, 2, 1, 0];
+    const img = this.scene.add.image(s.x, s.y, portalFrames[0]).setDepth(s.y - 1).setDisplaySize(half.x * 2, half.y * 2).setVisible(false);
+    this.scene.tweens.addCounter({
+      from: 0, to: order.length - 0.001, duration: doomsday.portalTime * 1000, delay: delay * 1000,
+      onStart: () => img.setVisible(true),
+      onUpdate: (t) => img.setTexture(portalFrames[order[Math.floor(t.getValue() ?? 0)]]).setDisplaySize(half.x * 2, half.y * 2),
+      onComplete: () => img.destroy(),
     });
   }
 

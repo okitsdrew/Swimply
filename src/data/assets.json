@@ -52,7 +52,7 @@
       "id": "fire",
       "name": "Fire",
       "category": "decor",
-      "parts": [{ "texture": "fire", "originY": 0.86, "frames": ["fire", "fire_1", "fire_2"] }],
+      "parts": [{ "texture": "fire", "originY": 0.86, "frames": ["fire", "fire_3", "fire_1", "fire_5", "fire_2", "fire_4"] }],
       "light": { "color": "#ff9a3a", "y": -6, "radius": 30, "intensity": 0.3, "flicker": 0.4 },
       "sound": "fire_ambience"
     },
@@ -367,7 +367,7 @@
       "category": "props",
       "parts": [
         { "texture": "fireplace", "originY": 0.74 },
-        { "texture": "fire", "x": 4, "y": -2, "scale": 0.8, "frames": ["fire", "fire_1", "fire_2"] }
+        { "texture": "fire", "x": 4, "y": -2, "scale": 0.8, "frames": ["fire", "fire_3", "fire_1", "fire_5", "fire_2", "fire_4"] }
       ],
       "collision": [
         { "y": -33, "radius": 12 },

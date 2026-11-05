@@ -3,12 +3,12 @@ import { render } from '../config/render';
 import { status as cfg } from '../config/status';
 import { toScreen } from '../core/iso';
 import { Enemy } from '../sim/enemies';
-import { Tex } from './art';
+import { starFrames, Tex } from './art';
 import { Fx } from './Fx';
 
 // Effects on enemies, the same for every kind: stars circling a stunned one's head, an icy glow on a frozen one, a
-// dull one on a slowed one, flames rising off a burning one. Placeholder looks; a sprite named `status_star`
-// replaces the star.
+// dull one on a slowed one, flames rising off a burning one. The stars are drawn and spin (starFrames); the rest are
+// placeholder looks.
 export class StatusView {
   private stars: Phaser.GameObjects.Image[] = [];
   private glows: Phaser.GameObjects.Image[] = [];
@@ -34,8 +34,10 @@ export class StatusView {
         const n = Math.max(1, Math.round(cfg.stunStars));
         for (let i = 0; i < n; i++) {
           const a = this.age * cfg.stunSpin * Math.PI * 2 + (i / n) * Math.PI * 2;
-          const img = this.take(this.stars, star++, 'status_star', false);
-          img.setPosition(s.x + Math.cos(a) * cfg.stunWidth * px, head + Math.sin(a) * cfg.stunWidth * 0.35 * px).setDepth(s.y + (Math.sin(a) > 0 ? 2 : -2)).setScale(px).setTint(cfg.starColor);
+          const frame = starFrames[Math.floor(this.age / cfg.starFrameTime + i) % starFrames.length];
+          const img = this.take(this.stars, star++, starFrames[0], false);
+          if (this.scene.textures.exists(frame)) img.setTexture(frame);
+          img.setPosition(s.x + Math.cos(a) * cfg.stunWidth * px, head + Math.sin(a) * cfg.stunWidth * 0.35 * px).setDepth(s.y + (Math.sin(a) > 0 ? 2 : -2)).setScale(px);
         }
       }
       const tint = st.freeze > 0 ? cfg.freezeColor : st.slow > 0 ? cfg.slowColor : st.burn > 0 ? cfg.burnColor : -1;
