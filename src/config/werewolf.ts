@@ -84,6 +84,8 @@ const wolf = {
   slamPiercesInvuln: false,
   slamShake: 9,
   slamSmoke: 24,
+  // The explosion's colour where he lands from a jump.
+  landColor: 0xe0c49a,
   // Shards for killing him.
   shards: 50,
   deathSmoke: 50,
@@ -138,6 +140,7 @@ const ranges = {
   knockbackDecay: { min: 0.5, max: 30, step: 0.5 },
   slamShake: { min: 0, max: 40, step: 1 },
   slamSmoke: { min: 0, max: 100, step: 1 },
+  landColor: 'color',
   shards: { min: 0, max: 500, step: 5 },
   deathSmoke: { min: 0, max: 150, step: 1 },
 } as const;

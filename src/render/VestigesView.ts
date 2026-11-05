@@ -57,8 +57,7 @@ export class VestigesView {
     const px = render.pixelScale;
     this.fx.burst(s.x, s.y - 10 * px);
     this.fx.smoke(s.x, s.y, 14, ellipseHalfSize(doomsday.damageRadius).x * 0.6);
-    this.fx.particle({ x: s.x, y: s.y - 6 * px, life: 0.35, from: 2, to: (ellipseHalfSize(doomsday.damageRadius).x * 2.5) / 32, alpha: 1, tint: doomsday.blastColor });
-    this.fx.particle({ x: s.x, y: s.y - 6 * px, life: 0.2, from: 1, to: 6, alpha: 1, tint: 0xffffff });
+    this.fx.explosion(s.x, s.y, doomsday.damageRadius, doomsday.blastColor);
     for (const [r, life, alpha] of [[doomsday.damageRadius, 0.3, 1]]) {
       const half = ellipseHalfSize(r);
       const img = this.scene.add.image(s.x, s.y, skillRing(vestiges.get('doomsday')?.ring ?? 1)).setDepth(-4e7).setDisplaySize(half.x * 0.4, half.y * 0.4);

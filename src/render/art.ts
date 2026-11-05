@@ -36,6 +36,10 @@ export const portalFrames = ['doomsday_portal_0', 'doomsday_portal_1', 'doomsday
 export const dropFrames = ['doomsday_drop_0', 'doomsday_drop_1'];
 // Its ball of energy while it charges, churning (0 to 5, looping).
 export const ballFrames = [0, 1, 2, 3, 4, 5].map((i) => `doomsday_ball_${i}`);
+// The shared explosion, drawn white and grey so each blast tints it its own colour. Its ground point is 20 of its 32
+// rows down.
+export const explosionFrames = [0, 1, 2, 3, 4, 5].map((i) => `explosion_${i}`);
+export const EXPLOSION_GROUND = 20 / 32;
 // A stunned enemy's star, spinning clockwise.
 export const starFrames = ['status_star', 'status_star_1', 'status_star_2', 'status_star_3'];
 // The circle on the ground while a Vestige is aimed, in that Vestige's colour (its `ring` in vestiges.json).
