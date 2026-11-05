@@ -73,8 +73,9 @@ const emblemRanges = {
 };
 
 // Flame Torrent, the fire butterfly's Vestige: fireballs from each side of him cross just in front of him and curve
-// out to the aimed tip on paths set where they were shot, then fly straight back to him wherever he is now. A wall
-// turns one back on the way out and puts it out on the way back.
+// out to their full range toward the mouse on paths set where they were shot, then fly straight back to him wherever
+// he is now. They pass over everything but walls: a wall turns one back on the way out and puts it out on the way
+// back.
 export const flameTorrent = defineConfig(
   'flame_torrent',
   'vestiges',
@@ -87,15 +88,15 @@ export const flameTorrent = defineConfig(
     side: 24,
     // Seconds a fireball takes to reach the tip, its speed back to him (world units a second), and how close it
     // must come to him to be caught. How many leave from each side, and seconds between them.
-    outTime: 0.45,
-    returnSpeed: 900,
-    catchRadius: 16,
+    outTime: 0.6,
+    returnSpeed: 1200,
+    catchRadius: 25,
     perSide: 4,
     gap: 0.06,
     // Each fireball's hit: damage, how close it must pass (world units), and seconds before it can hit the same
     // enemy again (so the way out and the way back both count). A burn: seconds, and damage a second.
-    damage: 15,
-    hitRadius: 14,
+    damage: 25,
+    hitRadius: 20,
     rehitTime: 0.4,
     burn: 2,
     burnPower: 5,

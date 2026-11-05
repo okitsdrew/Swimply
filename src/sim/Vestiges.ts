@@ -9,9 +9,10 @@ import { CollisionWorld } from './World';
 const SLOT_KEYS: Action[] = ['skill1', 'skill2', 'skill3'];
 
 // Using Vestiges. Pressing a slot's key starts aiming it: a circle on the ground follows the mouse, and a click casts
-// it there (right click or the same key again puts it away). What each Vestige does when cast is here, by its id.
-// Only Timo's Doomsday Scenario exists so far: he throws Timo at the spot, where the ball starts to form, flies into
-// it, charges, and explodes; the scene deals the blast's damage.
+// it there. Only the same key again puts it away, so he can still teleport while aiming. What each Vestige does when
+// cast is here, by its id. Timo's Doomsday Scenario: he throws Timo at the spot, where the ball starts to form, flies
+// into it, charges, and explodes; the scene deals the blast's damage. Flame Torrent: the scene sends out the
+// fireballs (sim/Fireballs).
 export class VestigeCaster {
   // The slot being aimed, or -1.
   aiming = -1;
@@ -132,10 +133,7 @@ export class VestigeCaster {
       return;
     }
     this.aimAt(v.id, aim);
-    if (input.justPressed('teleport')) {
-      input.consume('teleport');
-      this.aiming = -1;
-    } else if (input.justPressed('fire')) {
+    if (input.justPressed('fire')) {
       input.consume('fire');
       if (this.targetOk) this.cast(v.id);
       else this.onDeny();
@@ -144,16 +142,16 @@ export class VestigeCaster {
 
   // The spot under the mouse, brought within range. He must be able to stand there (off water, void, roofs and
   // anything solid) and be able to walk there from where he is; he flies straight through whatever is between.
-  // Flame Torrent instead aims a direction: the spot is always its loop's tip, toward the mouse.
+  // Flame Torrent instead aims a direction: the ring sits on the mouse, and the fireballs fly their full range that
+  // way whatever the distance.
   private aimAt(id: string, aim: Vec2 | null): void {
     const p = this.player;
     let dx = (aim?.x ?? p.x + p.aimX) - p.x;
     let dy = (aim?.y ?? p.y + p.aimY) - p.y;
     const len = Math.hypot(dx, dy);
     if (id === 'flame_torrent') {
-      const k = len > 1e-3 ? flameTorrent.range / len : 0;
-      this.target.x = p.x + (len > 1e-3 ? dx * k : flameTorrent.range);
-      this.target.y = p.y + dy * k;
+      this.target.x = p.x + (len > 1e-3 ? dx : flameTorrent.range);
+      this.target.y = p.y + (len > 1e-3 ? dy : 0);
       this.targetOk = true;
       return;
     }

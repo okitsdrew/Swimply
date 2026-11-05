@@ -25,6 +25,8 @@ export interface Fireball {
 }
 
 const next = { x: 0, y: 0 };
+// Fireballs fly over and through everything but walls (the level editor's "walls" category) and the map's edge.
+const onlyWalls = (o: { asset: { category: string } }) => o.asset.category === 'walls';
 
 // Flame Torrent's fireballs, like boomerangs. Each flies out on its own path, set where it was shot: from his side,
 // across just in front of him and curving out to the tip. From the tip (or a wall on the way) it flies straight back
@@ -103,7 +105,7 @@ export class Fireballs {
       const my = next.y - f.y;
       const move = Math.hypot(mx, my);
       if (move > 1e-6 && !gone) {
-        const wall = this.world.raycast(f.x, f.y, mx / move, my / move, move);
+        const wall = this.world.raycast(f.x, f.y, mx / move, my / move, move, onlyWalls);
         if (wall >= 0) {
           next.x = f.x + (mx / move) * wall;
           next.y = f.y + (my / move) * wall;
