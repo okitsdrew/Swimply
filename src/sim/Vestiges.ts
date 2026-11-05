@@ -1,5 +1,5 @@
 import { player as cfgPlayer } from '../config/character';
-import { doomsday } from '../config/vestiges';
+import { doomsday, flameTorrent } from '../config/vestiges';
 import { Action, Input } from '../core/input';
 import { Vec2 } from '../core/iso';
 import { equippedIn, VESTIGE_SLOTS } from '../data/vestiges';
@@ -28,6 +28,10 @@ export class VestigeCaster {
 
   // The blast goes off at (x, y).
   onBlast: (x: number, y: number) => void = () => {};
+  // Flame Torrent is cast toward (dirX, dirY).
+  onTorrent: (dirX: number, dirY: number) => void = () => {};
+  // Whether a Vestige's own effect is still playing out (Flame Torrent's fireballs in the air).
+  playing: (id: string) => boolean = () => false;
   // A key or click that cannot do anything now (an empty slot, cooling down, a spot he cannot land on).
   onDeny: () => void = () => {};
 
@@ -68,7 +72,7 @@ export class VestigeCaster {
   // Whether a Vestige is in use: being aimed, or cast and not over yet.
   active(id: string): boolean {
     if (this.aiming >= 0 && equippedIn(this.aiming)?.id === id) return true;
-    return id === 'doomsday' && this.blastIn >= 0;
+    return (id === 'doomsday' && this.blastIn >= 0) || this.playing(id);
   }
 
   reset(): void {
@@ -81,7 +85,8 @@ export class VestigeCaster {
   // 0 when ready, 1 just after it was used.
   cooldownFraction(id: string): number {
     const left = this.cooldowns.get(id) ?? 0;
-    return left > 0 && doomsday.cooldown > 0 ? Math.min(1, left / doomsday.cooldown) : 0;
+    const full = id === 'flame_torrent' ? flameTorrent.cooldown : doomsday.cooldown;
+    return left > 0 && full > 0 ? Math.min(1, left / full) : 0;
   }
 
   cooldownLeft(id: string): number {
@@ -126,7 +131,7 @@ export class VestigeCaster {
       this.aiming = -1;
       return;
     }
-    this.aimAt(aim);
+    this.aimAt(v.id, aim);
     if (input.justPressed('teleport')) {
       input.consume('teleport');
       this.aiming = -1;
@@ -139,11 +144,19 @@ export class VestigeCaster {
 
   // The spot under the mouse, brought within range. He must be able to stand there (off water, void, roofs and
   // anything solid) and be able to walk there from where he is; he flies straight through whatever is between.
-  private aimAt(aim: Vec2 | null): void {
+  // Flame Torrent instead aims a direction: the spot is always its loop's tip, toward the mouse.
+  private aimAt(id: string, aim: Vec2 | null): void {
     const p = this.player;
     let dx = (aim?.x ?? p.x + p.aimX) - p.x;
     let dy = (aim?.y ?? p.y + p.aimY) - p.y;
     const len = Math.hypot(dx, dy);
+    if (id === 'flame_torrent') {
+      const k = len > 1e-3 ? flameTorrent.range / len : 0;
+      this.target.x = p.x + (len > 1e-3 ? dx * k : flameTorrent.range);
+      this.target.y = p.y + dy * k;
+      this.targetOk = true;
+      return;
+    }
     if (len > doomsday.range) {
       dx *= doomsday.range / len;
       dy *= doomsday.range / len;
@@ -165,6 +178,10 @@ export class VestigeCaster {
 
   private cast(id: string): void {
     this.aiming = -1;
+    if (id === 'flame_torrent') {
+      this.cooldowns.set(id, flameTorrent.cooldown);
+      this.onTorrent(this.target.x - this.player.x, this.target.y - this.player.y);
+    }
     if (id === 'doomsday') {
       this.cooldowns.set(id, doomsday.cooldown);
       this.blastIn = doomsday.throwTime + doomsday.travelTime + doomsday.chargeTime;

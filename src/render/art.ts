@@ -40,6 +40,8 @@ export const ballFrames = [0, 1, 2, 3, 4, 5].map((i) => `doomsday_ball_${i}`);
 // rows down.
 export const explosionFrames = [0, 1, 2, 3, 4, 5].map((i) => `explosion_${i}`);
 export const EXPLOSION_GROUND = 20 / 32;
+// Flame Torrent's fireball, drawn pointing right; the game turns it to where it is heading.
+export const fireballFrames = ['fireball', 'fireball_1', 'fireball_2'];
 // A stunned enemy's star, spinning clockwise.
 export const starFrames = ['status_star', 'status_star_1', 'status_star_2', 'status_star_3'];
 // How much to blow up an icon so it fits in a box `box` pixels across: a whole number, so its pixels stay square, at

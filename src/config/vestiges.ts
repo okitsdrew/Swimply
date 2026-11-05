@@ -72,8 +72,60 @@ const emblemRanges = {
   emblemEmbers: { min: 0, max: 40, step: 1 },
 };
 
-// Flame Torrent, the fire butterfly's Vestige. For now only its emblem; the fireballs come next.
-export const flameTorrent = defineConfig('flame_torrent', 'vestiges', { ...emblemDefaults }, emblemRanges);
+// Flame Torrent, the fire butterfly's Vestige: fireballs from each side of him cross just in front of him, loop out to
+// the aimed spot and come back to him. Right beside him and at the tip of the loop, all of them pass.
+export const flameTorrent = defineConfig(
+  'flame_torrent',
+  'vestiges',
+  {
+    cooldown: 8,
+    // How far out the loop's tip is (world units), how wide the loops swing to each side, and how far to his side
+    // each fireball starts.
+    range: 250,
+    width: 70,
+    side: 24,
+    // Seconds for one fireball's loop out and back, how many leave from each side, and seconds between them.
+    loopTime: 0.9,
+    perSide: 4,
+    gap: 0.06,
+    // Each fireball's hit: damage, how close it must pass (world units), and seconds before it can hit the same
+    // enemy again (so the way out and the way back both count). A burn: seconds, and damage a second.
+    damage: 15,
+    hitRadius: 14,
+    rehitTime: 0.4,
+    burn: 2,
+    burnPower: 5,
+    // The aiming ring at the loop's tip (world units across, as a radius).
+    tipRadius: 45,
+    // How the fireballs look: height over the ground and size (art pixels), seconds per frame, and trail embers a
+    // second for each.
+    height: 14,
+    scale: 1,
+    frameTime: 0.06,
+    trail: 40,
+    ...emblemDefaults,
+  },
+  {
+    cooldown: { min: 0, max: 30, step: 0.5 },
+    range: { min: 50, max: 800, step: 10 },
+    width: { min: 0, max: 300, step: 5 },
+    side: { min: 0, max: 100, step: 2 },
+    loopTime: { min: 0.2, max: 3, step: 0.05 },
+    perSide: { min: 1, max: 8, step: 1 },
+    gap: { min: 0, max: 0.5, step: 0.01 },
+    damage: { min: 0, max: 200, step: 1 },
+    hitRadius: { min: 2, max: 60, step: 1 },
+    rehitTime: { min: 0.05, max: 2, step: 0.05 },
+    burn: { min: 0, max: 10, step: 0.25 },
+    burnPower: { min: 0, max: 50, step: 1 },
+    tipRadius: { min: 10, max: 200, step: 5 },
+    height: { min: 0, max: 60, step: 1 },
+    scale: { min: 0.25, max: 4, step: 0.25 },
+    frameTime: { min: 0.02, max: 0.3, step: 0.01 },
+    trail: { min: 0, max: 200, step: 5 },
+    ...emblemRanges,
+  },
+);
 
 // Each Vestige's emblem look, by its id. A new Vestige with an emblem gets its own section and a line here; one with
 // no entry uses the defaults.

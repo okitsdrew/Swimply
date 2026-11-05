@@ -26,7 +26,7 @@ export interface Ambience {
 // jump), wolfSmash (his dash ends or he lands), wolfSwipe (his swipe lands), and on screens: click (a menu button), next (moving on through dialogue),
 // buy (taking a memory on the tree), deny (one that can't be taken), treeOpen (the tree screen opens).
 // An event names one sound id, or a list that all play together.
-export const EFFECT_EVENTS = ['teleport', 'dash', 'fire', 'hit', 'death', 'portal', 'door', 'step', 'wolfAttack', 'wolfSmash', 'wolfSwipe', 'click', 'next', 'buy', 'deny', 'treeOpen', 'unlock', 'doomsday'] as const;
+export const EFFECT_EVENTS = ['teleport', 'dash', 'fire', 'hit', 'death', 'portal', 'door', 'step', 'wolfAttack', 'wolfSmash', 'wolfSwipe', 'click', 'next', 'buy', 'deny', 'treeOpen', 'unlock', 'doomsday', 'flameTorrent'] as const;
 export type EffectEvent = (typeof EFFECT_EVENTS)[number];
 
 const files = import.meta.glob('./sounds/*', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
