@@ -1103,6 +1103,13 @@
     { "asset": "spawner-shade", "x": 672, "y": 1984, "zone": "courtyard_a" },
     { "asset": "spawner-shade", "x": 672, "y": 1472, "zone": "courtyard_a" },
     { "asset": "spawner-werewolf", "x": 512, "y": 1728 },
-    { "asset": "werewolf", "x": 576, "y": 704, "aggro": 700 }
+    { "asset": "werewolf", "x": 576, "y": 704, "aggro": 700 },
+    { "asset": "granite-wall-se", "x": 416, "y": 3328 },
+    { "asset": "granite-wall-se", "x": 352, "y": 3328 },
+    { "asset": "granite-wall-se", "x": 288, "y": 3328 },
+    { "asset": "granite-wall-se", "x": 160, "y": 3328 },
+    { "asset": "granite-wall-se", "x": 96, "y": 3328 },
+    { "asset": "granite-wall-se", "x": 32, "y": 3328 },
+    { "asset": "wooden-bench-se", "x": 224, "y": 3328 }
   ]
 }
