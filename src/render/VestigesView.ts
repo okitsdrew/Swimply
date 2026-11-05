@@ -3,9 +3,9 @@ import { render } from '../config/render';
 import { doomsday, vestiges as cfg } from '../config/vestiges';
 import { save } from '../core/save';
 import { ellipseHalfSize, toScreen } from '../core/iso';
-import { equippedIn, VESTIGE_SLOTS, vestigeTexture } from '../data/vestiges';
+import { equippedIn, VESTIGE_SLOTS, vestiges, vestigeTexture } from '../data/vestiges';
 import { VestigeCaster } from '../sim/Vestiges';
-import { Tex } from './art';
+import { dropFrames, skillRing, Tex } from './art';
 import { Fx } from './Fx';
 import { ui, uiText } from './ui';
 
@@ -21,16 +21,19 @@ interface Slot {
   time: Phaser.GameObjects.Text;
 }
 
-// Vestiges as he sees them: the emblems of the equipped ones hovering round him, the circle on the ground while one
-// is aimed, the blast, and the slots at the bottom of the screen with their keys and cooldowns.
+// Vestiges as he sees them: the emblems of the equipped ones hovering round him, the ring on the ground while one is
+// aimed (in its own colour, red where he cannot), the blast, and the slots at the bottom of the screen with their
+// keys and cooldowns.
 export class VestigesView {
   private emblems: Phaser.GameObjects.Image[] = [];
   private aimInner: Phaser.GameObjects.Image;
   private slots: Slot[] = [];
   private age = 0;
-  // Doomsday's ball of energy, gathering over him while it charges: a coloured glow round a white core.
+  // Doomsday's ball of energy, gathering over him while it charges: a coloured glow round a white core, which turns
+  // into the drawn drop as it falls.
   private ball: Phaser.GameObjects.Image;
   private core: Phaser.GameObjects.Image;
+  private drop: Phaser.GameObjects.Image;
   private sparkTimer = 0;
 
   constructor(private scene: Phaser.Scene, private caster: VestigeCaster, private fx: Fx) {
@@ -38,6 +41,7 @@ export class VestigesView {
     this.aimInner = ring();
     this.ball = scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
     this.core = scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffffff).setVisible(false);
+    this.drop = scene.add.image(0, 0, dropFrames[0]).setVisible(false);
     const fixed = <T extends Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.Components.Depth>(o: T) => o.setScrollFactor(0).setDepth(2e7);
     for (let i = 0; i < VESTIGE_SLOTS; i++) {
       this.slots.push({
@@ -60,7 +64,7 @@ export class VestigesView {
     this.fx.particle({ x: s.x, y: s.y - 6 * px, life: 0.2, from: 1, to: 6, alpha: 1, tint: 0xffffff });
     for (const [r, life, alpha] of [[doomsday.damageRadius, 0.3, 1]]) {
       const half = ellipseHalfSize(r);
-      const img = this.scene.add.image(s.x, s.y, Tex.doorRing).setDepth(-4e7).setTint(doomsday.blastColor).setDisplaySize(half.x * 0.4, half.y * 0.4);
+      const img = this.scene.add.image(s.x, s.y, skillRing(vestiges.get('doomsday')?.ring ?? 1)).setDepth(-4e7).setDisplaySize(half.x * 0.4, half.y * 0.4);
       this.scene.tweens.add({ targets: img, displayWidth: half.x * 2, displayHeight: half.y * 2, alpha: { from: alpha, to: 0 }, duration: life * 1000, ease: 'Cubic.easeOut', onComplete: () => img.destroy() });
     }
     for (let i = 0; i < 24; i++) {
@@ -96,6 +100,7 @@ export class VestigesView {
     const charging = this.caster.charging;
     this.ball.setVisible(charging);
     this.core.setVisible(charging);
+    this.drop.setVisible(false);
     if (charging) {
       const k = this.caster.chargeProgress;
       const s = toScreen(heroX, heroY);
@@ -106,6 +111,11 @@ export class VestigesView {
       const size = (doomsday.ballSize * px * (0.2 + 0.8 * k) * pulse) / 32;
       this.ball.setPosition(s.x, y).setDepth(s.y + 2).setScale(size * 1.6).setTint(doomsday.blastColor).setAlpha(0.9);
       this.core.setPosition(s.x, y).setDepth(s.y + 3).setScale(size * 0.6).setAlpha(0.6 + 0.4 * k);
+      if (fall > 0) {
+        this.core.setVisible(false);
+        const frame = dropFrames[Math.floor(this.age / doomsday.dropFrameTime) % dropFrames.length];
+        this.drop.setVisible(true).setTexture(frame).setPosition(s.x, y).setDepth(s.y + 3).setScale(doomsday.dropScale * px);
+      }
       this.sparkTimer -= dt;
       if (this.sparkTimer <= 0) {
         this.sparkTimer = 0.03;
@@ -116,20 +126,20 @@ export class VestigesView {
       }
     }
 
-    // While aiming: the blast where it would land, red where he cannot.
+    // While aiming: the blast where it would land, in the Vestige's ring, red where he cannot.
     const c = this.caster;
     const aiming = c.aiming >= 0;
     this.aimInner.setVisible(aiming);
     if (aiming) {
       const ts = toScreen(c.target.x, c.target.y);
-      const tint = c.targetOk ? doomsday.okColor : doomsday.badColor;
+      this.aimInner.setTexture(c.targetOk ? skillRing(equippedIn(c.aiming)?.ring ?? 5) : Tex.doorRingClosed);
       const pulse = 0.85 + 0.15 * Math.sin(this.age * 8);
       const size = (img: Phaser.GameObjects.Image, r: number) => {
         const half = ellipseHalfSize(r);
         img.setDisplaySize(half.x * 2, half.y * 2);
       };
       size(this.aimInner, doomsday.damageRadius);
-      this.aimInner.setPosition(ts.x, ts.y).setTint(tint).setAlpha(doomsday.aimAlpha * pulse);
+      this.aimInner.setPosition(ts.x, ts.y).setAlpha(doomsday.aimAlpha * pulse);
     }
 
     // The slots, bottom middle, once he holds any Vestige.

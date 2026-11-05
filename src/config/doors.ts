@@ -1,12 +1,11 @@
 import { defineConfig } from './store';
 
-// How door rings look: a glowing ring on the ground at every door, its colour saying whether F will take him through.
+// How door rings look: a glowing ring on the ground at every door, blue when F will take him through, red when not.
+// The colours are in the sprites (door_ring, door_ring_closed).
 export const doors = defineConfig(
   'doors',
   'look and feel',
   {
-    openColor: 0xa8dcff,
-    lockedColor: 0xff2424,
     // How solid the ring is, open and locked.
     openAlpha: 0.75,
     lockedAlpha: 0.7,
@@ -17,8 +16,6 @@ export const doors = defineConfig(
     fadeTime: 0.5,
   },
   {
-    openColor: 'color',
-    lockedColor: 'color',
     openAlpha: { min: 0, max: 1, step: 0.05 },
     lockedAlpha: { min: 0, max: 1, step: 0.05 },
     pulse: { min: 0, max: 1, step: 0.05 },

@@ -10,6 +10,8 @@ export interface Vestige {
   name: string;
   // Its colour, for its slot and emblem glow.
   color: number;
+  // Which skill ring (skill_ring_1 to _5) shows where it is aimed: 1 purple, 2 orange, 3 green, 4 yellow, 5 white.
+  ring: number;
   // Which of the throne room's pedestals shows it, counting from 0.
   pedestal: number;
   // False when something already floating by him stands for it (Timo is his own Vestige's emblem).
@@ -27,7 +29,7 @@ function parse(data: unknown): { slots: number; list: Vestige[] } {
     const e = obj(entry);
     const id = str(e.id, '', `vestiges.json vestige ${i}`, problems);
     if (!id) return problems.push(`vestiges.json vestige ${i}: has no id, skipped`), [];
-    return [{ id, name: str(e.name, id, `${id}.name`, problems), color: color(e.color ?? '#c58cff', `${id}.color`, problems), pedestal: Math.round(num(e.pedestal, i, `${id}.pedestal`, problems)), emblem: bool(e.emblem, true, `${id}.emblem`, problems) }];
+    return [{ id, name: str(e.name, id, `${id}.name`, problems), color: color(e.color ?? '#c58cff', `${id}.color`, problems), ring: Math.round(num(e.ring, 5, `${id}.ring`, problems)), pedestal: Math.round(num(e.pedestal, i, `${id}.pedestal`, problems)), emblem: bool(e.emblem, true, `${id}.emblem`, problems) }];
   });
   report('vestiges', problems);
   return { slots, list: out };

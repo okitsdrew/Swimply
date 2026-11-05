@@ -1,6 +1,6 @@
 {
   "slots": 3,
   "vestiges": [
-    { "id": "doomsday", "name": "Timo's Doomsday Scenario", "color": "#c58cff", "pedestal": 0, "emblem": false }
+    { "id": "doomsday", "name": "Timo's Doomsday Scenario", "color": "#c58cff", "ring": 1, "pedestal": 0, "emblem": false }
   ]
 }

@@ -68,9 +68,7 @@ export const doomsday = defineConfig(
     stun: 1,
     shake: 14,
     hitStop: 0.08,
-    // The aiming circle's colours: a spot he can land on, and one he cannot.
-    okColor: 0xc58cff,
-    badColor: 0xff2424,
+    // How solid the aiming ring is (its colours are the sprites: the Vestige's skill ring, red where he cannot land).
     aimAlpha: 0.7,
     // The blast's colour, how big the ball grows while charging (art pixels across), how high over him it grows (art
     // pixels), and the last seconds of the charge, in which it drops to the ground and bursts.
@@ -78,6 +76,9 @@ export const doomsday = defineConfig(
     ballSize: 80,
     ballHeight: 30,
     dropTime: 0.2,
+    // The drawn drop it turns into as it falls: its size (times the art pixel) and seconds per frame.
+    dropScale: 3,
+    dropFrameTime: 0.06,
   },
   {
     cooldown: { min: 0, max: 30, step: 0.5 },
@@ -95,12 +96,12 @@ export const doomsday = defineConfig(
     stun: { min: 0, max: 10, step: 0.1 },
     shake: { min: 0, max: 40, step: 1 },
     hitStop: { min: 0, max: 0.3, step: 0.01 },
-    okColor: 'color',
-    badColor: 'color',
     aimAlpha: { min: 0, max: 1, step: 0.05 },
     blastColor: 'color',
     ballSize: { min: 4, max: 200, step: 2 },
     ballHeight: { min: 0, max: 120, step: 1 },
     dropTime: { min: 0, max: 1, step: 0.05 },
+    dropScale: { min: 0.5, max: 8, step: 0.5 },
+    dropFrameTime: { min: 0.02, max: 0.5, step: 0.01 },
   },
 );
