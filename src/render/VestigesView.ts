@@ -93,7 +93,7 @@ export class VestigesView {
     });
 
     // While Doomsday charges: the ball grows over him, pulsing faster as it fills, with sparks drawn in to it, then
-    // drops to the ground for the blast.
+    // drops to the ground for the blast (no more sparks once it falls).
     const charging = this.caster.charging;
     this.ball.setVisible(charging);
     this.drop.setVisible(false);
@@ -113,7 +113,7 @@ export class VestigesView {
         this.drop.setVisible(true).setTexture(frame).setPosition(s.x, y).setDepth(s.y + 3).setScale(doomsday.dropScale * px);
       }
       this.sparkTimer -= dt;
-      if (this.sparkTimer <= 0) {
+      if (this.sparkTimer <= 0 && fall === 0) {
         this.sparkTimer = 0.03;
         const a = Math.random() * Math.PI * 2;
         const r = (doomsday.ballSize * 1.5 + 20) * px;

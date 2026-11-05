@@ -326,9 +326,16 @@ export class Player {
     }
   }
 
-  // After a teleport (or dash) input is locked briefly and he keeps walking the way he was going.
+  // After a teleport (or dash) input is locked briefly and he keeps walking the way he was going. A Vestige's flight
+  // just sets him down: the Vestige plays from there, with no landing of its own.
   private endTeleport(): void {
-    this.phasing = false;
+    if (this.phasing) {
+      this.phasing = false;
+      this.graceTime = cfgPlayer.invulnAfter;
+      this.vx = 0;
+      this.vy = 0;
+      return;
+    }
     this.graceTime = cfgPlayer.invulnAfter;
     this.vx = this.tpEndVx;
     this.vy = this.tpEndVy;
