@@ -54,7 +54,7 @@ export const doomsday = defineConfig(
     portalTime: 0.3,
     // Seconds he gathers energy between landing and the blast, standing still and unhurt, and seconds he stays
     // unhurt after it.
-    chargeTime: 1,
+    chargeTime: 1.5,
     safeAfter: 0.3,
     damage: 250,
     damageRadius: 150,
@@ -74,12 +74,12 @@ export const doomsday = defineConfig(
     // how high over him it grows (art pixels), and the last seconds of the charge, in which it drops to the ground
     // and bursts.
     blastColor: 0xc58cff,
-    ballSize: 80,
+    ballSize: 100,
     ballFrameTime: 0.08,
-    ballHeight: 30,
-    dropTime: 0.2,
+    ballHeight: 70,
+    dropTime: 0.6,
     // The drawn drop it turns into as it falls: its size (times the art pixel) and seconds per frame.
-    dropScale: 3,
+    dropScale: 2,
     dropFrameTime: 0.06,
   },
   {
