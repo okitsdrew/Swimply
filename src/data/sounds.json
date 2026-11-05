@@ -46,7 +46,8 @@
     "wolfAttack": "werewolf_initiate",
     "wolfSmash": "werewolf_smash",
     "wolfSwipe": "werewolf_swipe",
-    "doomsday": "explosion_large"
+    "doomsday": "explosion_large",
+    "flameTorrent": "fireball"
   },
   "ambience": [
     { "map": "spawn", "sounds": ["boom_distant", "rumble_tail"], "every": 4, "jitter": 1 }

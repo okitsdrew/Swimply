@@ -6,7 +6,7 @@ import { run } from '../config/run';
 import { sim } from '../config/sim';
 import { story, timo } from '../config/story';
 import { breakables as cfgBreakables } from '../config/breakables';
-import { doomsday } from '../config/vestiges';
+import { doomsday, flameTorrent } from '../config/vestiges';
 import { werewolf as cfgElite, werewolfMiniboss as werewolf } from '../config/werewolf';
 import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
@@ -21,6 +21,7 @@ import { AmbienceView } from '../render/AmbienceView';
 import { LoopSounds } from '../render/LoopSounds';
 import { SoundFx } from '../render/SoundFx';
 import { ArrowsView } from '../render/ArrowsView';
+import { FireballsView } from '../render/FireballsView';
 import { BreakablesView } from '../render/BreakablesView';
 import { makeArt } from '../render/art';
 import { cursorCss } from '../render/Cursors';
@@ -40,6 +41,7 @@ import { RunHud } from '../render/RunHud';
 import { TimoView } from '../render/TimoView';
 import { VestigesView } from '../render/VestigesView';
 import { Arrows } from '../sim/Arrows';
+import { Fireballs } from '../sim/Fireballs';
 import { Breakables } from '../sim/Breakables';
 import { Pickups } from '../sim/Pickups';
 import { Player } from '../sim/Player';
@@ -128,6 +130,8 @@ export class ArenaScene extends Phaser.Scene {
   private arrowsView!: ArrowsView;
   private pickups!: Pickups;
   private caster!: VestigeCaster;
+  private fireballs!: Fireballs;
+  private fireballsView!: FireballsView;
   private vestigesView!: VestigesView;
   private pedestals!: PedestalsView;
   private statusView!: StatusView;
@@ -212,6 +216,32 @@ export class ArenaScene extends Phaser.Scene {
     this.statusView = new StatusView(this, this.fx);
     this.caster.onDeny = () => this.sfx.play('deny');
     this.caster.onBlast = (x, y) => this.doomsdayBlast(x, y);
+    this.fireballs = new Fireballs(this.world, (o) => this.breakables.canBreak(o));
+    this.fireballs.onHitThing = (thing, damage) => {
+      const s = toScreen(thing.x, thing.y);
+      this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
+      this.sfx.play('hit');
+      this.breakables.burn(thing, flameTorrent.burn, flameTorrent.burnPower);
+      this.breakables.damage(thing, damage);
+    };
+    this.fireballsView = new FireballsView(this, this.fireballs, this.fx);
+    this.caster.onTorrent = (dx, dy) => {
+      this.fireballs.cast(this.player.x, this.player.y, dx, dy);
+      this.sfx.play('flameTorrent');
+    };
+    this.fireballs.onSnuffed = (x, y) => {
+      const s = toScreen(x, y);
+      this.fx.smoke(s.x, s.y - flameTorrent.height * render.pixelScale, 4, 4 * render.pixelScale);
+    };
+    this.caster.playing = (id) => id === 'flame_torrent' && this.fireballs.active;
+    this.vestigesView.emblemAt = (id) => (id === 'flame_torrent' ? this.fireballs.lead : null);
+    this.fireballs.onHit = (target, damage, x, y) => {
+      this.enemies.damage(target, damage, x, y);
+      this.enemies.afflict(target as Enemy, [{ kind: 'burn', seconds: flameTorrent.burn, power: flameTorrent.burnPower }]);
+      const s = toScreen(target.x, target.y);
+      this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
+      this.sfx.play('hit');
+    };
     this.travel = new Travel(this, this.mapId, this.calm, this.world, this.player, this.sfx);
     // He got out alive, so what he broke here stays broken.
     this.travel.onLeave = () => {
@@ -513,6 +543,7 @@ export class ArenaScene extends Phaser.Scene {
     this.pickupsView.clear();
     this.mindscape?.reset();
     this.arrows.clear();
+    this.fireballs.clear();
     this.caster.reset();
     this.breakables.clear();
     this.breakablesView.clear();
@@ -597,10 +628,11 @@ export class ArenaScene extends Phaser.Scene {
     cam.scrollY = this.camCenter.y - cam.height / 2 + this.fx.shakeOffset.y;
 
     this.arrowsView.render();
+    this.fireballsView.update(frameDt);
     this.enemies.render({ dt: frameDt, simDt: frameDt * (this.paused ? 0 : sim.timeScale), playerX: this.player.x, playerY: this.player.y, world: this.world, width: cam.width });
     this.pickupsView.render(frameDt);
     this.doorsView.update(frameDt, this.map, (o) => this.isOpen(o));
-    this.breakablesView.update(frameDt);
+    this.breakablesView.update(frameDt, this.breakables.burning());
     // A story pose (lying, getting up) stands in for his normal look.
     this.pose.update(frameDt, this.player.x, this.player.y);
     // Doomsday hides him from the portal until the blast.
@@ -703,6 +735,8 @@ export class ArenaScene extends Phaser.Scene {
     this.targets.length = 0;
     this.enemies.targets(this.targets);
     this.arrows.update(dt, this.targets, this.world);
+    this.fireballs.update(dt, this.player.x, this.player.y, this.targets);
+    this.breakables.update(dt);
     this.pickups.update(dt, this.player.x, this.player.y, r.state === 'fighting' && this.control);
     if (r.state === 'fighting' && !this.player.safe && !sim.godMode) {
       const { x, y } = this.player;

@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { render } from '../config/render';
 import { timo } from '../config/story';
-import { doomsday, emblemLook, emblems, vestiges as cfg } from '../config/vestiges';
+import { doomsday, emblemLook, emblems, flameTorrent, vestiges as cfg } from '../config/vestiges';
 import { save } from '../core/save';
-import { ellipseHalfSize, toScreen } from '../core/iso';
+import { ellipseHalfSize, toScreen, Vec2 } from '../core/iso';
 import { equippedIn, Vestige, VESTIGE_SLOTS, vestiges, vestigeTexture } from '../data/vestiges';
 import { VestigeCaster } from '../sim/Vestiges';
 import { ballFrames, dropFrames, iconScale, skillRing, Tex } from './art';
@@ -28,7 +28,10 @@ interface Slot {
 // aimed (in its own colour, red where he cannot), the blast, and the slots at the bottom of the screen with their
 // keys and cooldowns.
 export class VestigesView {
-  private emblems: { img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; frames: string[]; emberTimer: number }[] = [];
+  private emblems: { img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; frames: string[]; emberTimer: number; x: number; y: number; placed: boolean }[] = [];
+  // Where a Vestige's emblem is flying in the world while its skill carries it (the butterfly on its fireball), or
+  // null to circle him. Once let go it flies back to its place.
+  emblemAt: (id: string) => Vec2 | null = () => null;
   private aimInner: Phaser.GameObjects.Image;
   private slots: Slot[] = [];
   private age = 0;
@@ -108,7 +111,7 @@ export class VestigesView {
       if (v?.emblem) equipped.push(v);
     }
     while (this.emblems.length < equipped.length) {
-      this.emblems.push({ img: this.scene.add.image(0, 0, Tex.glow), glow: this.scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD), frames: [], emberTimer: 0 });
+      this.emblems.push({ img: this.scene.add.image(0, 0, Tex.glow), glow: this.scene.add.image(0, 0, Tex.glow).setBlendMode(Phaser.BlendModes.ADD), frames: [], emberTimer: 0, x: 0, y: 0, placed: false });
     }
     this.emblems.forEach((e, i) => {
       const v = equipped[i];
@@ -118,7 +121,18 @@ export class VestigesView {
       if (e.frames[0] !== vestigeTexture(v.id)) e.frames = this.emblemFrames(v.id);
       const look = emblemLook(v.id);
       const a = this.age * emblems.spin * Math.PI * 2 + (i / equipped.length) * Math.PI * 2;
-      const s = toScreen(this.ring.x + Math.cos(a) * emblems.distance, this.ring.y + Math.sin(a) * emblems.distance);
+      const carried = this.emblemAt(v.id);
+      const home = { x: this.ring.x + Math.cos(a) * emblems.distance, y: this.ring.y + Math.sin(a) * emblems.distance };
+      if (carried || !e.placed) {
+        e.x = carried?.x ?? home.x;
+        e.y = carried?.y ?? home.y;
+        e.placed = true;
+      } else {
+        const back = 1 - Math.exp(-emblems.followRate * 2 * dt);
+        e.x += (home.x - e.x) * back;
+        e.y += (home.y - e.y) * back;
+      }
+      const s = toScreen(e.x, e.y);
       const bob = Math.sin(this.age * 3 + i * 2) * emblems.bob * px;
       const y = s.y - emblems.height * px + bob;
       const frame = e.frames[Math.floor(this.age / look.emblemFrameTime) % e.frames.length];
@@ -176,7 +190,7 @@ export class VestigesView {
         const half = ellipseHalfSize(r);
         img.setDisplaySize(half.x * 2, half.y * 2);
       };
-      size(this.aimInner, doomsday.damageRadius);
+      size(this.aimInner, equippedIn(c.aiming)?.id === 'flame_torrent' ? flameTorrent.tipRadius : doomsday.damageRadius);
       this.aimInner.setPosition(ts.x, ts.y).setAlpha(doomsday.aimAlpha * pulse);
     }
 

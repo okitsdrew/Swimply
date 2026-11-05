@@ -1,5 +1,5 @@
 // The smoke test: `npm run smoke`. It starts the dev server, opens every map in a hidden browser, spawns and kills
-// each kind of enemy, fires arrows, stands next to every spawner, wins the Mindscape, casts Doomsday, opens the
+// each kind of enemy, fires arrows, stands next to every spawner, wins the Mindscape, casts Doomsday and Flame Torrent, opens the
 // Vestiges menu and the two tools. It fails if any page throws an error or logs one. It does not judge whether
 // anything looks or plays right; it catches "I broke the kitchen while fixing the garden".
 //
@@ -240,6 +240,28 @@ await check("Vestige: Timo's Doomsday Scenario", async () => {
   await page.keyboard.press('Tab');
   await until(page, () => !window.swimply.scene.isActive('vestiges'), null, 5).catch(() => {
     throw new Error('Tab did not close the Vestiges menu');
+  });
+  await ctx.close();
+});
+
+await check('Vestige: Flame Torrent', async () => {
+  const { page, ctx } = await open('flame torrent', play('map=garden'));
+  await ready(page);
+  await page.evaluate(() => localStorage.setItem('swimply.save', JSON.stringify({ version: 3, baseline: {}, tree: {}, shards: 0, flags: { enteredMindscape: true, mindscapeCleared: true, teleport: true, introSeen: true, teleportTaught: true, dodgeTaught: true }, vestiges: [], equipped: [] })));
+  await page.reload();
+  await ready(page);
+  await press(page, 'Vestige: grant Flame Torrent');
+  for (let i = 0; i < 3; i++) await press(page, 'Spawn a Shade');
+  await page.mouse.move(700, 420);
+  await page.keyboard.press('q');
+  await page.waitForTimeout(200);
+  await page.mouse.click(700, 420);
+  await page.waitForTimeout(300);
+  const after = await page.evaluate(() => { const s = window.swimply.scene.getScene('arena'); return { cd: s.caster.cooldownLeft('flame_torrent'), flying: s.fireballs.list.length }; });
+  if (after.cd <= 0) throw new Error('Q then a click did not cast Flame Torrent (no cooldown started)');
+  if (!after.flying) throw new Error('Flame Torrent cast no fireballs');
+  await until(page, () => window.swimply.scene.getScene('arena').fireballs.list.length === 0, null, 10).catch(() => {
+    throw new Error('Flame Torrent fireballs never came home');
   });
   await ctx.close();
 });

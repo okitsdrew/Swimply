@@ -18,8 +18,9 @@ export interface CollisionWorld {
   onHurtingFloor(x: number, y: number): boolean;
   // True if (x, y) is under a roof tile (the top of a building).
   onRoof(x: number, y: number): boolean;
-  // Distance along a ray (unit direction) to the first solid thing within len, or -1.
-  raycast(x: number, y: number, dirX: number, dirY: number, len: number): number;
+  // Distance along a ray (unit direction) to the first solid thing within len, or -1. With `only`, placed things it
+  // says no to are passed through (the map's edge still stops it).
+  raycast(x: number, y: number, dirX: number, dirY: number, len: number, only?: (o: Placed) => boolean): number;
   // The placed thing whose circle the last raycast stopped at, or null (the map's edge, or nothing).
   readonly lastHit: Placed | null;
   // Solid circles near a point, for steering round them.
@@ -161,10 +162,11 @@ export class MapWorld implements CollisionWorld {
     return false;
   }
 
-  raycast(x: number, y: number, dirX: number, dirY: number, len: number): number {
+  raycast(x: number, y: number, dirX: number, dirY: number, len: number, only?: (o: Placed) => boolean): number {
     let best = -1;
     this.lastHit = null;
     for (let i = 0; i < this.arrowCircles.length; i++) {
+      if (only && !only(this.arrowCircleOwners[i])) continue;
       const o = this.arrowCircles[i];
       const t = segmentCircle(x, y, dirX, dirY, len, o.x, o.y, o.radius);
       if (t >= 0 && (best < 0 || t < best)) {
@@ -173,6 +175,7 @@ export class MapWorld implements CollisionWorld {
       }
     }
     for (let i = 0; i < this.arrowBoxes.length; i++) {
+      if (only && !only(this.arrowBoxOwners[i])) continue;
       const t = rayHitBox(x, y, dirX, dirY, len, this.arrowBoxes[i]);
       if (t >= 0 && (best < 0 || t < best)) {
         best = t;
