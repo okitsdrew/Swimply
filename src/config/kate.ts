@@ -11,8 +11,7 @@ import { defineConfig } from './store';
 //     from where she lands to the walls.
 // At phase2At of her health she starts phase 2, once: dropping what she was doing, she smacks four firespawns to the
 // middles of the map's four quarters. They stay for the rest of the fight, each sending out a ring of fire every
-// firespawnEvery seconds, staggered so the rings come evenly, and from then on her Pan Strike also sends fire out from
-// the end of the pan, across the whole swing's width.
+// firespawnEvery seconds, staggered so the rings come evenly.
 export const kate = defineConfig(
   'kate',
   'bosses',
@@ -175,10 +174,11 @@ export const kate = defineConfig(
 );
 
 // Fire Slap's fireballs: Flame Torrent's, from the butterfly in front of her. Their tip is overshoot past where the
-// player is, at least minRange and at most range away. For the first homingTime seconds of the flight their path keeps
-// up with him: its reach follows at once (so backing away does not escape it), and its aim turns toward him at up to
-// homingTurn degrees a second (so moving across it can). 0 turns homing off. The same fields as Flame Torrent's (see
-// flame_torrent), but no damage: one hit kills him.
+// player is, at least minRange and at most range away. For the first homingTime seconds of the flight they home on a
+// point that follows him at up to trackSpeed (faster than he walks, so backing away does not escape it, but slower
+// than a dash or teleport, so those leave it behind and the path swings over smoothly). Their aim turns toward the
+// point at up to homingTurn degrees a second (so moving across them can escape). homingTurn 0 turns homing off. The
+// same fields as Flame Torrent's (see flame_torrent), but no damage: one hit kills him.
 export const kateFireballs = defineConfig(
   'kate_fireballs',
   'bosses',
@@ -187,6 +187,7 @@ export const kateFireballs = defineConfig(
     minRange: 150,
     overshoot: 20,
     homingTurn: 30,
+    trackSpeed: 350,
     homingTime: 0.8,
     width: 120,
     side: 24,
@@ -207,6 +208,7 @@ export const kateFireballs = defineConfig(
     minRange: { min: 0, max: 1000, step: 10 },
     overshoot: { min: 0, max: 500, step: 5 },
     homingTurn: { min: 0, max: 720, step: 5 },
+    trackSpeed: { min: 0, max: 2000, step: 10 },
     homingTime: { min: 0, max: 3, step: 0.05 },
     width: { min: 0, max: 300, step: 5 },
     side: { min: 0, max: 100, step: 2 },

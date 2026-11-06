@@ -114,7 +114,7 @@ export class Kate implements Target {
   onSlap: () => void = () => {};
   // She comes down from the Fire Slam.
   onLand: () => void = () => {};
-  // A ring of fire leaves a firespawn, or fire leaves the pan.
+  // A ring of fire leaves a firespawn.
   onFireWave: () => void = () => {};
   onKilled: (x: number, y: number) => void = () => {};
 
@@ -360,7 +360,6 @@ export class Kate implements Target {
         if (!this.thrown && k >= mid) {
           if (this.move === 'slap') this.slap(target);
           else if (this.move === 'smack') this.smack(world);
-          else if (this.phase2) this.panWave(world);
         }
         if (k >= 1) this.enter('follow');
         break;
@@ -521,19 +520,6 @@ export class Kate implements Target {
     }
   }
 
-  // Phase 2's Pan Strike: as the pan passes its middle, fire starts from the pan's reach, only across the swing's width.
-  private panWave(world: CollisionWorld): void {
-    this.thrown = true;
-    const lo = Math.min(cfg.windAngle, cfg.followAngle);
-    const span = Math.abs(cfg.windAngle - cfg.followAngle);
-    this.waves.push(this.wave(world, this.x, this.y, cfg.panReach * cfg.scale, (a) => {
-      toScreen(Math.cos(a), Math.sin(a), off);
-      const angle = Math.atan2(off.y * 2, off.x) / DEG - this.turn;
-      return ((((angle - lo) % 360) + 360) % 360) <= span;
-    }));
-    this.onFireWave();
-  }
-
   // Sideways to him, on the side nearer the room's middle, bent toward it by hopToMiddle (alternating sides at 0).
   private startHop(world: CollisionWorld, target: Vec2): void {
     const dx = target.x - this.x;
@@ -573,16 +559,15 @@ export class Kate implements Target {
     this.enter('jump');
   }
 
-  // A ring of fire from (x, y), r across at first: each piece goes until a wall stops it. Pieces `keep` turns down (by
-  // world angle) never burn, which makes it a cone.
-  private wave(world: CollisionWorld, x: number, y: number, r: number, keep: (angle: number) => boolean = () => true): FireWave {
+  // A ring of fire from (x, y), r across at first: each piece goes until a wall stops it.
+  private wave(world: CollisionWorld, x: number, y: number, r: number): FireWave {
     const n = Math.max(8, Math.round(cfg.waveSegments));
     const far = Math.hypot(world.width, world.height);
     const stops: number[] = [];
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
       const hit = world.raycast(x, y, Math.cos(a), Math.sin(a), far, onlyWalls);
-      stops.push(!keep(a) ? 0 : hit < 0 ? far : hit);
+      stops.push(hit < 0 ? far : hit);
     }
     return { x, y, r, stops };
   }

@@ -16,6 +16,9 @@ export interface Fireball {
   fromY: number;
   dirX: number;
   dirY: number;
+  // The point it is homing on, which follows him at no more than trackSpeed.
+  chaseX: number;
+  chaseY: number;
   // Out along its path, or back to him.
   back: boolean;
   x: number;
@@ -41,9 +44,11 @@ export interface FireballPath {
   damage?: number;
   hitRadius: number;
   rehitTime: number;
-  // Steering (a boss's; none for Flame Torrent): for the first homingTime seconds its path turns toward `chase` at up
-  // to homingTurn degrees a second, and its tip stays overshoot past him (minRange to range from where it left).
+  // Steering (a boss's; none for Flame Torrent): for the first homingTime seconds it homes on a point that follows
+  // `chase` at up to trackSpeed: its path turns toward the point at up to homingTurn degrees a second, and its tip
+  // stays overshoot past the point (minRange to range from where it left).
   homingTurn?: number;
+  trackSpeed?: number;
   homingTime?: number;
   overshoot?: number;
   minRange?: number;
@@ -88,7 +93,8 @@ export class Fireballs {
     const n = Math.max(1, Math.round(cfg.perSide));
     for (let i = 0; i < n; i++) {
       for (const side of [1, -1]) {
-        const f: Fireball = { age: -i * cfg.gap, side, range, fromX: x, fromY: y, dirX: dirX / len, dirY: dirY / len, back: false, x: 0, y: 0, velX: 0, velY: 0, hitAt: new Map() };
+        const aim = range - (cfg.overshoot ?? 0);
+        const f: Fireball = { age: -i * cfg.gap, side, range, fromX: x, fromY: y, dirX: dirX / len, dirY: dirY / len, chaseX: x + (dirX / len) * aim, chaseY: y + (dirY / len) * aim, back: false, x: 0, y: 0, velX: 0, velY: 0, hitAt: new Map() };
         this.place(f, 0, f);
         this.list.push(f);
       }
@@ -106,11 +112,18 @@ export class Fireballs {
     out.y = f.fromY + f.dirY * forward + f.dirX * s;
   }
 
-  // Bends a fireball's way out toward (x, y): the aim turns as far as homingTurn lets it, the reach follows him.
+  // Bends a fireball's way out toward (x, y). It homes on its chase point, so a dash or teleport leaves that behind
+  // and the path swings over smoothly instead of jumping.
   private steer(f: Fireball, dt: number, x: number, y: number): void {
     const cfg = this.cfg;
-    const dx = x - f.fromX;
-    const dy = y - f.fromY;
+    const gapX = x - f.chaseX;
+    const gapY = y - f.chaseY;
+    const gap = Math.hypot(gapX, gapY);
+    const follow = gap > 1e-6 ? Math.min(1, ((cfg.trackSpeed ?? 0) * dt) / gap) : 0;
+    f.chaseX += gapX * follow;
+    f.chaseY += gapY * follow;
+    const dx = f.chaseX - f.fromX;
+    const dy = f.chaseY - f.fromY;
     const d = Math.hypot(dx, dy);
     if (d < 1e-6) return;
     const now = Math.atan2(f.dirY, f.dirX);
