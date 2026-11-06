@@ -254,6 +254,23 @@ export class Player {
 
   // Walks him toward (x, y) on his own (a story scene), at `speed`, round nothing: solid things stop him. Returns how
   // far is left.
+  // A story's dash toward (x, y), the usual length in the same look and sound. Carried on by stepDash, as he has no
+  // control during one.
+  dashAt(x: number, y: number): void {
+    toScreen(x - this.x, y - this.y, tmp);
+    const len = Math.hypot(tmp.x, tmp.y) || 1;
+    this.lastMoveX = tmp.x / len;
+    this.lastMoveY = tmp.y / len;
+    this.aimX = x - this.x;
+    this.aimY = y - this.y;
+    this.startDash();
+  }
+
+  stepDash(dt: number): void {
+    this.updateDash(dt);
+    if (!this.dashing) this.stop();
+  }
+
   walkToward(dt: number, x: number, y: number, speed: number): number {
     const dx = x - this.x;
     const dy = y - this.y;

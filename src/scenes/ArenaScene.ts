@@ -308,6 +308,7 @@ export class ArenaScene extends Phaser.Scene {
     this.pan = null;
     this.menuOpen = false;
     const walking = () => this.walkTo !== null;
+    const player = this.player;
     const dying = () => this.kates.group.list.some((k) => k.dying);
     this.story = new StoryRunner(this.box, this.ghost, {
       // Timo keeps his face while someone else speaks or the scene pauses, and goes back to idling when it ends.
@@ -330,6 +331,13 @@ export class ArenaScene extends Phaser.Scene {
       walk: (target) => this.walkToward(target),
       get walking() {
         return walking();
+      },
+      dash: (target) => {
+        const s = this.spotOf(target);
+        if (s) this.player.dashAt(s.x, s.y);
+      },
+      get dashing() {
+        return player.dashing;
       },
       look: (who, face) => who === 'kate' && this.kates.view.look(face),
       butterfly: (on) => this.kates.view.butterfly(on),
@@ -758,6 +766,7 @@ export class ArenaScene extends Phaser.Scene {
     this.caster.update(dt, this.input2, this.aim, canAct);
     this.player.fireBlocked = this.story.talking || this.caster.aiming >= 0 || this.caster.throwing || ((aimed || this.player.fireBlocked) && this.input2.isDown('fire'));
     if (this.walkTo && r.state === 'fighting') this.stepWalk(dt);
+    else if (!this.control && this.player.dashing) this.player.stepDash(dt);
     // Charging a Vestige, he holds still.
     else if (this.caster.charging || this.caster.throwing) this.player.stop();
     else if (r.state === 'fighting' && !this.travel.leaving && this.control) {

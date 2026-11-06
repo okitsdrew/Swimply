@@ -20,6 +20,9 @@ export interface Stage {
   walk(target: string): void;
   // Still walking to where a walk step sent him.
   readonly walking: boolean;
+  dash(target: string): void;
+  // Still in a dash that a dash step started.
+  readonly dashing: boolean;
   // A standing boss's look, her butterfly, a bubble over her, and her fading away.
   look(who: string, face: string): void;
   butterfly(on: boolean): void;
@@ -101,6 +104,7 @@ export class StoryRunner {
       : step.kind === 'eyes' ? !step.open || this.time >= step.seconds
       : step.kind === 'camera' ? this.time >= step.seconds
       : step.kind === 'walk' ? !this.stage.walking
+      : step.kind === 'dash' ? !this.stage.dashing
       : step.kind === 'defeat' ? !this.stage.defeating
       : true;
     if (done) this.next();
@@ -137,6 +141,7 @@ export class StoryRunner {
     else if (step.kind === 'shake') this.stage.shake(step.amount);
     else if (step.kind === 'camera') this.stage.camera(step.target, step.seconds);
     else if (step.kind === 'walk') this.stage.walk(step.target);
+    else if (step.kind === 'dash') this.stage.dash(step.target);
     else if (step.kind === 'look') this.stage.look(step.who, step.face);
     else if (step.kind === 'butterfly') this.stage.butterfly(step.on);
     else if (step.kind === 'bark') this.bark(step);

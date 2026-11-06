@@ -50,6 +50,8 @@ export interface Speaker {
 //   { "walk": "throne" }                                     he walks up to the first placed thing of that asset id
 //                                                            (or to a spot, "800,640") on his own; the script waits
 //                                                            while Timo leads the way
+//   { "dash": "800,640" }                                    one real dash toward the spot (or a placed thing's asset
+//                                                            id), its usual length; the script waits
 //   { "timo": "hide" }  { "timo": "pop" }                    Timo is hidden inside him, or pops back out in a puff
 //   { "look": "kate", "face": "kate_surprised" }             how a standing boss looks, without a line. A line of hers
 //                                                            sets it too, to that line's face; it stays until changed
@@ -75,6 +77,7 @@ export type Step =
   | { kind: 'shake'; amount: number }
   | { kind: 'camera'; target: string; seconds: number }
   | { kind: 'walk'; target: string }
+  | { kind: 'dash'; target: string }
   | { kind: 'look'; who: string; face: string }
   | { kind: 'butterfly'; on: boolean }
   | { kind: 'bark'; speaker: Speaker; text: string; seconds: number }
@@ -159,6 +162,7 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
     if (!vestiges.get(id)) return problems.push(`${where}: unknown vestige ${JSON.stringify(id)} (see vestiges.json), skipped`), null;
     return { kind: 'vestige', id };
   }
+  if (e.dash !== undefined) return { kind: 'dash', target: str(e.dash, '', `${where}.dash`, problems) };
   if (e.look !== undefined) return { kind: 'look', who: str(e.look, '', `${where}.look`, problems), face: str(e.face, '', `${where}.face`, problems) };
   if (e.butterfly !== undefined) return { kind: 'butterfly', on: bool(e.butterfly, true, `${where}.butterfly`, problems) };
   if (e.bark !== undefined) {
@@ -168,7 +172,7 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
   }
   if (e.defeat !== undefined) return { kind: 'defeat', who: str(e.defeat, '', `${where}.defeat`, problems) };
   if (e.sound !== undefined) return { kind: 'sound', id: str(e.sound, '', `${where}.sound`, problems) };
-  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, look, butterfly, bark, defeat, vestige, sound), skipped`);
+  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, dash, look, butterfly, bark, defeat, vestige, sound), skipped`);
   return null;
 }
 

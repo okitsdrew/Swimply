@@ -70,6 +70,8 @@ export class KateView {
   face = 'kate_surprised';
   butterflyOut = true;
   private flyGrow = 1;
+  // How far out the pan is: put away (0) while she waits, in her hand (1) otherwise.
+  private panOut = 1;
   private spawnImages: { sprite: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image }[] = [];
   private age = 0;
   private walkTime = 0;
@@ -182,6 +184,10 @@ export class KateView {
     let flip = false;
     let pose = key(4);
     let angle = cfg.restAngle;
+    const waiting = k.state === 'idle';
+    if (waiting) pose = { gx: 0, gy: 0, sx: look.idleShoulderX, sy: look.restShoulderY, span: look.idleShoulderSpan };
+    this.panOut = waiting ? 0 : Math.min(1, this.panOut + dt / Math.max(look.panOutTime, 1e-3));
+    this.pan.setVisible(this.panOut > 0);
     let turn = 0;
     if (k.state === 'walk') {
       this.walkTime += dt;
@@ -265,7 +271,7 @@ export class KateView {
       .setPosition(grip.x, grip.y)
       .setOrigin(look.panHandleX / pw, look.panHandleY / ph)
       .setRotation(Math.atan2(dir.y, dir.x))
-      .setScale((reach / along) * (1 - look.panForeshorten * (1 - Math.max(0.18, len / reach))), (reach / along) * look.panThickness)
+      .setScale((reach / along) * this.panOut * (1 - look.panForeshorten * (1 - Math.max(0.18, len / reach))), (reach / along) * this.panOut * look.panThickness)
       .setDepth(behind ? depth - 0.5 : depth + 0.5)
       .setAlpha(fade);
     if (white) this.pan.setTintFill(0xffffff);
@@ -275,7 +281,13 @@ export class KateView {
     // Both hands on the handle, the second one further along it.
     const ux = dir.x / len;
     const uy = dir.y / len;
-    const hands = [grip, { x: grip.x + ux * look.handGap * px, y: grip.y + uy * look.handGap * px }];
+    // Her hands hold the pan's handle, or hang by her sides while she waits.
+    const hands = waiting
+      ? [
+          { x: screen.x + (pose.sx - look.idleHandOut) * px, y: top + look.idleHandY * px },
+          { x: screen.x + (pose.sx + pose.span + look.idleHandOut) * px, y: top + look.idleHandY * px },
+        ]
+      : [grip, { x: grip.x + ux * look.handGap * px, y: grip.y + uy * look.handGap * px }];
     const shoulders = [
       { x: screen.x + pose.sx * px, y: top + pose.sy * px },
       { x: screen.x + (pose.sx + pose.span) * px, y: top + pose.sy * px },

@@ -309,6 +309,13 @@ export const kateLook = defineConfig(
     butterflyOutTime: 0.4,
     // Flickers a second as she stands beaten.
     deathFlicker: 12,
+    // Waiting, the pan is put away and her arms hang: where the shoulders are, how far apart, and where the hands hang,
+    // out from each shoulder and up from the ground (art pixels). Woken, the pan grows into her hand over panOutTime.
+    idleShoulderX: -5.5,
+    idleShoulderSpan: 11,
+    idleHandOut: 1.5,
+    idleHandY: -17.5,
+    panOutTime: 0.2,
   },
   {
     sleeveColor: 'color',
@@ -360,5 +367,10 @@ export const kateLook = defineConfig(
     butterflyRate: { min: 0.5, max: 40, step: 0.5 },
     butterflyOutTime: { min: 0.05, max: 3, step: 0.05 },
     deathFlicker: { min: 1, max: 40, step: 1 },
+    idleShoulderX: { min: -30, max: 30, step: 0.5 },
+    idleShoulderSpan: { min: 0, max: 30, step: 0.5 },
+    idleHandOut: { min: -10, max: 10, step: 0.5 },
+    idleHandY: { min: -52, max: 0, step: 0.5 },
+    panOutTime: { min: 0.02, max: 2, step: 0.02 },
   },
 );
