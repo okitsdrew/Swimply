@@ -185,13 +185,16 @@ export class KateView {
     else this.sprite.clearTint();
     this.shadow.setPosition(screen.x, screen.y).setScale(px * 1.2, px * 0.45).setDepth(depth - 1000);
 
-    // The pan from her grip: turned round her as a circle on the ground seen on screen, shorter toward the camera.
+    // The pan from her grip: turned round her as a circle on the ground seen on screen (shorter toward the camera, as
+    // much as panForeshorten says).
     const grip = { x: screen.x + pose.gx * px, y: screen.y + pose.gy * px };
     const a = (angle + turn) * DEG;
     const reach = cfg.panReach * cfg.scale;
     dir.x = Math.cos(a) * reach;
     dir.y = 0.5 * Math.sin(a) * reach;
     const len = Math.hypot(dir.x, dir.y) || 1;
+    // Over her arms, except while she swings it away from the camera, when it goes behind her.
+    const behind = Math.sin(a) < 0 && (k.state === 'windup' || k.state === 'swing' || k.state === 'follow');
     const pw = this.pan.getData('w') as number;
     const ph = this.pan.getData('h') as number;
     const along = Math.max(1, pw - look.panHandleX);
@@ -199,8 +202,8 @@ export class KateView {
       .setPosition(grip.x, grip.y)
       .setOrigin(look.panHandleX / pw, look.panHandleY / ph)
       .setRotation(Math.atan2(dir.y, dir.x))
-      .setScale(Math.max(0.18 * (reach / along), len / along), (reach / along) * look.panThickness)
-      .setDepth(Math.sin(a) < 0 ? depth - 0.5 : depth + 0.5)
+      .setScale((reach / along) * (1 - look.panForeshorten * (1 - Math.max(0.18, len / reach))), (reach / along) * look.panThickness)
+      .setDepth(behind ? depth - 0.5 : depth + 0.5)
       .setAlpha(1);
     if (k.flash > 0) this.pan.setTintFill(0xffffff);
     else this.pan.clearTint();

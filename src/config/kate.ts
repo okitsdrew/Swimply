@@ -173,9 +173,12 @@ export const kateLook = defineConfig(
     // Each arm is two parts this long (art pixels), bent at the elbow; the hand stops short if the grip is further.
     armLength: 7,
     handGap: 3,
-    // How thick the pan is drawn (1 keeps the sprite's own shape; its length is kate.panReach), and where its handle end sits in
+    // How thick the pan is drawn (1 keeps the sprite's own shape; its length is kate.panReach, which is also how far it
+    // hits), and where its handle end sits in
     // the sprite (art pixels from its left edge, and down from its top).
     panThickness: 1,
+    // How much the pan looks shorter when it points toward or away from the camera: 0 never, 1 fully.
+    panForeshorten: 0,
     panHandleX: 2,
     panHandleY: 21,
     // The poses: the windup (key 1), the swing's middle (2), the follow-through (3) and the rest over her shoulder
@@ -229,6 +232,7 @@ export const kateLook = defineConfig(
     armLength: { min: 2, max: 20, step: 0.5 },
     handGap: { min: 0, max: 12, step: 0.5 },
     panThickness: { min: 0.2, max: 3, step: 0.05 },
+    panForeshorten: { min: 0, max: 1, step: 0.05 },
     panHandleX: { min: 0, max: 78, step: 1 },
     panHandleY: { min: 0, max: 42, step: 1 },
     grip1X: { min: -30, max: 30, step: 0.5 },
