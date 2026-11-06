@@ -18,6 +18,7 @@ export class Kates implements EnemyGroup<Kate> {
   onSwing: (k: Kate) => void = () => {};
   onSlap: (k: Kate) => void = () => {};
   onLand: (k: Kate) => void = () => {};
+  onFireWave: (k: Kate) => void = () => {};
 
   constructor(private world: CollisionWorld) {}
 
@@ -36,6 +37,7 @@ export class Kates implements EnemyGroup<Kate> {
     k.onSwing = () => this.onSwing(k);
     k.onSlap = () => this.onSlap(k);
     k.onLand = () => this.onLand(k);
+    k.onFireWave = () => this.onFireWave(k);
     k.onKilled = (x, y) => {
       this.list.splice(this.list.indexOf(k), 1);
       this.onKilled(x, y, k);

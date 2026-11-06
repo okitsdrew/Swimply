@@ -15,8 +15,8 @@ export interface EnemyKind<E extends Enemy = Enemy> {
   view: EnemyView<E>;
   // How it feels when one dies (shake, hit-stop), after the view's own death effect.
   killed?: (x: number, y: number, e: E) => void;
-  // Its dev menu buttons. `spawn` replaces the usual "rise near the hero, `near` away".
-  dev?: { spawnLabel: string; killLabel: string; near?: number; spawn?: () => void };
+  // Its dev menu buttons. `spawn` replaces the usual "rise near the hero, `near` away"; `extra` adds its own.
+  dev?: { spawnLabel: string; killLabel: string; near?: number; spawn?: () => void; extra?: { label: string; run: () => void }[] };
 }
 
 // Each kind only ever gets back its own enemies, so the list can hold kinds of different enemy types.
@@ -256,6 +256,7 @@ export class Enemies {
       if (!d) continue;
       out.push({ label: d.spawnLabel, run: d.spawn ?? (() => this.spawnNear(k.id, d.near ?? 400)) });
       out.push({ label: d.killLabel, run: () => this.killAll(k.id) });
+      out.push(...(d.extra ?? []));
     }
     return out;
   }

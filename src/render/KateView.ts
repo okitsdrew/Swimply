@@ -5,7 +5,7 @@ import { ellipseHalfSize, toScreen } from '../core/iso';
 import { vestiges, vestigeTexture } from '../data/vestiges';
 import { Kate } from '../sim/Kate';
 import { Kates } from '../sim/Kates';
-import { KATE_PAN, kateDashFrames, kateSwingFrames, kateWalkFrames, Tex } from './art';
+import { FIRESPAWN, KATE_PAN, kateDashFrames, kateSwingFrames, kateWalkFrames, Tex } from './art';
 import { solveArm } from './armMath';
 import { BossBar } from './BossBar';
 import { EnemyView, ViewFrame } from './enemies';
@@ -47,8 +47,8 @@ const blend = (a: Pose, b: Pose, k: number): Pose => ({
 const clamp01 = (k: number) => Math.max(0, Math.min(1, k));
 
 // Draws Kate: her body frames, her code-drawn arms holding the pan (turned round her, behind her when it points
-// away), the swing's trail, the fire butterfly circling her (in front of her for a slap), her fireballs and the
-// boss bar.
+// away), the swing's trail, the fire butterfly circling her (in front of her for a slap), her fireballs, the
+// firespawns and the boss bar.
 //   walk: kate_0-3 (kate_0 standing), pan over her shoulder   dash, hop: kate_dash_1-6, the pan trailing
 //   windup: kate_attack_1   swing: 2, then 3 past its middle   follow: 3   recover: 4
 export class KateView {
@@ -63,13 +63,14 @@ export class KateView {
   private flyFrames: string[];
   private bar: BossBar;
   private fireballs: FireballsView;
+  private spawnImages: { sprite: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image }[] = [];
   private age = 0;
   private walkTime = 0;
   private emberTimer = 0;
   // Where the butterfly is in the world and how high (art pixels), easing to where it should be.
   private flyAt = { x: 0, y: 0, h: 0, placed: false };
 
-  constructor(scene: Phaser.Scene, private kate: Kate, private fx: Fx) {
+  constructor(private scene: Phaser.Scene, private kate: Kate, private fx: Fx) {
     this.sprite = scene.add.image(0, 0, kateWalkFrames[0]).setOrigin(0.5, 1).setVisible(false);
     this.shadow = scene.add.image(0, 0, Tex.shadow).setVisible(false);
     this.arms = scene.add.graphics();
@@ -121,6 +122,10 @@ export class KateView {
 
   destroy(): void {
     for (const o of [this.sprite, this.shadow, this.arms, this.pan, this.ground, this.trail, this.fly, this.flyGlow]) o.destroy();
+    for (const s of this.spawnImages) {
+      s.sprite.destroy();
+      s.shadow.destroy();
+    }
     this.bar.destroy();
     this.fireballs.destroy();
   }
@@ -134,6 +139,7 @@ export class KateView {
     this.trail.clear();
     this.arms.clear();
     this.drawWaves(g);
+    this.drawFirespawns();
     const shown = k.present && k.state !== 'rising';
     for (const o of [this.sprite, this.shadow, this.pan, this.fly, this.flyGlow]) o.setVisible(shown);
     if (!k.present) return;
@@ -173,7 +179,7 @@ export class KateView {
       turn = k.turn;
       if (k.state === 'windup') {
         frame = kateSwingFrames[0];
-        const time = k.move === 'slap' ? cfg.gatherTime : cfg.windupTime;
+        const time = k.move === 'strike' ? cfg.windupTime : cfg.gatherTime;
         pose = blend(key(4), key(1), clamp01(k.time / Math.max(time * cfg.windupRaise, 1e-3)));
       } else if (k.state === 'swing') {
         // Through the middle, from the windup's hands to the middle's, then on to the follow-through's.
@@ -297,6 +303,28 @@ export class KateView {
         this.fx.particle({ texture: Tex.glow, x: p.x, y: p.y, life: 0.3 + Math.random() * 0.3, from: 0.3, to: 0, tint: Math.random() < 0.5 ? cfg.slamColor : 0xffe14a, additive: true, vx: (Math.random() - 0.5) * 20, vy: -40 - Math.random() * 40 * px, depth: p.y + 1 });
       }
     }
+  }
+
+  // The firespawns: flying in an arc to their spots, then hovering and bobbing, always turning clockwise.
+  private drawFirespawns(): void {
+    const list = this.kate.firespawns;
+    const px = render.pixelScale;
+    while (this.spawnImages.length < list.length) {
+      this.spawnImages.push({ sprite: this.scene.add.image(0, 0, FIRESPAWN), shadow: this.scene.add.image(0, 0, Tex.shadow) });
+    }
+    this.spawnImages.forEach((s, i) => {
+      const f = list[i];
+      s.sprite.setVisible(!!f);
+      s.shadow.setVisible(!!f);
+      if (!f) return;
+      const p = toScreen(f.x, f.y);
+      const k = clamp01(f.age / Math.max(cfg.firespawnFly, 1e-3));
+      const bob = k < 1 ? 0 : Math.sin((this.age * cfg.firespawnBobRate + i / list.length) * Math.PI * 2) * cfg.firespawnBob;
+      const y = p.y - Math.sin(Math.PI * k) * cfg.firespawnArc - (cfg.firespawnHover + bob) * px;
+      const size = px * cfg.firespawnScale;
+      s.sprite.setPosition(p.x, y).setScale(size).setRotation(this.age * cfg.firespawnSpin * Math.PI * 2).setDepth(p.y);
+      s.shadow.setPosition(p.x, p.y).setScale(size * 0.8, size * 0.3).setDepth(p.y - 1000);
+    });
   }
 
   // A pale fan behind the pan, from where the swing started to where the pan is now.

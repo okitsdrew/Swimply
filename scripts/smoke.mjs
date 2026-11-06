@@ -205,6 +205,20 @@ await check('Mindscape: werewolf comes and is beaten', async () => {
   await ctx.close();
 });
 
+await check('Kate: phase 2 leaves nothing behind', async () => {
+  const { page, ctx } = await open('kate phase 2', play('map=spawn'));
+  await ready(page);
+  const kate = () => window.swimply.scene.getScene('arena').enemies.group('kate').list[0];
+  await press(page, 'Spawn Kate');
+  await until(page, `(${kate})()?.alive`);
+  await press(page, 'Kate: phase 2');
+  await until(page, `(${kate})().firespawns.length === 4 && (${kate})().waves.length > 0`);
+  await press(page, 'Kill Kate');
+  await page.waitForTimeout(200);
+  if ((await census(page)).kate) throw new Error('Kate still out after her kill button');
+  await ctx.close();
+});
+
 await check('Mindscape: death opens the tree', async () => {
   const { page, ctx } = await open('mindscape death', play('map=mindscape'), false);
   await ready(page);

@@ -9,6 +9,10 @@ import { defineConfig } from './store';
 //     slapShots times in all.
 //   Fire Slam (on its own cooldown, first when ready): she leaps at him and smashes down, and a ring of fire spreads
 //     from where she lands to the walls.
+// At phase2At of her health she starts phase 2, once: dropping what she was doing, she smacks four firespawns to the
+// middles of the map's four quarters. They stay for the rest of the fight, each sending out a ring of fire every
+// firespawnEvery seconds, staggered so the rings come evenly, and from then on her Pan Strike also sends fire out from
+// the end of the pan, across the whole swing's width.
 export const kate = defineConfig(
   'kate',
   'bosses',
@@ -89,6 +93,18 @@ export const kate = defineConfig(
     waveWidth: 24,
     // How many pieces the ring is cut into, each stopping at its own wall.
     waveSegments: 72,
+    // Phase 2: the fraction of her health that starts it, how long a firespawn flies and how high its arc is (screen
+    // pixels), and the seconds between one firespawn's rings.
+    phase2At: 0.4,
+    firespawnFly: 0.7,
+    firespawnArc: 200,
+    firespawnEvery: 4,
+    // How one looks: its size, how high it hovers and bobs (art pixels), bobs a second and clockwise turns a second.
+    firespawnScale: 2,
+    firespawnHover: 14,
+    firespawnBob: 3,
+    firespawnBobRate: 0.5,
+    firespawnSpin: 0.75,
     deathSmoke: 50,
     deathShake: 14,
   },
@@ -144,21 +160,34 @@ export const kate = defineConfig(
     waveSpeed: { min: 50, max: 2000, step: 10 },
     waveWidth: { min: 4, max: 200, step: 2 },
     waveSegments: { min: 8, max: 256, step: 4 },
+    phase2At: { min: 0.05, max: 1, step: 0.05 },
+    firespawnFly: { min: 0.1, max: 3, step: 0.05 },
+    firespawnArc: { min: 0, max: 600, step: 10 },
+    firespawnEvery: { min: 0.5, max: 20, step: 0.5 },
+    firespawnScale: { min: 0.5, max: 6, step: 0.25 },
+    firespawnHover: { min: 0, max: 60, step: 1 },
+    firespawnBob: { min: 0, max: 20, step: 0.5 },
+    firespawnBobRate: { min: 0, max: 4, step: 0.05 },
+    firespawnSpin: { min: 0, max: 5, step: 0.05 },
     deathSmoke: { min: 0, max: 150, step: 1 },
     deathShake: { min: 0, max: 40, step: 1 },
   },
 );
 
 // Fire Slap's fireballs: Flame Torrent's, from the butterfly in front of her. Their tip is overshoot past where the
-// player stood, at least minRange and at most range away. The same fields as Flame Torrent's (see flame_torrent), but no damage:
-// one hit kills him.
+// player is, at least minRange and at most range away. For the first homingTime seconds of the flight their path keeps
+// up with him: its reach follows at once (so backing away does not escape it), and its aim turns toward him at up to
+// homingTurn degrees a second (so moving across it can). 0 turns homing off. The same fields as Flame Torrent's (see
+// flame_torrent), but no damage: one hit kills him.
 export const kateFireballs = defineConfig(
   'kate_fireballs',
   'bosses',
   {
     range: 1200,
     minRange: 150,
-    overshoot: 80,
+    overshoot: 20,
+    homingTurn: 30,
+    homingTime: 0.8,
     width: 120,
     side: 24,
     outTime: 1,
@@ -177,6 +206,8 @@ export const kateFireballs = defineConfig(
     range: { min: 50, max: 2000, step: 10 },
     minRange: { min: 0, max: 1000, step: 10 },
     overshoot: { min: 0, max: 500, step: 5 },
+    homingTurn: { min: 0, max: 720, step: 5 },
+    homingTime: { min: 0, max: 3, step: 0.05 },
     width: { min: 0, max: 300, step: 5 },
     side: { min: 0, max: 100, step: 2 },
     outTime: { min: 0.1, max: 3, step: 0.05 },

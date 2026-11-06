@@ -6493,6 +6493,25 @@
       ]
     },
     {
+      "id": "firespawn",
+      "name": "firespawn",
+      "palette": { "W": "#fff8d8", "y": "#ffe14a", "o": "#ff8a1a", "r": "#e0301c", "d": "#8a1408" },
+      "rows": [
+        "yyy.....yyy",
+        "yod.rrr.doy",
+        "ydrrooorrdy",
+        "..royyyor..",
+        ".royyWyyor.",
+        ".royWWWyor.",
+        ".royWWWyor.",
+        ".royyWyyor.",
+        "..royyyor..",
+        "ydrrooorrdy",
+        "yod.rrr.doy",
+        "yyy.....yyy"
+      ]
+    },
+    {
       "id": "fireball_1",
       "name": "fireball_1",
       "palette": { "W": "#fff8d8", "y": "#ffe14a", "o": "#ff8a1a", "r": "#e0301c", "d": "#8a1408" },

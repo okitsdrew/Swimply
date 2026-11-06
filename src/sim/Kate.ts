@@ -18,8 +18,25 @@ export interface FireWave {
   stops: number[];
 }
 
+// A firespawn: where it was smacked from and to, seconds since, where it is now, and when (on her fight's clock) it
+// next sends out a ring.
+export interface Firespawn {
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  x: number;
+  y: number;
+  age: number;
+  nextRing: number;
+}
+
 const off = { x: 0, y: 0 };
 const way = { x: 0, y: 0 };
+const quarter = { x: 0, y: 0 };
+const FIRESPAWNS = 4;
+// The middle of each quarter of the map, clockwise, as fractions of its width and height.
+const QUARTERS = [[0.25, 0.25], [0.75, 0.25], [0.75, 0.75], [0.25, 0.75]];
 const DEG = Math.PI / 180;
 // Fire stops only at walls (the level editor's "walls" category) and the map's edge, like her fireballs.
 const onlyWalls = (o: { asset: { category: string } }) => o.asset.category === 'walls';
@@ -35,6 +52,8 @@ let nextId = -1e6;
 //               then recover
 //   Fire Slam:  crouch -> jump (over everything, at where he was) -> land (hurts the landing circle, and a ring of
 //               fire starts spreading from it to the walls) -> walk
+//   Firespawn:  phase 2's opening: windup -> swing (at its middle, a firespawn flies off to its quarter of the map) ->
+//               follow -> windup... once for each, then recover
 // The swing is one shared piece: `panAngle` is a screen angle round her (0 her right, 90 toward the camera), turned
 // by `turn` so its middle points at him. No drawing: render/KateView reads the state.
 export class Kate implements Target {
@@ -47,7 +66,7 @@ export class Kate implements Target {
   readonly status = new Status();
   state: KateState = 'gone';
   // Which attack she is making.
-  move: 'strike' | 'slap' | 'slam' = 'strike';
+  move: 'strike' | 'slap' | 'slam' | 'smack' = 'strike';
   time = 0;
   vx = 0;
   vy = 0;
@@ -78,6 +97,11 @@ export class Kate implements Target {
   landed = false;
   // Fire Slam's rings of fire, spreading.
   readonly waves: FireWave[] = [];
+  // Phase 2: whether it has begun, its firespawns, the clock their rings keep to, and when the first ring goes.
+  phase2 = false;
+  readonly firespawns: Firespawn[] = [];
+  private clock = 0;
+  private ringStart = 0;
   // Which way she faces on screen while walking or dashing, -1 or 1.
   facing = 1;
   // Her fireballs, which come back to her.
@@ -90,6 +114,8 @@ export class Kate implements Target {
   onSlap: () => void = () => {};
   // She comes down from the Fire Slam.
   onLand: () => void = () => {};
+  // A ring of fire leaves a firespawn, or fire leaves the pan.
+  onFireWave: () => void = () => {};
   onKilled: (x: number, y: number) => void = () => {};
 
   constructor(world: CollisionWorld) {
@@ -112,7 +138,7 @@ export class Kate implements Target {
 
   // The butterfly is in front of her for the Fire Slap, from its windup to the end of its follow-through.
   get slapping(): boolean {
-    return this.move === 'slap' && (this.state === 'windup' || this.state === 'swing' || this.state === 'follow');
+    return (this.move === 'slap' || this.move === 'smack') && (this.state === 'windup' || this.state === 'swing' || this.state === 'follow');
   }
 
   // Where the slap's butterfly is: butterflyFront toward him.
@@ -135,6 +161,8 @@ export class Kate implements Target {
     this.panAngle = this.lastAngle = cfg.restAngle;
     this.fireballs.clear();
     this.waves.length = 0;
+    this.firespawns.length = 0;
+    this.phase2 = false;
     this.enter('rising');
   }
 
@@ -153,6 +181,7 @@ export class Kate implements Target {
     this.status.clear();
     this.fireballs.clear();
     this.waves.length = 0;
+    this.firespawns.length = 0;
     this.enter('gone');
   }
 
@@ -164,7 +193,28 @@ export class Kate implements Target {
     if (this.hp <= 0) {
       this.clear();
       this.onKilled(this.x, this.y);
-    }
+    } else this.checkPhase2();
+  }
+
+  // Dev aid: straight to the health that starts phase 2.
+  toPhase2(): void {
+    if (!this.alive) return;
+    this.wake();
+    this.hp = Math.min(this.hp, cfg.hp * cfg.phase2At);
+    this.checkPhase2();
+  }
+
+  // Low enough: phase 2 begins, once. She drops what she was doing (a leap still lands) to smack the firespawns.
+  private checkPhase2(): void {
+    if (this.phase2 || this.hp > cfg.hp * cfg.phase2At) return;
+    this.phase2 = true;
+    this.interrupt();
+    this.cooldown = 0;
+  }
+
+  // Firespawns still to smack. A stun drops the attack, not the ones she has left.
+  private get smacksLeft(): boolean {
+    return this.phase2 && this.firespawns.length < FIRESPAWNS;
   }
 
   touching(x: number, y: number, r: number): boolean {
@@ -245,8 +295,9 @@ export class Kate implements Target {
   }
 
   update(dt: number, world: CollisionWorld, nav: Navigator, target: Vec2): void {
-    this.fireballs.update(dt, this.x, this.y, []);
+    this.fireballs.update(dt, this.x, this.y, [], target);
     this.spread(dt);
+    this.tendFirespawns(dt, world);
     this.landed = false;
     if (this.state === 'gone') return;
     this.radius = cfg.radius * cfg.scale;
@@ -274,7 +325,7 @@ export class Kate implements Target {
         break;
       case 'walk':
         this.walk(dt, world, nav, target);
-        this.choose(target);
+        this.choose(world, target);
         break;
       case 'strikeDash':
       case 'hop': {
@@ -289,7 +340,7 @@ export class Kate implements Target {
         break;
       }
       case 'windup': {
-        const time = this.move === 'slap' ? cfg.gatherTime : cfg.windupTime;
+        const time = this.move === 'strike' ? cfg.windupTime : cfg.gatherTime;
         // The pan goes back the short way (over her head, behind her), then she holds it there.
         const k = Math.min(1, this.time / Math.max(time * cfg.windupRaise, 1e-3));
         this.panAngle = cfg.restAngle + shortest(cfg.restAngle, cfg.windAngle) * ease(k);
@@ -306,13 +357,18 @@ export class Kate implements Target {
         const k = Math.min(1, this.time / Math.max(cfg.swingTime, 1e-3));
         this.panAngle = cfg.windAngle + (cfg.followAngle - cfg.windAngle) * k;
         const mid = (cfg.midAngle - cfg.windAngle) / (cfg.followAngle - cfg.windAngle || 1);
-        if (this.move === 'slap' && !this.thrown && k >= mid) this.slap(target);
+        if (!this.thrown && k >= mid) {
+          if (this.move === 'slap') this.slap(target);
+          else if (this.move === 'smack') this.smack(world);
+          else if (this.phase2) this.panWave(world);
+        }
         if (k >= 1) this.enter('follow');
         break;
       }
       case 'follow':
-        if (this.time < (this.move === 'slap' ? cfg.slapFollowTime : cfg.followTime)) break;
+        if (this.time < (this.move === 'strike' ? cfg.followTime : cfg.slapFollowTime)) break;
         if (this.move === 'slap' && this.shots < cfg.slapShots) this.startHop(world, target);
+        else if (this.move === 'smack' && this.smacksLeft) this.startSmack(world);
         else {
           this.recoverFrom = this.panAngle;
           this.enter('recover');
@@ -335,7 +391,7 @@ export class Kate implements Target {
           world.resolve(this);
           this.panAngle = cfg.midAngle;
           this.landed = true;
-          this.waves.push(this.wave(world));
+          this.waves.push(this.wave(world, this.x, this.y, cfg.slamRadius * 0.5));
           this.enter('land');
           this.onLand();
         }
@@ -365,8 +421,14 @@ export class Kate implements Target {
     this.time = 0;
   }
 
-  // The Fire Slam whenever it is ready; otherwise near enough, the Pan Strike; further, the Fire Slap.
-  private choose(target: Vec2): void {
+  // The firespawns as soon as phase 2 begins. Otherwise the Fire Slam whenever it is ready; near enough, the Pan Strike;
+  // further, the Fire Slap.
+  private choose(world: CollisionWorld, target: Vec2): void {
+    if (this.smacksLeft) {
+      this.onAttack();
+      this.startSmack(world);
+      return;
+    }
     if (this.cooldown > 0) return;
     const d = Math.hypot(target.x - this.x, target.y - this.y);
     if (this.slamCooldown <= 0 && d <= cfg.slamRange) {
@@ -418,6 +480,60 @@ export class Kate implements Target {
     this.onSlap();
   }
 
+  // Winds up to smack the next firespawn toward its quarter of the map.
+  private startSmack(world: CollisionWorld): void {
+    this.move = 'smack';
+    this.quarterOf(world, this.firespawns.length, quarter);
+    this.startWindup(quarter);
+  }
+
+  private quarterOf(world: CollisionWorld, i: number, out: Vec2): void {
+    out.x = world.width * QUARTERS[i][0];
+    out.y = world.height * QUARTERS[i][1];
+  }
+
+  // The smack lands: a firespawn flies off from the butterfly. Its turn in the rings is set by how many came before it,
+  // so they stay evenly apart even if a stun held up a smack (then it waits for its next turn after landing).
+  private smack(world: CollisionWorld): void {
+    this.thrown = true;
+    const i = this.firespawns.length;
+    if (i === 0) this.ringStart = this.clock + cfg.firespawnFly;
+    let nextRing = this.ringStart + (i * cfg.firespawnEvery) / FIRESPAWNS;
+    while (nextRing < this.clock + cfg.firespawnFly) nextRing += cfg.firespawnEvery;
+    this.butterfly(off);
+    this.quarterOf(world, i, quarter);
+    this.firespawns.push({ fromX: off.x, fromY: off.y, toX: quarter.x, toY: quarter.y, x: off.x, y: off.y, age: 0, nextRing });
+    this.onSlap();
+  }
+
+  // Each firespawn flies to its spot, then sends out its rings. They carry on through a stun, like the rings do.
+  private tendFirespawns(dt: number, world: CollisionWorld): void {
+    this.clock += dt;
+    for (const f of this.firespawns) {
+      f.age += dt;
+      const k = Math.min(1, f.age / Math.max(cfg.firespawnFly, 1e-3));
+      f.x = f.fromX + (f.toX - f.fromX) * k;
+      f.y = f.fromY + (f.toY - f.fromY) * k;
+      if (k < 1 || this.clock < f.nextRing) continue;
+      f.nextRing += cfg.firespawnEvery;
+      this.waves.push(this.wave(world, f.x, f.y, 0));
+      this.onFireWave();
+    }
+  }
+
+  // Phase 2's Pan Strike: as the pan passes its middle, fire starts from the pan's reach, only across the swing's width.
+  private panWave(world: CollisionWorld): void {
+    this.thrown = true;
+    const lo = Math.min(cfg.windAngle, cfg.followAngle);
+    const span = Math.abs(cfg.windAngle - cfg.followAngle);
+    this.waves.push(this.wave(world, this.x, this.y, cfg.panReach * cfg.scale, (a) => {
+      toScreen(Math.cos(a), Math.sin(a), off);
+      const angle = Math.atan2(off.y * 2, off.x) / DEG - this.turn;
+      return ((((angle - lo) % 360) + 360) % 360) <= span;
+    }));
+    this.onFireWave();
+  }
+
   // Sideways to him, on the side nearer the room's middle, bent toward it by hopToMiddle (alternating sides at 0).
   private startHop(world: CollisionWorld, target: Vec2): void {
     const dx = target.x - this.x;
@@ -457,17 +573,18 @@ export class Kate implements Target {
     this.enter('jump');
   }
 
-  // A ring of fire from where she landed: each piece goes until a wall stops it.
-  private wave(world: CollisionWorld): FireWave {
+  // A ring of fire from (x, y), r across at first: each piece goes until a wall stops it. Pieces `keep` turns down (by
+  // world angle) never burn, which makes it a cone.
+  private wave(world: CollisionWorld, x: number, y: number, r: number, keep: (angle: number) => boolean = () => true): FireWave {
     const n = Math.max(8, Math.round(cfg.waveSegments));
     const far = Math.hypot(world.width, world.height);
     const stops: number[] = [];
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
-      const hit = world.raycast(this.x, this.y, Math.cos(a), Math.sin(a), far, onlyWalls);
-      stops.push(hit < 0 ? far : hit);
+      const hit = world.raycast(x, y, Math.cos(a), Math.sin(a), far, onlyWalls);
+      stops.push(!keep(a) ? 0 : hit < 0 ? far : hit);
     }
-    return { x: this.x, y: this.y, r: cfg.slamRadius * 0.5, stops };
+    return { x, y, r, stops };
   }
 
   // The rings spread, and go out once every piece has met its wall.

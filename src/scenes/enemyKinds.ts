@@ -106,10 +106,16 @@ export function kateKind(c: KindContext, world: CollisionWorld): EnemyKind<Kate>
     c.sfx.play('wolfSmash');
     view.viewOf(k).onLand();
   };
+  group.onFireWave = () => c.sfx.play('flameTorrent');
   return {
     id: 'kate',
     group,
     view,
-    dev: { spawnLabel: 'Spawn Kate', killLabel: 'Kill Kate', near: 500 },
+    dev: {
+      spawnLabel: 'Spawn Kate',
+      killLabel: 'Kill Kate',
+      near: 500,
+      extra: [{ label: 'Kate: phase 2', run: () => group.list.forEach((k) => k.toPhase2()) }],
+    },
   };
 }

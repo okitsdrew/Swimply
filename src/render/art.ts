@@ -35,6 +35,7 @@ export const kateWalkFrames = ['kate_0', 'kate_1', 'kate_2', 'kate_3'];
 export const kateDashFrames = [1, 2, 3, 4, 5, 6].map((i) => `kate_dash_${i}`);
 export const kateSwingFrames = [1, 2, 3, 4].map((i) => `kate_attack_${i}`);
 export const KATE_PAN = 'kate_pan';
+export const FIRESPAWN = 'firespawn';
 
 export const heroWalkFrames =['hero_walk0', 'hero_walk1', 'hero_walk2', 'hero_walk3'];
 
