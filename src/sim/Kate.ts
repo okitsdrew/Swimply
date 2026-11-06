@@ -406,14 +406,14 @@ export class Kate implements Target {
     this.enter('windup');
   }
 
-  // The slap lands: two fireballs leave the butterfly for where he is now.
+  // The slap lands: two fireballs leave the butterfly for just past where he is now.
   private slap(target: Vec2): void {
     this.thrown = true;
     this.shots++;
     this.butterfly(off);
     const dx = target.x - off.x;
     const dy = target.y - off.y;
-    const range = Math.max(kateFireballs.minRange, Math.min(kateFireballs.range, Math.hypot(dx, dy)));
+    const range = Math.max(kateFireballs.minRange, Math.min(kateFireballs.range, Math.hypot(dx, dy) + kateFireballs.overshoot));
     this.fireballs.cast(off.x, off.y, dx, dy, range);
     this.onSlap();
   }

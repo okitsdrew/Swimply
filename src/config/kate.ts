@@ -25,7 +25,7 @@ export const kate = defineConfig(
     // Body circle at scale 1; it grows with scale. The player dies when his hit circle meets contactScale of it.
     radius: 18,
     scale: 1.5,
-    contactScale: 0.8,
+    contactScale: 0,
     // Seconds her spawn mark shows before she rises (when spawned, not placed).
     spawnTell: 1.5,
     walkFps: 6,
@@ -149,8 +149,8 @@ export const kate = defineConfig(
   },
 );
 
-// Fire Slap's fireballs: Flame Torrent's, from the butterfly in front of her. Their tip is where the player stood,
-// at least minRange and at most range away. The same fields as Flame Torrent's (see flame_torrent), but no damage:
+// Fire Slap's fireballs: Flame Torrent's, from the butterfly in front of her. Their tip is overshoot past where the
+// player stood, at least minRange and at most range away. The same fields as Flame Torrent's (see flame_torrent), but no damage:
 // one hit kills him.
 export const kateFireballs = defineConfig(
   'kate_fireballs',
@@ -158,6 +158,7 @@ export const kateFireballs = defineConfig(
   {
     range: 1200,
     minRange: 150,
+    overshoot: 80,
     width: 120,
     side: 24,
     outTime: 1,
@@ -175,6 +176,7 @@ export const kateFireballs = defineConfig(
   {
     range: { min: 50, max: 2000, step: 10 },
     minRange: { min: 0, max: 1000, step: 10 },
+    overshoot: { min: 0, max: 500, step: 5 },
     width: { min: 0, max: 300, step: 5 },
     side: { min: 0, max: 100, step: 2 },
     outTime: { min: 0.1, max: 3, step: 0.05 },
