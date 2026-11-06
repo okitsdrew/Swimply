@@ -103,6 +103,14 @@ export class KateView {
     this.fx.addShake(3);
   }
 
+  onLand(): void {
+    const k = this.kate;
+    toScreen(k.jx, k.jy, screen);
+    this.fx.addShake(cfg.slamShake);
+    this.fx.smoke(screen.x, screen.y, 30, cfg.slamRadius * 0.6);
+    this.fx.explosion(screen.x, screen.y, cfg.slamRadius, cfg.slamColor);
+  }
+
   onKilled(x: number, y: number): void {
     const px = render.pixelScale;
     toScreen(x, y, screen);
@@ -125,6 +133,7 @@ export class KateView {
     const g = this.ground.clear();
     this.trail.clear();
     this.arms.clear();
+    this.drawWaves(g);
     const shown = k.present && k.state !== 'rising';
     for (const o of [this.sprite, this.shadow, this.pan, this.fly, this.flyGlow]) o.setVisible(shown);
     if (!k.present) return;
@@ -154,6 +163,11 @@ export class KateView {
       const f = flip ? -1 : 1;
       pose = { gx: look.dashGripX * f, gy: look.dashGripY, sx: flip ? -look.dashShoulderX - look.dashShoulderSpan : look.dashShoulderX, sy: look.dashShoulderY, span: look.dashShoulderSpan };
       angle = flip ? 180 - look.dashAngle : look.dashAngle;
+    } else if (k.state === 'crouch' || k.state === 'jump' || k.state === 'land') {
+      // The Fire Slam: crouched with the pan going up, in the air, then the pan smashed down in front.
+      angle = k.panAngle;
+      frame = k.state === 'land' ? kateSwingFrames[1] : kateSwingFrames[0];
+      pose = k.state === 'land' ? key(2) : key(4);
     } else if (swinging) {
       angle = k.panAngle;
       turn = k.turn;
@@ -179,15 +193,29 @@ export class KateView {
       }
     }
 
+    if (k.state === 'jump') {
+      // Where she will land: the outline from the moment she leaves the ground, filling as she comes down.
+      const t = k.jumpProgress;
+      const at = toScreen(k.jx, k.jy);
+      const full = ellipseHalfSize(cfg.slamRadius);
+      const fill = ellipseHalfSize(cfg.slamRadius * t);
+      g.fillStyle(0xff3040, 0.12 + 0.3 * t).fillEllipse(at.x, at.y, fill.x * 2, fill.y * 2);
+      g.lineStyle(2, 0xff6070, 0.6 + 0.4 * t).strokeEllipse(at.x, at.y, full.x * 2, full.y * 2);
+    }
+
+    // In the air she rises along an arc; her shadow stays on the ground and shrinks.
+    const lift = Math.sin(Math.PI * k.jumpProgress) * cfg.slamHeight;
     const depth = screen.y;
-    this.sprite.setTexture(frame).setPosition(screen.x, screen.y).setScale(px).setFlipX(flip).setDepth(depth);
+    const top = screen.y - lift;
+    this.sprite.setTexture(frame).setPosition(screen.x, top).setScale(px).setFlipX(flip).setDepth(depth);
     if (k.flash > 0) this.sprite.setTintFill(0xffffff);
     else this.sprite.clearTint();
-    this.shadow.setPosition(screen.x, screen.y).setScale(px * 1.2, px * 0.45).setDepth(depth - 1000);
+    const shrink = 1 - 0.5 * (lift / Math.max(cfg.slamHeight, 1));
+    this.shadow.setPosition(screen.x, screen.y).setScale(px * 1.2 * shrink, px * 0.45 * shrink).setDepth(depth - 1000);
 
     // The pan from her grip: turned round her as a circle on the ground seen on screen (shorter toward the camera, as
     // much as panForeshorten says).
-    const grip = { x: screen.x + pose.gx * px, y: screen.y + pose.gy * px };
+    const grip = { x: screen.x + pose.gx * px, y: top + pose.gy * px };
     const a = (angle + turn) * DEG;
     const reach = cfg.panReach * cfg.scale;
     dir.x = Math.cos(a) * reach;
@@ -213,8 +241,8 @@ export class KateView {
     const uy = dir.y / len;
     const hands = [grip, { x: grip.x + ux * look.handGap * px, y: grip.y + uy * look.handGap * px }];
     const shoulders = [
-      { x: screen.x + pose.sx * px, y: screen.y + pose.sy * px },
-      { x: screen.x + (pose.sx + pose.span) * px, y: screen.y + pose.sy * px },
+      { x: screen.x + pose.sx * px, y: top + pose.sy * px },
+      { x: screen.x + (pose.sx + pose.span) * px, y: top + pose.sy * px },
     ];
     // The nearer hand to each shoulder.
     const swap = Math.hypot(hands[0].x - shoulders[0].x, hands[0].y - shoulders[0].y) > Math.hypot(hands[1].x - shoulders[0].x, hands[1].y - shoulders[0].y);
@@ -238,6 +266,37 @@ export class KateView {
     for (const arm of arms) ag.fillCircle(arm.hand.x, arm.hand.y, look.handSize * px);
 
     this.drawButterfly(k, dt);
+  }
+
+  // Each ring of fire (placeholder art): a band of flame on the ground, each piece drawn until it meets its wall, with
+  // embers rising off it.
+  private drawWaves(g: Phaser.GameObjects.Graphics): void {
+    const px = render.pixelScale;
+    for (const w of this.kate.waves) {
+      const n = w.stops.length;
+      const flicker = 0.85 + 0.15 * Math.sin(this.age * 20);
+      for (const [width, color, alpha] of [
+        [cfg.waveWidth * 0.9, cfg.slamColor, 0.75 * flicker],
+        [cfg.waveWidth * 0.4, 0xffe14a, 0.9 * flicker],
+      ] as const) {
+        g.lineStyle(width, color, alpha);
+        for (let i = 0; i < n; i++) {
+          if (w.r >= w.stops[i]) continue;
+          const a0 = ((i - 0.5) / n) * Math.PI * 2;
+          const a1 = ((i + 0.5) / n) * Math.PI * 2;
+          const p0 = toScreen(w.x + Math.cos(a0) * w.r, w.y + Math.sin(a0) * w.r);
+          const p1 = toScreen(w.x + Math.cos(a1) * w.r, w.y + Math.sin(a1) * w.r);
+          g.lineBetween(p0.x, p0.y, p1.x, p1.y);
+        }
+      }
+      for (let e = 0; e < 4; e++) {
+        const i = Math.floor(Math.random() * n);
+        if (w.r >= w.stops[i]) continue;
+        const a = ((i + Math.random() - 0.5) / n) * Math.PI * 2;
+        const p = toScreen(w.x + Math.cos(a) * w.r, w.y + Math.sin(a) * w.r);
+        this.fx.particle({ texture: Tex.glow, x: p.x, y: p.y, life: 0.3 + Math.random() * 0.3, from: 0.3, to: 0, tint: Math.random() < 0.5 ? cfg.slamColor : 0xffe14a, additive: true, vx: (Math.random() - 0.5) * 20, vy: -40 - Math.random() * 40 * px, depth: p.y + 1 });
+      }
+    }
   }
 
   // A pale fan behind the pan, from where the swing started to where the pan is now.

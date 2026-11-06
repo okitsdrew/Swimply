@@ -17,6 +17,7 @@ export class Kates implements EnemyGroup<Kate> {
   onAttack: (k: Kate) => void = () => {};
   onSwing: (k: Kate) => void = () => {};
   onSlap: (k: Kate) => void = () => {};
+  onLand: (k: Kate) => void = () => {};
 
   constructor(private world: CollisionWorld) {}
 
@@ -34,6 +35,7 @@ export class Kates implements EnemyGroup<Kate> {
     k.onAttack = () => this.onAttack(k);
     k.onSwing = () => this.onSwing(k);
     k.onSlap = () => this.onSlap(k);
+    k.onLand = () => this.onLand(k);
     k.onKilled = (x, y) => {
       this.list.splice(this.list.indexOf(k), 1);
       this.onKilled(x, y, k);
@@ -88,26 +90,28 @@ export class Kates implements EnemyGroup<Kate> {
   }
 
   targets(out: Target[]): void {
-    for (const k of this.list) if (k.alive) out.push(k);
+    for (const k of this.list) if (k.alive && !k.airborne) out.push(k);
   }
 
-  // The pan as it passes, and her fireballs (which fly on through a stun).
+  // The pan as it passes, the Fire Slam's landing, and her fireballs and rings of fire (which carry on through a stun).
   strikes(x: number, y: number, r: number, safe: boolean): boolean {
     if (safe) return false;
-    return this.list.some((k) => (!k.status.held && k.inPan(x, y, r)) || k.inFire(x, y, r));
+    return this.list.some((k) => (!k.status.held && k.inPan(x, y, r)) || k.inLanding(x, y, r) || k.inFire(x, y, r) || k.inWave(x, y, r));
   }
 
   touching(x: number, y: number, r: number): boolean {
     return this.list.some((k) => k.touching(x, y, r));
   }
 
-  // Her body, her fireballs, and the pan's line and reach while she swings.
+  // Her body, her fireballs, rings of fire and landing spot, and the pan's line and reach while she swings.
   debug(d: DebugDraw): void {
     for (const k of this.list) {
       if (!k.alive) continue;
       d.ring(k.x, k.y, k.radius, false);
       d.ring(k.x, k.y, k.radius * cfg.contactScale, true);
       for (const f of k.fireballs.list) if (f.age >= 0) d.ring(f.x, f.y, kateFireballs.hitRadius, true);
+      for (const w of k.waves) d.ring(w.x, w.y, w.r, true);
+      if (k.state === 'jump') d.ring(k.jx, k.jy, cfg.slamRadius, true);
       if (k.state !== 'windup' && k.state !== 'swing' && k.state !== 'follow') continue;
       k.panDirection(k.panAngle, way);
       const reach = cfg.panReach * cfg.scale;

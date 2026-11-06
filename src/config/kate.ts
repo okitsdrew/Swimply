@@ -1,12 +1,14 @@
 import { defineConfig } from './store';
 
 // Kate Lamity, the kitchen's chef and the first castle boss. She holds the stolen fire butterfly, which circles her.
-// She walks at the player and has two attacks:
+// She walks at the player and has three attacks:
 //   Pan Strike (when he is within strikeRange): she dashes in to stop strikeGap short of him, winds up, and swings her
 //     giant pan round her from her left to her right. Only the pan itself hurts, as it passes.
 //   Fire Slap (when he is further, up to slapRange): the butterfly flies in front of her, she slaps it with the same
 //     swing, and two fireballs curve out to where he stood and come back to her. She hops sideways and slaps again,
 //     slapShots times in all.
+//   Fire Slam (on its own cooldown, first when ready): she leaps at him and smashes down, and a ring of fire spreads
+//     from where she lands to the walls.
 export const kate = defineConfig(
   'kate',
   'bosses',
@@ -68,6 +70,25 @@ export const kate = defineConfig(
     // How much each hop leans toward the middle of the room: 0 goes straight sideways (alternating sides), 1 goes
     // straight at the middle. In between she takes the side nearer the middle, bent toward it this much.
     hopToMiddle: 0.35,
+    // Fire Slam: whenever it is ready (slamCooldown, first slamFirstDelay after she wakes) and he is within slamRange,
+    // she crouches (slamWindup), leaps at where he is over everything (slamAirTime, slamHeight screen pixels high; no
+    // arrow reaches her up there) and smashes down, hurting the circle she lands in (slamRadius, marked on the ground
+    // while she falls). A ring of fire then spreads from there at waveSpeed until each part of it meets a wall; it is
+    // waveWidth thick and hurts as it passes, so he has to dash, teleport or cast Doomsday through it.
+    slamCooldown: 9,
+    slamFirstDelay: 4,
+    slamRange: 1200,
+    slamWindup: 0.5,
+    slamAirTime: 0.75,
+    slamHeight: 160,
+    slamRadius: 110,
+    slamLandTime: 0.45,
+    slamShake: 12,
+    slamColor: 0xff7a1a,
+    waveSpeed: 420,
+    waveWidth: 24,
+    // How many pieces the ring is cut into, each stopping at its own wall.
+    waveSegments: 72,
     deathSmoke: 50,
     deathShake: 14,
   },
@@ -110,6 +131,19 @@ export const kate = defineConfig(
     hopDistance: { min: 0, max: 600, step: 10 },
     hopTime: { min: 0.02, max: 1, step: 0.01 },
     hopToMiddle: { min: 0, max: 1, step: 0.05 },
+    slamCooldown: { min: 0, max: 30, step: 0.5 },
+    slamFirstDelay: { min: 0, max: 30, step: 0.5 },
+    slamRange: { min: 0, max: 3000, step: 10 },
+    slamWindup: { min: 0.05, max: 3, step: 0.05 },
+    slamAirTime: { min: 0.1, max: 3, step: 0.05 },
+    slamHeight: { min: 0, max: 500, step: 10 },
+    slamRadius: { min: 10, max: 400, step: 5 },
+    slamLandTime: { min: 0, max: 2, step: 0.05 },
+    slamShake: { min: 0, max: 40, step: 1 },
+    slamColor: 'color',
+    waveSpeed: { min: 50, max: 2000, step: 10 },
+    waveWidth: { min: 4, max: 200, step: 2 },
+    waveSegments: { min: 8, max: 256, step: 4 },
     deathSmoke: { min: 0, max: 150, step: 1 },
     deathShake: { min: 0, max: 40, step: 1 },
   },

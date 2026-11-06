@@ -102,6 +102,10 @@ export function kateKind(c: KindContext, world: CollisionWorld): EnemyKind<Kate>
     c.sfx.play('flameTorrent');
     view.viewOf(k).onSlap();
   };
+  group.onLand = (k) => {
+    c.sfx.play('wolfSmash');
+    view.viewOf(k).onLand();
+  };
   return {
     id: 'kate',
     group,
