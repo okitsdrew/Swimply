@@ -919,6 +919,13 @@
       "enemy": "priest"
     },
     {
+      "id": "kate",
+      "name": "Kate Lamity (placed)",
+      "category": "markers",
+      "marker": "enemy",
+      "enemy": "kate"
+    },
+    {
       "id": "spawner-priest",
       "name": "priest spawner",
       "category": "markers",

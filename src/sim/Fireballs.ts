@@ -1,4 +1,4 @@
-import { flameTorrent as cfg } from '../config/vestiges';
+import { flameTorrent } from '../config/vestiges';
 import { Vec2 } from '../core/iso';
 import { Placed } from '../data/maps';
 import { Target } from './targets';
@@ -7,6 +7,8 @@ import { CollisionWorld } from './World';
 export interface Fireball {
   // Seconds since it left (negative while it waits its turn).
   age: number;
+  // How far out its tip is.
+  range: number;
   // Which side of him it leaves from: 1 or -1.
   side: number;
   // Where it was shot from and which way, as a unit vector: its way out is fixed from these.
@@ -25,14 +27,30 @@ export interface Fireball {
   hitAt: Map<number | Placed, number>;
 }
 
+// The settings a set of fireballs flies by: Flame Torrent's own, or a boss's (kate_fireballs). Without damage they
+// hurt nothing but the hero, which their owner checks itself.
+export interface FireballPath {
+  range: number;
+  width: number;
+  side: number;
+  outTime: number;
+  returnSpeed: number;
+  catchRadius: number;
+  perSide: number;
+  gap: number;
+  damage?: number;
+  hitRadius: number;
+  rehitTime: number;
+}
+
 const next = { x: 0, y: 0 };
 // Fireballs fly over and through everything but walls (the level editor's "walls" category) and the map's edge.
 const onlyWalls = (o: { asset: { category: string } }) => o.asset.category === 'walls';
 
 // Flame Torrent's fireballs, like boomerangs. Each flies out on its own path, set where it was shot: from his side,
 // across just in front of him and curving out to the tip. From the tip (or a wall on the way) it flies straight back
-// at him, wherever he is now, until it reaches him; a wall on the way back puts it out. No drawing:
-// render/FireballsView reads `list`.
+// at him (or whoever threw them: `update` is told where home is), wherever he is now, until it reaches him; a wall on
+// the way back puts it out. No drawing: render/FireballsView reads `list`.
 export class Fireballs {
   readonly list: Fireball[] = [];
   private time = 0;
@@ -44,7 +62,7 @@ export class Fireballs {
   onSnuffed: (x: number, y: number) => void = () => {};
 
   // `breaks` says which placed things it can hit (the ones with health); it flies through them.
-  constructor(private world: CollisionWorld, private breaks: (o: Placed) => boolean) {}
+  constructor(private world: CollisionWorld, private breaks: (o: Placed) => boolean, readonly cfg: FireballPath = flameTorrent) {}
 
   get active(): boolean {
     return this.list.length > 0;
@@ -56,13 +74,14 @@ export class Fireballs {
     return f && f.age >= 0 ? f : null;
   }
 
-  // A torrent from him at (x, y) toward (dirX, dirY).
-  cast(x: number, y: number, dirX: number, dirY: number): void {
+  // A torrent from him at (x, y) toward (dirX, dirY), its tip `range` away (the config's, unless given).
+  cast(x: number, y: number, dirX: number, dirY: number, range = this.cfg.range): void {
+    const cfg = this.cfg;
     const len = Math.hypot(dirX, dirY) || 1;
     const n = Math.max(1, Math.round(cfg.perSide));
     for (let i = 0; i < n; i++) {
       for (const side of [1, -1]) {
-        const f: Fireball = { age: -i * cfg.gap, side, fromX: x, fromY: y, dirX: dirX / len, dirY: dirY / len, back: false, x: 0, y: 0, velX: 0, velY: 0, hitAt: new Map() };
+        const f: Fireball = { age: -i * cfg.gap, side, range, fromX: x, fromY: y, dirX: dirX / len, dirY: dirY / len, back: false, x: 0, y: 0, velX: 0, velY: 0, hitAt: new Map() };
         this.place(f, 0, f);
         this.list.push(f);
       }
@@ -71,8 +90,9 @@ export class Fireballs {
 
   // Where a fireball is on its way out at `t` (0 at his side, 1 at the tip).
   private place(f: Fireball, t: number, out: Vec2): void {
+    const cfg = this.cfg;
     const h = t / 2;
-    const forward = cfg.range * Math.sin(Math.PI * h);
+    const forward = f.range * Math.sin(Math.PI * h);
     const s = f.side * (-cfg.width * Math.sin(2 * Math.PI * h) + cfg.side * (1 - h) ** 4);
     // The side axis is the aim turned a quarter.
     out.x = f.fromX + f.dirX * forward - f.dirY * s;
@@ -80,6 +100,7 @@ export class Fireballs {
   }
 
   update(dt: number, heroX: number, heroY: number, targets: readonly Target[]): void {
+    const cfg = this.cfg;
     this.time += dt;
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i];
@@ -128,7 +149,7 @@ export class Fireballs {
         if (!target.alive || (f.hitAt.get(target.id) ?? 0) > this.time) continue;
         if (Math.hypot(target.x - f.x, target.y - f.y) > target.radius + cfg.hitRadius) continue;
         f.hitAt.set(target.id, this.time + cfg.rehitTime);
-        this.onHit(target, cfg.damage, f.x, f.y);
+        this.onHit(target, cfg.damage ?? 0, f.x, f.y);
       }
       if (gone) this.list.splice(i, 1);
     }
@@ -136,6 +157,7 @@ export class Fireballs {
 
   // Breakable things along its step, from where it was to (x, y), on three lines as wide as its hit radius.
   private hitThings(f: Fireball, x: number, y: number): void {
+    const cfg = this.cfg;
     const mx = x - f.x;
     const my = y - f.y;
     const len = Math.hypot(mx, my);
@@ -149,7 +171,7 @@ export class Fireballs {
       const thing = this.world.lastHit;
       if (!thing || (f.hitAt.get(thing) ?? 0) > this.time) continue;
       f.hitAt.set(thing, this.time + cfg.rehitTime);
-      this.onHitThing(thing, cfg.damage, x, y);
+      this.onHitThing(thing, cfg.damage ?? 0, x, y);
     }
   }
 

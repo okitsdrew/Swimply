@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { render } from '../config/render';
-import { flameTorrent as cfg } from '../config/vestiges';
+import { flameTorrent } from '../config/vestiges';
 import { toScreen } from '../core/iso';
 import { Fireballs } from '../sim/Fireballs';
 import { fireballFrames, Tex } from './art';
@@ -9,17 +9,26 @@ import { Fx } from './Fx';
 const screen = { x: 0, y: 0 };
 const dir = { x: 0, y: 0 };
 
-// Flame Torrent's fireballs: the drawn fireball (pointing right, turned to where it is heading, its frames cycling)
-// with a glow, and a trail of embers and smoke behind it.
+// How a set of fireballs looks: height over the ground and size (art pixels), seconds per frame, trail embers a second.
+export interface FireballLook {
+  height: number;
+  scale: number;
+  frameTime: number;
+  trail: number;
+}
+
+// Flame Torrent's fireballs (or a boss's): the drawn fireball (pointing right, turned to where it is heading, its
+// frames cycling) with a glow, and a trail of embers and smoke behind it.
 export class FireballsView {
   private imgs: Phaser.GameObjects.Image[] = [];
   private glows: Phaser.GameObjects.Image[] = [];
   private age = 0;
   private trailTimer = 0;
 
-  constructor(private scene: Phaser.Scene, private fireballs: Fireballs, private fx: Fx) {}
+  constructor(private scene: Phaser.Scene, private fireballs: Fireballs, private fx: Fx, private cfg: FireballLook = flameTorrent) {}
 
   update(dt: number): void {
+    const cfg = this.cfg;
     this.age += dt;
     const px = render.pixelScale;
     this.trailTimer -= dt * cfg.trail;
@@ -66,5 +75,11 @@ export class FireballsView {
       this.imgs[i].setVisible(false);
       this.glows[i].setVisible(false);
     }
+  }
+
+  destroy(): void {
+    for (const o of [...this.imgs, ...this.glows]) o.destroy();
+    this.imgs.length = 0;
+    this.glows.length = 0;
   }
 }

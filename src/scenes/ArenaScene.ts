@@ -54,7 +54,7 @@ import { FlowField } from '../sim/Nav';
 import { VestigeCaster } from '../sim/Vestiges';
 import { MapWorld } from '../sim/World';
 import { Enemies } from './Enemies';
-import { priestKind, shadeKind, werewolfKind } from './enemyKinds';
+import { kateKind, priestKind, shadeKind, werewolfKind } from './enemyKinds';
 import { ArenaParts, Mindscape, TreeScreen, winMindscape } from './Mindscape';
 import { StoryRunner } from './StoryRunner';
 import { drawHitboxes } from './hitboxes';
@@ -257,12 +257,15 @@ export class ArenaScene extends Phaser.Scene {
       shadeK.dev!.spawn = () => this.run.spawn();
       bossK.dev!.spawn = () => this.mindscape?.spawnWolf();
     }
-    this.enemies = new Enemies([shadeK, priestKind(kc), bossK, werewolfKind(kc, 'werewolf', cfgElite, false)], this.world, this.nav, this.player);
+    this.enemies = new Enemies([shadeK, priestKind(kc), bossK, werewolfKind(kc, 'werewolf', cfgElite, false), kateKind(kc, this.world)], this.world, this.nav, this.player);
     this.enemies.onFlag = (flag) => {
       this.areaFlags[flag] = true;
       this.showMap();
     };
-    this.enemies.onKilled = (kind, x, y) => this.mindscape?.onKilled(kind, x, y);
+    this.enemies.onKilled = (kind, x, y) => {
+      this.mindscape?.onKilled(kind, x, y);
+      if (kind === 'kate') this.kateBeaten();
+    };
     this.enemies.onBurn = (e, amount) => {
       const s = toScreen(e.x, e.y);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, amount);
@@ -304,11 +307,7 @@ export class ArenaScene extends Phaser.Scene {
       get walking() {
         return walking();
       },
-      vestige: (id) => {
-        unlockVestige(id);
-        this.hud.announce(`VESTIGE RECLAIMED\n${vestiges.get(id)?.name ?? id}`, story.vestigeBanner);
-        this.sfx.play('unlock');
-      },
+      vestige: (id) => this.reclaim(id),
     });
 
     this.player.onFire = (_x, _y, dx, dy) => {
@@ -754,6 +753,20 @@ export class ArenaScene extends Phaser.Scene {
     this.walkTo = null;
     this.player.stop();
     this.timo.followHero();
+  }
+
+  // He takes a Vestige back: a banner, and it fills an empty slot.
+  private reclaim(id: string): void {
+    unlockVestige(id);
+    this.hud.announce(`VESTIGE RECLAIMED\n${vestiges.get(id)?.name ?? id}`, story.vestigeBanner);
+    this.sfx.play('unlock');
+  }
+
+  // Kate is beaten for good (saved at once, like the Mindscape's win), and the fire butterfly is his again.
+  private kateBeaten(): void {
+    save.flags.kateDefeated = true;
+    if (save.vestiges.includes('flame_torrent')) writeSave();
+    else this.reclaim('flame_torrent');
   }
 
   private die(): void {

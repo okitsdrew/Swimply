@@ -93,7 +93,7 @@ const census = (page) =>
   page.evaluate(() => {
     const scene = window.swimply.scene.getScene('arena');
     const out = {};
-    for (const id of ['shade', 'priest', 'werewolf', 'werewolf_miniboss']) out[id] = scene.enemies.group(id).list.filter((e) => e.alive).length;
+    for (const id of ['shade', 'priest', 'werewolf', 'werewolf_miniboss', 'kate']) out[id] = scene.enemies.group(id).list.filter((e) => e.alive).length;
     return out;
   });
 
@@ -115,6 +115,7 @@ const ENEMY_BUTTONS = [
   ['Spawn a Shade', 'Kill all Shades'],
   ['Spawn a Priest', 'Kill Priests'],
   ['Spawn elite werewolf', 'Kill elite werewolves'],
+  ['Spawn Kate', 'Kill Kate'],
 ];
 
 async function check(name, fn) {
@@ -135,15 +136,15 @@ for (const id of maps.filter((m) => !process.argv[2] || m === process.argv[2])) 
     for (const [spawn] of ENEMY_BUTTONS) if (!(await press(page, spawn))) throw new Error(`no dev button "${spawn}"`);
     await until(page, () => {
       const s = window.swimply.scene.getScene('arena');
-      return ['shade', 'priest', 'werewolf'].every((k) => s.enemies.group(k).list.some((e) => e.alive));
+      return ['shade', 'priest', 'werewolf', 'kate'].every((k) => s.enemies.group(k).list.some((e) => e.alive));
     }).catch(() => {});
     const out = await census(page);
-    for (const k of ['shade', 'priest', 'werewolf']) if (!out[k]) throw new Error(`no ${k} out after pressing its spawn button`);
+    for (const k of ['shade', 'priest', 'werewolf', 'kate']) if (!out[k]) throw new Error(`no ${k} out after pressing its spawn button`);
     await shoot(page, 3);
     for (const [, kill] of ENEMY_BUTTONS) await press(page, kill);
     await page.waitForTimeout(200);
     const left = await census(page);
-    for (const k of ['priest', 'werewolf']) if (left[k]) throw new Error(`${left[k]} ${k} still out after its kill button`);
+    for (const k of ['priest', 'werewolf', 'kate']) if (left[k]) throw new Error(`${left[k]} ${k} still out after its kill button`);
     await press(page, 'Toggle hitboxes');
     await page.waitForTimeout(500);
     await ctx.close();

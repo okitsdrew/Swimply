@@ -135,6 +135,7 @@
     { "asset": "granite-wall-se", "x": 736, "y": 1600 },
     { "asset": "granite-wall-se", "x": 672, "y": 1600 },
     { "asset": "door", "x": 800, "y": 1568, "to": "western_courtyard" },
+    { "asset": "kate", "x": 800, "y": 704, "aggro": 650, "onBreak": "kateDefeated" },
     { "asset": "cauldron", "x": 64, "y": 64 },
     { "asset": "brick-oven-se", "x": 288, "y": 32 },
     { "asset": "long-table-se", "x": 160, "y": 32 },
