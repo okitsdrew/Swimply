@@ -284,6 +284,12 @@ export const kateLook = defineConfig(
     dashShoulderSpan: 5,
     // A pale trail behind the pan during the swing.
     trailAlpha: 0.35,
+    // The warning before a Pan Strike: the rim of the pan's head blinks this colour panFlashCount times in the last
+    // panFlashTime seconds of the windup, as bright as panFlashAlpha.
+    panFlashTime: 0.25,
+    panFlashCount: 2,
+    panFlashColor: 0xff2020,
+    panFlashAlpha: 1,
     // The fire butterfly circling her: how far (world units), how high (art pixels), turns a second, its size,
     // seconds per frame, its glow (art pixels across, and how bright) and embers a second.
     butterflyDistance: 40,
@@ -332,6 +338,10 @@ export const kateLook = defineConfig(
     dashShoulderY: { min: -52, max: 0, step: 0.5 },
     dashShoulderSpan: { min: 0, max: 20, step: 0.5 },
     trailAlpha: { min: 0, max: 1, step: 0.05 },
+    panFlashTime: { min: 0, max: 1, step: 0.01 },
+    panFlashCount: { min: 1, max: 6, step: 1 },
+    panFlashColor: 'color',
+    panFlashAlpha: { min: 0, max: 1, step: 0.05 },
     butterflyDistance: { min: 0, max: 150, step: 1 },
     butterflyHeight: { min: 0, max: 120, step: 1 },
     butterflySpin: { min: 0, max: 1, step: 0.01 },

@@ -35,6 +35,7 @@ export const kateWalkFrames = ['kate_0', 'kate_1', 'kate_2', 'kate_3'];
 export const kateDashFrames = [1, 2, 3, 4, 5, 6].map((i) => `kate_dash_${i}`);
 export const kateSwingFrames = [1, 2, 3, 4].map((i) => `kate_attack_${i}`);
 export const KATE_PAN = 'kate_pan';
+export const KATE_PAN_RIM = 'kate_pan_rim';
 export const FIRESPAWN = 'firespawn';
 
 export const heroWalkFrames =['hero_walk0', 'hero_walk1', 'hero_walk2', 'hero_walk3'];
@@ -172,6 +173,39 @@ export function applySprite(scene: Phaser.Scene, sprite: Sprite): void {
   scene.textures.addCanvas(sprite.id, canvas);
 }
 
+// Where the pan's head starts in its sprite (the handle is left of this), and how thick its rim is, in art pixels.
+const PAN_HEAD_FROM = 38;
+const PAN_RIM_WIDTH = 4;
+
+// A white copy of just the rim of the pan's head, to tint and lay over the pan: the head's pixels within PAN_RIM_WIDTH
+// of its outside edge. Worked out from the sprite, so it follows if the pan is redrawn.
+function makePanRim(scene: Phaser.Scene): void {
+  const pan = sprites.get(KATE_PAN);
+  if (!pan) return;
+  const { width: w, height: h, pixels } = pan;
+  const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && pixels[y * w + x] >= 0;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#ffffff';
+  for (let y = 0; y < h; y++) {
+    for (let x = PAN_HEAD_FROM; x < w; x++) {
+      if (!solid(x, y)) continue;
+      let edge = false;
+      for (let dy = -PAN_RIM_WIDTH; dy <= PAN_RIM_WIDTH && !edge; dy++) {
+        for (let dx = -PAN_RIM_WIDTH; dx <= PAN_RIM_WIDTH && !edge; dx++) {
+          // The handle's side counts as inside, so the rim stops where the handle joins.
+          edge = dx * dx + dy * dy <= PAN_RIM_WIDTH * PAN_RIM_WIDTH && x + dx >= PAN_HEAD_FROM && !solid(x + dx, y + dy);
+        }
+      }
+      if (edge) ctx.fillRect(x, y, 1, 1);
+    }
+  }
+  if (scene.textures.exists(KATE_PAN_RIM)) scene.textures.remove(KATE_PAN_RIM);
+  scene.textures.addCanvas(KATE_PAN_RIM, canvas);
+}
+
 let made = false;
 
 // All the game's art: the code-drawn placeholders, then the drawn sprites on top.
@@ -181,6 +215,7 @@ export function makeArt(scene: Phaser.Scene): void {
   makeCodeArt(scene);
   // Drawn art wins over code art of the same name.
   for (const s of sprites.list()) applySprite(scene, s);
+  makePanRim(scene);
 }
 
 export function makeCodeArt(scene: Phaser.Scene): void {

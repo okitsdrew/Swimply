@@ -5,7 +5,7 @@ import { ellipseHalfSize, toScreen } from '../core/iso';
 import { vestiges, vestigeTexture } from '../data/vestiges';
 import { Kate } from '../sim/Kate';
 import { Kates } from '../sim/Kates';
-import { FIRESPAWN, KATE_PAN, kateDashFrames, kateSwingFrames, kateWalkFrames, Tex } from './art';
+import { FIRESPAWN, KATE_PAN, KATE_PAN_RIM, kateDashFrames, kateSwingFrames, kateWalkFrames, Tex } from './art';
 import { solveArm } from './armMath';
 import { BossBar } from './BossBar';
 import { EnemyView, ViewFrame } from './enemies';
@@ -56,6 +56,7 @@ export class KateView {
   private shadow: Phaser.GameObjects.Image;
   private arms: Phaser.GameObjects.Graphics;
   private pan: Phaser.GameObjects.Image;
+  private panRim: Phaser.GameObjects.Image;
   private ground: Phaser.GameObjects.Graphics;
   private trail: Phaser.GameObjects.Graphics;
   private fly: Phaser.GameObjects.Image;
@@ -77,6 +78,7 @@ export class KateView {
     const pan = scene.textures.getFrame(KATE_PAN);
     this.pan = scene.add.image(0, 0, KATE_PAN).setVisible(false);
     this.pan.setData('w', pan?.width ?? 78).setData('h', pan?.height ?? 42);
+    this.panRim = scene.add.image(0, 0, KATE_PAN_RIM).setVisible(false);
     this.ground = scene.add.graphics().setDepth(-5e7 + 1);
     this.trail = scene.add.graphics();
     this.fly = scene.add.image(0, 0, vestigeTexture('flame_torrent')).setVisible(false);
@@ -121,7 +123,7 @@ export class KateView {
   }
 
   destroy(): void {
-    for (const o of [this.sprite, this.shadow, this.arms, this.pan, this.ground, this.trail, this.fly, this.flyGlow]) o.destroy();
+    for (const o of [this.sprite, this.shadow, this.arms, this.pan, this.panRim, this.ground, this.trail, this.fly, this.flyGlow]) o.destroy();
     for (const s of this.spawnImages) {
       s.sprite.destroy();
       s.shadow.destroy();
@@ -138,6 +140,7 @@ export class KateView {
     const g = this.ground.clear();
     this.trail.clear();
     this.arms.clear();
+    this.panRim.setVisible(false);
     this.drawWaves(g);
     this.drawFirespawns();
     const shown = k.present && k.state !== 'rising';
@@ -241,6 +244,7 @@ export class KateView {
       .setAlpha(1);
     if (k.flash > 0) this.pan.setTintFill(0xffffff);
     else this.pan.clearTint();
+    this.drawPanFlash(k);
 
     // Both hands on the handle, the second one further along it.
     const ux = dir.x / len;
@@ -303,6 +307,23 @@ export class KateView {
         this.fx.particle({ texture: Tex.glow, x: p.x, y: p.y, life: 0.3 + Math.random() * 0.3, from: 0.3, to: 0, tint: Math.random() < 0.5 ? cfg.slamColor : 0xffe14a, additive: true, vx: (Math.random() - 0.5) * 20, vy: -40 - Math.random() * 40 * px, depth: p.y + 1 });
       }
     }
+  }
+
+  // The Pan Strike's warning: the rim of the pan's head, laid exactly over the pan, flashes in the windup's last moments.
+  private drawPanFlash(k: Kate): void {
+    if (k.state !== 'windup' || k.move !== 'strike') return;
+    const left = cfg.windupTime - k.time;
+    if (left <= 0 || left >= look.panFlashTime) return;
+    this.panRim
+      .setVisible(true)
+      .setTexture(KATE_PAN_RIM)
+      .setPosition(this.pan.x, this.pan.y)
+      .setOrigin(this.pan.originX, this.pan.originY)
+      .setRotation(this.pan.rotation)
+      .setScale(this.pan.scaleX, this.pan.scaleY)
+      .setDepth(this.pan.depth + 0.01)
+      .setTint(look.panFlashColor)
+      .setAlpha(look.panFlashAlpha * Math.abs(Math.sin((Math.PI * look.panFlashCount * left) / look.panFlashTime)));
   }
 
   // The firespawns: flying in an arc to their spots, then hovering and bobbing, always turning clockwise. A hit flashes
