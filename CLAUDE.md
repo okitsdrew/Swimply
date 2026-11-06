@@ -32,6 +32,7 @@ Drew is new to making games and to programming. Teach as you go: explain what yo
 - `npm run dev`: dev server with hot reload (`localhost:5173`).
 - `npm run check`: layer check plus type check.
 - `npm run build`: check, then build to `dist/` (what CI runs).
+- The game is online at https://okitsdrew.github.io/Swimply/. `.github/workflows/pages.yml` builds and publishes `main` on every push (a minute or two later), so whatever is on `main` is what the world can play. Branches are not published.
 - `npm run smoke`: the smoke test (`scripts/smoke.mjs`). Starts its own dev server, plays every map in a hidden browser, spawns and kills every enemy kind, stands in every spawner's zone, wins the Mindscape, dies in it, casts Doomsday and Flame Torrent, opens both tools, and fails on any error. About a minute and a half. `npm run smoke garden` does one map. Needs Playwright (`npm i -D playwright && npx playwright install chromium` the first time on a new machine).
 - `npm run preview`: serve the built `dist/`.
 - Asset maker: `localhost:5173/asset-maker.html` while `npm run dev` runs.
