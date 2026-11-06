@@ -50,8 +50,8 @@ export const priest = defineConfig(
     orbLife: 0,
     // How hard an orb turns toward him (degrees a second), for its first homingTime seconds; then it flies straight
     // on, so one that missed leaves instead of circling him forever.
-    homingTurn: 60,
-    homingTime: 1.5,
+    homingTurn: 50,
+    homingTime: 1.2,
     // The orb hurts the player when it is this fraction of its radius from his hit circle.
     orbContact: 0.8,
     // Seconds the spawn mark shows before it rises; it cannot hurt or be hit until then.

@@ -459,7 +459,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private storyFresh(): void {
-    for (const f of storyFlags()) delete save.flags[f];
+    save.flags = {};
     resetTree(false);
     save.shards = 0;
     addShards(0);
