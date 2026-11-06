@@ -17,12 +17,12 @@ export const kate = defineConfig(
     // How much of a push (a blast's knockback) moves her, 0 to 1, and how fast it dies away.
     knockbackTaken: 0.2,
     knockbackDecay: 8,
-    speed: 220,
+    speed: 350,
     uniformScreenSpeed: true,
     turnRate: 6,
     // Body circle at scale 1; it grows with scale. The player dies when his hit circle meets contactScale of it.
     radius: 18,
-    scale: 1,
+    scale: 1.5,
     contactScale: 0.8,
     // Seconds her spawn mark shows before she rises (when spawned, not placed).
     spawnTell: 1.5,
@@ -45,14 +45,14 @@ export const kate = defineConfig(
     followAngle: -25,
     // Seconds: the windup (the first windupRaise of it pulls the pan back, then she holds), the swing itself, the
     // follow-through and the recovery to rest.
-    windupTime: 0.5,
+    windupTime: 0.4,
     windupRaise: 0.4,
     swingTime: 0.12,
-    followTime: 0.32,
-    recoverTime: 0.4,
+    followTime: 0.15,
+    recoverTime: 0.25,
     // The pan as the sim sees it: from her middle out to panReach (world units), hurting within panHitRadius of
     // that line from panHitFrom of the way out, only during the swing.
-    panReach: 120,
+    panReach: 190,
     panHitRadius: 22,
     panHitFrom: 0.25,
     // Fire Slap: when he is within slapRange (and further than strikeRange). The butterfly flies to butterflyFront
@@ -122,11 +122,11 @@ export const kateFireballs = defineConfig(
   'kate_fireballs',
   'bosses',
   {
-    range: 700,
+    range: 1200,
     minRange: 150,
-    width: 60,
+    width: 120,
     side: 24,
-    outTime: 0.7,
+    outTime: 1,
     returnSpeed: 900,
     catchRadius: 30,
     perSide: 1,
@@ -134,7 +134,7 @@ export const kateFireballs = defineConfig(
     hitRadius: 18,
     rehitTime: 0.4,
     height: 14,
-    scale: 1.5,
+    scale: 2.5,
     frameTime: 0.06,
     trail: 40,
   },
@@ -167,19 +167,19 @@ export const kateLook = defineConfig(
     sleeveColor: 0xf2c230,
     sleeveEdgeColor: 0x2a1a14,
     handColor: 0xf6cfae,
-    sleeveWidth: 1.4,
+    sleeveWidth: 2.25,
     sleeveEdge: 0.6,
     handSize: 1.3,
     // Each arm is two parts this long (art pixels), bent at the elbow; the hand stops short if the grip is further.
-    armLength: 7,
-    handGap: 3,
+    armLength: 7.5,
+    handGap: 8.5,
     // How thick the pan is drawn (1 keeps the sprite's own shape; its length is kate.panReach, which is also how far it
     // hits), and where its handle end sits in
     // the sprite (art pixels from its left edge, and down from its top).
-    panThickness: 1,
+    panThickness: 1.25,
     // How much the pan looks shorter when it points toward or away from the camera: 0 never, 1 fully.
     panForeshorten: 0,
-    panHandleX: 2,
+    panHandleX: 0,
     panHandleY: 21,
     // The poses: the windup (key 1), the swing's middle (2), the follow-through (3) and the rest over her shoulder
     // (4, also her walk). The hands move between them as the pan does.
