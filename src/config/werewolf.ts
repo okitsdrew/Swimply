@@ -75,7 +75,7 @@ const wolf = {
   // wide and swipeRange long, aimed at the player, fills from him outward), then lunges swipeLunge forward over
   // swipeTime, killing anyone in the cone, then recovers (recoverTime).
   swipeTriggerRange: 100,
-  swipeRange: 200,
+  swipeRange: 225,
   swipeAngle: 120,
   swipeWindup: 0.45,
   swipeLunge: 60,
@@ -165,6 +165,7 @@ export const werewolf = defineConfig('werewolf', 'enemies', {
   jumpTriggerRange: 1500,
   jumpRange: 1500,
   jumpRadius: 90,
+  swipeRange: 200,
   attackRange: 320,
   attackWidth: 100,
   quickDashCooldown: 4,
