@@ -1,7 +1,7 @@
 import { kate as cfg, kateFireballs } from '../config/kate';
 import { Vec2 } from '../core/iso';
 import { DebugDraw, EnemyGroup } from './enemies';
-import { Kate } from './Kate';
+import { Firespawn, Kate } from './Kate';
 import { Navigator } from './Nav';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
@@ -66,7 +66,8 @@ export class Kates implements EnemyGroup<Kate> {
     return k.state === 'idle';
   }
 
-  damage(k: Kate, amount: number): void {
+  // Arrows reach her or one of her firespawns (see targets), each with its own health.
+  damage(k: Kate | Firespawn, amount: number): void {
     k.damage(amount);
   }
 
@@ -92,7 +93,10 @@ export class Kates implements EnemyGroup<Kate> {
   }
 
   targets(out: Target[]): void {
-    for (const k of this.list) if (k.alive && !k.airborne) out.push(k);
+    for (const k of this.list) {
+      if (k.alive && !k.airborne) out.push(k);
+      for (const f of k.firespawns) if (f.alive) out.push(f);
+    }
   }
 
   // The pan as it passes, the Fire Slam's landing, and her fireballs and rings of fire (which carry on through a stun).
@@ -113,6 +117,7 @@ export class Kates implements EnemyGroup<Kate> {
       d.ring(k.x, k.y, k.radius * cfg.contactScale, true);
       for (const f of k.fireballs.list) if (f.age >= 0) d.ring(f.x, f.y, kateFireballs.hitRadius, true);
       for (const w of k.waves) d.ring(w.x, w.y, w.r, true);
+      for (const f of k.firespawns) if (f.alive) d.ring(f.x, f.y, f.radius, false);
       if (k.state === 'jump') d.ring(k.jx, k.jy, cfg.slamRadius, true);
       if (k.state !== 'windup' && k.state !== 'swing' && k.state !== 'follow') continue;
       k.panDirection(k.panAngle, way);

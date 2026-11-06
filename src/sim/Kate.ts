@@ -18,19 +18,6 @@ export interface FireWave {
   stops: number[];
 }
 
-// A firespawn: where it was smacked from and to, seconds since, where it is now, and when (on her fight's clock) it
-// next sends out a ring.
-export interface Firespawn {
-  fromX: number;
-  fromY: number;
-  toX: number;
-  toY: number;
-  x: number;
-  y: number;
-  age: number;
-  nextRing: number;
-}
-
 const off = { x: 0, y: 0 };
 const way = { x: 0, y: 0 };
 const quarter = { x: 0, y: 0 };
@@ -43,6 +30,36 @@ const onlyWalls = (o: { asset: { category: string } }) => o.asset.category === '
 
 // Like the werewolf, below zero so arrows never mix her up with a Shade (and far below, apart from the werewolves).
 let nextId = -1e6;
+
+// A firespawn: where it was smacked from and to, seconds since, where it is now, and when (on her fight's clock) it next
+// sends out a ring. Arrows can hit it once it has landed; its health is its own, so breaking one never touches hers.
+export class Firespawn implements Target {
+  readonly id = nextId--;
+  hp = cfg.firespawnHp;
+  flash = 0;
+  age = 0;
+  x: number;
+  y: number;
+
+  constructor(readonly fromX: number, readonly fromY: number, readonly toX: number, readonly toY: number, public nextRing: number) {
+    this.x = fromX;
+    this.y = fromY;
+  }
+
+  get radius(): number {
+    return cfg.firespawnRadius;
+  }
+
+  get alive(): boolean {
+    return this.hp > 0 && this.age >= cfg.firespawnFly;
+  }
+
+  damage(amount: number): void {
+    if (!this.alive) return;
+    this.hp -= amount;
+    this.flash = feel.hitFlashTime;
+  }
+}
 
 // Kate Lamity, the kitchen boss: a state machine with two attacks (see config/kate.ts).
 //   Pan Strike: strikeDash (to strikeGap short of him) -> windup -> swing (the pan hurts as it passes) -> follow ->
@@ -212,7 +229,8 @@ export class Kate implements Target {
     this.cooldown = 0;
   }
 
-  // Firespawns still to smack. A stun drops the attack, not the ones she has left.
+  // Firespawns still to smack (broken ones stay on the list, so she does not smack them again). A stun drops the
+  // attack, not the ones she has left.
   private get smacksLeft(): boolean {
     return this.phase2 && this.firespawns.length < FIRESPAWNS;
   }
@@ -501,7 +519,7 @@ export class Kate implements Target {
     while (nextRing < this.clock + cfg.firespawnFly) nextRing += cfg.firespawnEvery;
     this.butterfly(off);
     this.quarterOf(world, i, quarter);
-    this.firespawns.push({ fromX: off.x, fromY: off.y, toX: quarter.x, toY: quarter.y, x: off.x, y: off.y, age: 0, nextRing });
+    this.firespawns.push(new Firespawn(off.x, off.y, quarter.x, quarter.y, nextRing));
     this.onSlap();
   }
 
@@ -509,6 +527,8 @@ export class Kate implements Target {
   private tendFirespawns(dt: number, world: CollisionWorld): void {
     this.clock += dt;
     for (const f of this.firespawns) {
+      if (f.hp <= 0) continue;
+      f.flash -= dt;
       f.age += dt;
       const k = Math.min(1, f.age / Math.max(cfg.firespawnFly, 1e-3));
       f.x = f.fromX + (f.toX - f.fromX) * k;

@@ -212,7 +212,21 @@ await check('Kate: phase 2 leaves nothing behind', async () => {
   await press(page, 'Spawn Kate');
   await until(page, `(${kate})()?.alive`);
   await press(page, 'Kate: phase 2');
-  await until(page, `(${kate})().firespawns.length === 4 && (${kate})().waves.length > 0`);
+  await until(page, `(${kate})().firespawns.length === 4 && (${kate})().waves.length > 0 && (${kate})().firespawns[0].alive`);
+  // Breaking a firespawn takes its own health, not hers, and she does not smack another.
+  const broke = await page.evaluate((src) => {
+    const k = eval(src)();
+    const e = window.swimply.scene.getScene('arena').enemies;
+    const hp = k.hp;
+    const list = [];
+    e.targets(list);
+    const f = list.find((t) => t === k.firespawns[0]);
+    if (f) e.damage(f, f.hp, f.x, f.y);
+    return { found: !!f, gone: k.firespawns[0].hp <= 0, same: k.hp === hp && k.alive };
+  }, `(${kate})`);
+  if (!broke.found || !broke.gone || !broke.same) throw new Error(`breaking a firespawn: ${JSON.stringify(broke)}`);
+  await page.waitForTimeout(300);
+  if ((await page.evaluate(`(${kate})().firespawns.length`)) !== 4) throw new Error('she smacked another firespawn after one broke');
   await press(page, 'Kill Kate');
   await page.waitForTimeout(200);
   if ((await census(page)).kate) throw new Error('Kate still out after her kill button');

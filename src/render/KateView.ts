@@ -63,7 +63,7 @@ export class KateView {
   private flyFrames: string[];
   private bar: BossBar;
   private fireballs: FireballsView;
-  private spawnImages: { sprite: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image }[] = [];
+  private spawnImages: { sprite: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image; broken: boolean }[] = [];
   private age = 0;
   private walkTime = 0;
   private emberTimer = 0;
@@ -305,19 +305,32 @@ export class KateView {
     }
   }
 
-  // The firespawns: flying in an arc to their spots, then hovering and bobbing, always turning clockwise.
+  // The firespawns: flying in an arc to their spots, then hovering and bobbing, always turning clockwise. A hit flashes
+  // one white, and a broken one goes up in smoke.
   private drawFirespawns(): void {
     const list = this.kate.firespawns;
     const px = render.pixelScale;
     while (this.spawnImages.length < list.length) {
-      this.spawnImages.push({ sprite: this.scene.add.image(0, 0, FIRESPAWN), shadow: this.scene.add.image(0, 0, Tex.shadow) });
+      this.spawnImages.push({ sprite: this.scene.add.image(0, 0, FIRESPAWN), shadow: this.scene.add.image(0, 0, Tex.shadow), broken: false });
     }
     this.spawnImages.forEach((s, i) => {
       const f = list[i];
-      s.sprite.setVisible(!!f);
-      s.shadow.setVisible(!!f);
+      const up = !!f && f.hp > 0;
+      s.sprite.setVisible(up);
+      s.shadow.setVisible(up);
       if (!f) return;
       const p = toScreen(f.x, f.y);
+      if (!up) {
+        if (!s.broken) {
+          this.fx.smoke(p.x, p.y - cfg.firespawnHover * px, 16, 12 * px);
+          this.fx.explosion(p.x, p.y, f.radius, cfg.slamColor);
+        }
+        s.broken = true;
+        return;
+      }
+      s.broken = false;
+      if (f.flash > 0) s.sprite.setTintFill(0xffffff);
+      else s.sprite.clearTint();
       const k = clamp01(f.age / Math.max(cfg.firespawnFly, 1e-3));
       const bob = k < 1 ? 0 : Math.sin((this.age * cfg.firespawnBobRate + i / list.length) * Math.PI * 2) * cfg.firespawnBob;
       const y = p.y - Math.sin(Math.PI * k) * cfg.firespawnArc - (cfg.firespawnHover + bob) * px;

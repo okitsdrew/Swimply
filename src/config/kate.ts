@@ -11,7 +11,7 @@ import { defineConfig } from './store';
 //     from where she lands to the walls.
 // At phase2At of her health she starts phase 2, once: dropping what she was doing, she smacks four firespawns to the
 // middles of the map's four quarters. They stay for the rest of the fight, each sending out a ring of fire every
-// firespawnEvery seconds, staggered so the rings come evenly.
+// firespawnEvery seconds, staggered so the rings come evenly, until it is broken.
 export const kate = defineConfig(
   'kate',
   'bosses',
@@ -84,7 +84,7 @@ export const kate = defineConfig(
     slamWindup: 0.5,
     slamAirTime: 0.75,
     slamHeight: 160,
-    slamRadius: 110,
+    slamRadius: 170,
     slamLandTime: 0.45,
     slamShake: 12,
     slamColor: 0xff7a1a,
@@ -98,6 +98,10 @@ export const kate = defineConfig(
     firespawnFly: 0.7,
     firespawnArc: 200,
     firespawnEvery: 4,
+    // Its health and body circle once it has landed. Arrows and Flame Torrent can break it, and a broken one sends no
+    // more rings. Doomsday's blast passes it by.
+    firespawnHp: 350,
+    firespawnRadius: 30,
     // How one looks: its size, how high it hovers and bobs (art pixels), bobs a second and clockwise turns a second.
     firespawnScale: 2,
     firespawnHover: 14,
@@ -163,6 +167,8 @@ export const kate = defineConfig(
     firespawnFly: { min: 0.1, max: 3, step: 0.05 },
     firespawnArc: { min: 0, max: 600, step: 10 },
     firespawnEvery: { min: 0.5, max: 20, step: 0.5 },
+    firespawnHp: { min: 1, max: 5000, step: 10 },
+    firespawnRadius: { min: 2, max: 150, step: 1 },
     firespawnScale: { min: 0.5, max: 6, step: 0.25 },
     firespawnHover: { min: 0, max: 60, step: 1 },
     firespawnBob: { min: 0, max: 20, step: 0.5 },
