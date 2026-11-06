@@ -5,8 +5,9 @@ import { ellipseHalfSize, toScreen } from '../core/iso';
 import { vestiges, vestigeTexture } from '../data/vestiges';
 import { Kate } from '../sim/Kate';
 import { Kates } from '../sim/Kates';
-import { KATE_PAN, kateDashFrames, kateSwingFrames, kateWalkFrames, Tex } from './art';
+import { FIRESPAWN, KATE_PAN, KATE_PAN_RIM, kateDashFrames, kateSwingFrames, kateWalkFrames, Tex } from './art';
 import { solveArm } from './armMath';
+import { Bark } from './Bark';
 import { BossBar } from './BossBar';
 import { EnemyView, ViewFrame } from './enemies';
 import { FireballsView } from './FireballsView';
@@ -47,8 +48,8 @@ const blend = (a: Pose, b: Pose, k: number): Pose => ({
 const clamp01 = (k: number) => Math.max(0, Math.min(1, k));
 
 // Draws Kate: her body frames, her code-drawn arms holding the pan (turned round her, behind her when it points
-// away), the swing's trail, the fire butterfly circling her (in front of her for a slap), her fireballs and the
-// boss bar.
+// away), the swing's trail, the fire butterfly circling her (in front of her for a slap), her fireballs, the
+// firespawns and the boss bar.
 //   walk: kate_0-3 (kate_0 standing), pan over her shoulder   dash, hop: kate_dash_1-6, the pan trailing
 //   windup: kate_attack_1   swing: 2, then 3 past its middle   follow: 3   recover: 4
 export class KateView {
@@ -56,6 +57,7 @@ export class KateView {
   private shadow: Phaser.GameObjects.Image;
   private arms: Phaser.GameObjects.Graphics;
   private pan: Phaser.GameObjects.Image;
+  private panRim: Phaser.GameObjects.Image;
   private ground: Phaser.GameObjects.Graphics;
   private trail: Phaser.GameObjects.Graphics;
   private fly: Phaser.GameObjects.Image;
@@ -63,19 +65,28 @@ export class KateView {
   private flyFrames: string[];
   private bar: BossBar;
   private fireballs: FireballsView;
+  private barkBubble: Bark;
+  // How she looks standing still (waiting, or beaten), and whether the butterfly is out of her and how grown it is.
+  face = 'kate_surprised';
+  butterflyOut = true;
+  private flyGrow = 1;
+  // How far out the pan is: put away (0) while she waits, in her hand (1) otherwise.
+  private panOut = 1;
+  private spawnImages: { sprite: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image }[] = [];
   private age = 0;
   private walkTime = 0;
   private emberTimer = 0;
   // Where the butterfly is in the world and how high (art pixels), easing to where it should be.
   private flyAt = { x: 0, y: 0, h: 0, placed: false };
 
-  constructor(scene: Phaser.Scene, private kate: Kate, private fx: Fx) {
+  constructor(private scene: Phaser.Scene, private kate: Kate, private fx: Fx) {
     this.sprite = scene.add.image(0, 0, kateWalkFrames[0]).setOrigin(0.5, 1).setVisible(false);
     this.shadow = scene.add.image(0, 0, Tex.shadow).setVisible(false);
     this.arms = scene.add.graphics();
     const pan = scene.textures.getFrame(KATE_PAN);
     this.pan = scene.add.image(0, 0, KATE_PAN).setVisible(false);
     this.pan.setData('w', pan?.width ?? 78).setData('h', pan?.height ?? 42);
+    this.panRim = scene.add.image(0, 0, KATE_PAN_RIM).setVisible(false);
     this.ground = scene.add.graphics().setDepth(-5e7 + 1);
     this.trail = scene.add.graphics();
     this.fly = scene.add.image(0, 0, vestigeTexture('flame_torrent')).setVisible(false);
@@ -86,6 +97,17 @@ export class KateView {
     this.flyFrames = frames.concat(frames.slice(1, -1).reverse());
     this.bar = new BossBar(scene, 'KATE LAMITY');
     this.fireballs = new FireballsView(scene, kate.fireballs, fx, kateFireballs);
+    this.barkBubble = new Bark(scene);
+  }
+
+  // The butterfly hides in her, or comes out, growing as it flies to its place.
+  setButterfly(on: boolean): void {
+    if (on && !this.butterflyOut) this.flyGrow = 0;
+    this.butterflyOut = on;
+  }
+
+  bark(text: string, color: string, seconds: number): void {
+    this.barkBubble.say(text, color, seconds);
   }
 
   onRisen(): void {
@@ -120,9 +142,14 @@ export class KateView {
   }
 
   destroy(): void {
-    for (const o of [this.sprite, this.shadow, this.arms, this.pan, this.ground, this.trail, this.fly, this.flyGlow]) o.destroy();
+    for (const o of [this.sprite, this.shadow, this.arms, this.pan, this.panRim, this.ground, this.trail, this.fly, this.flyGlow]) o.destroy();
+    for (const s of this.spawnImages) {
+      s.sprite.destroy();
+      s.shadow.destroy();
+    }
     this.bar.destroy();
     this.fireballs.destroy();
+    this.barkBubble.destroy();
   }
 
   render(dt: number, simDt: number, width: number): void {
@@ -133,7 +160,11 @@ export class KateView {
     const g = this.ground.clear();
     this.trail.clear();
     this.arms.clear();
+    this.panRim.setVisible(false);
     this.drawWaves(g);
+    this.drawFirespawns();
+    toScreen(k.x, k.y, screen);
+    this.barkBubble.update(dt, screen.x, screen.y - 52 * render.pixelScale * cfg.scale - 6);
     const shown = k.present && k.state !== 'rising';
     for (const o of [this.sprite, this.shadow, this.pan, this.fly, this.flyGlow]) o.setVisible(shown);
     if (!k.present) return;
@@ -149,10 +180,14 @@ export class KateView {
 
     const px = render.pixelScale * cfg.scale;
     const swinging = k.state === 'windup' || k.state === 'swing' || k.state === 'follow' || k.state === 'recover';
-    let frame = kateWalkFrames[0];
+    let frame = k.state === 'idle' || k.dying ? this.face : kateWalkFrames[0];
     let flip = false;
     let pose = key(4);
     let angle = cfg.restAngle;
+    const waiting = k.state === 'idle';
+    if (waiting) pose = { gx: 0, gy: 0, sx: look.idleShoulderX, sy: look.restShoulderY, span: look.idleShoulderSpan };
+    this.panOut = waiting ? 0 : Math.min(1, this.panOut + dt / Math.max(look.panOutTime, 1e-3));
+    this.pan.setVisible(this.panOut > 0);
     let turn = 0;
     if (k.state === 'walk') {
       this.walkTime += dt;
@@ -173,7 +208,7 @@ export class KateView {
       turn = k.turn;
       if (k.state === 'windup') {
         frame = kateSwingFrames[0];
-        const time = k.move === 'slap' ? cfg.gatherTime : cfg.windupTime;
+        const time = k.move === 'strike' ? cfg.windupTime : cfg.gatherTime;
         pose = blend(key(4), key(1), clamp01(k.time / Math.max(time * cfg.windupRaise, 1e-3)));
       } else if (k.state === 'swing') {
         // Through the middle, from the windup's hands to the middle's, then on to the follow-through's.
@@ -208,8 +243,14 @@ export class KateView {
     const depth = screen.y;
     const top = screen.y - lift;
     this.sprite.setTexture(frame).setPosition(screen.x, top).setScale(px).setFlipX(flip).setDepth(depth);
-    if (k.flash > 0) this.sprite.setTintFill(0xffffff);
+    // Beaten, she flickers until she starts to fade; then she only fades.
+    const fade = k.deathAlpha;
+    const white = k.flash > 0 || (k.dying && fade >= 1 && Math.floor(this.age * look.deathFlicker) % 2 === 0);
+    if (white) this.sprite.setTintFill(0xffffff);
     else this.sprite.clearTint();
+    this.sprite.setAlpha(fade);
+    this.shadow.setAlpha(fade);
+    this.arms.setAlpha(fade);
     const shrink = 1 - 0.5 * (lift / Math.max(cfg.slamHeight, 1));
     this.shadow.setPosition(screen.x, screen.y).setScale(px * 1.2 * shrink, px * 0.45 * shrink).setDepth(depth - 1000);
 
@@ -230,16 +271,23 @@ export class KateView {
       .setPosition(grip.x, grip.y)
       .setOrigin(look.panHandleX / pw, look.panHandleY / ph)
       .setRotation(Math.atan2(dir.y, dir.x))
-      .setScale((reach / along) * (1 - look.panForeshorten * (1 - Math.max(0.18, len / reach))), (reach / along) * look.panThickness)
+      .setScale((reach / along) * this.panOut * (1 - look.panForeshorten * (1 - Math.max(0.18, len / reach))), (reach / along) * this.panOut * look.panThickness)
       .setDepth(behind ? depth - 0.5 : depth + 0.5)
-      .setAlpha(1);
-    if (k.flash > 0) this.pan.setTintFill(0xffffff);
+      .setAlpha(fade);
+    if (white) this.pan.setTintFill(0xffffff);
     else this.pan.clearTint();
+    this.drawPanFlash(k);
 
     // Both hands on the handle, the second one further along it.
     const ux = dir.x / len;
     const uy = dir.y / len;
-    const hands = [grip, { x: grip.x + ux * look.handGap * px, y: grip.y + uy * look.handGap * px }];
+    // Her hands hold the pan's handle, or hang by her sides while she waits.
+    const hands = waiting
+      ? [
+          { x: screen.x + (pose.sx - look.idleHandOut) * px, y: top + look.idleHandY * px },
+          { x: screen.x + (pose.sx + pose.span + look.idleHandOut) * px, y: top + look.idleHandY * px },
+        ]
+      : [grip, { x: grip.x + ux * look.handGap * px, y: grip.y + uy * look.handGap * px }];
     const shoulders = [
       { x: screen.x + pose.sx * px, y: top + pose.sy * px },
       { x: screen.x + (pose.sx + pose.span) * px, y: top + pose.sy * px },
@@ -249,8 +297,8 @@ export class KateView {
     const arms = shoulders.map((s, i) => solveArm(s, hands[swap ? 1 - i : i], look.armLength * px));
     const ag = this.arms.setDepth(depth + 0.3);
     for (const [w, color] of [
-      [(look.sleeveWidth + look.sleeveEdge * 2) * px, look.sleeveEdgeColor],
-      [look.sleeveWidth * px, look.sleeveColor],
+      [(look.sleeveWidth + look.sleeveEdge * 2) * px, white ? 0xffffff : look.sleeveEdgeColor],
+      [look.sleeveWidth * px, white ? 0xffffff : look.sleeveColor],
     ] as const) {
       if (w <= 0) continue;
       ag.lineStyle(w, color, 1);
@@ -262,7 +310,7 @@ export class KateView {
         ag.strokePath();
       }
     }
-    ag.fillStyle(look.handColor, 1);
+    ag.fillStyle(white ? 0xffffff : look.handColor, 1);
     for (const arm of arms) ag.fillCircle(arm.hand.x, arm.hand.y, look.handSize * px);
 
     this.drawButterfly(k, dt);
@@ -299,6 +347,54 @@ export class KateView {
     }
   }
 
+  // The Pan Strike's warning: the rim of the pan's head, laid exactly over the pan, flashes in the windup's last moments.
+  private drawPanFlash(k: Kate): void {
+    if (k.state !== 'windup' || k.move !== 'strike') return;
+    const left = cfg.windupTime - k.time;
+    if (left <= 0 || left >= look.panFlashTime) return;
+    this.panRim
+      .setVisible(true)
+      .setTexture(KATE_PAN_RIM)
+      .setPosition(this.pan.x, this.pan.y)
+      .setOrigin(this.pan.originX, this.pan.originY)
+      .setRotation(this.pan.rotation)
+      .setScale(this.pan.scaleX, this.pan.scaleY)
+      .setDepth(this.pan.depth + 0.01)
+      .setTint(look.panFlashColor)
+      .setAlpha(look.panFlashAlpha * Math.abs(Math.sin((Math.PI * look.panFlashCount * left) / look.panFlashTime)));
+  }
+
+  // The firespawns: flying in an arc to their spots, then hovering and bobbing, always turning clockwise. A hit flashes
+  // one white, and a broken one goes up in smoke.
+  private drawFirespawns(): void {
+    const list = this.kate.firespawns;
+    const px = render.pixelScale;
+    while (this.spawnImages.length < list.length) {
+      this.spawnImages.push({ sprite: this.scene.add.image(0, 0, FIRESPAWN), shadow: this.scene.add.image(0, 0, Tex.shadow) });
+    }
+    this.spawnImages.forEach((s, i) => {
+      const f = list[i];
+      const up = !!f && f.hp > 0;
+      // Broken, or gone with her: it goes up in smoke where it was.
+      if (!up && s.sprite.visible) {
+        this.fx.smoke(s.shadow.x, s.shadow.y - cfg.firespawnHover * px, 16, 12 * px);
+        this.fx.explosion(s.shadow.x, s.shadow.y, cfg.firespawnRadius, cfg.slamColor);
+      }
+      s.sprite.setVisible(up);
+      s.shadow.setVisible(up);
+      if (!up || !f) return;
+      const p = toScreen(f.x, f.y);
+      if (f.flash > 0) s.sprite.setTintFill(0xffffff);
+      else s.sprite.clearTint();
+      const k = clamp01(f.age / Math.max(cfg.firespawnFly, 1e-3));
+      const bob = k < 1 ? 0 : Math.sin((this.age * cfg.firespawnBobRate + i / list.length) * Math.PI * 2) * cfg.firespawnBob;
+      const y = p.y - Math.sin(Math.PI * k) * cfg.firespawnArc - (cfg.firespawnHover + bob) * px;
+      const size = px * cfg.firespawnScale;
+      s.sprite.setPosition(p.x, y).setScale(size).setRotation(this.age * cfg.firespawnSpin * Math.PI * 2).setDepth(p.y);
+      s.shadow.setPosition(p.x, p.y).setScale(size * 0.8, size * 0.3).setDepth(p.y - 1000);
+    });
+  }
+
   // A pale fan behind the pan, from where the swing started to where the pan is now.
   private drawTrail(k: Kate, x: number, y: number, px: number, pose: Pose): void {
     if (look.trailAlpha <= 0) return;
@@ -323,6 +419,13 @@ export class KateView {
   // The butterfly circles her, flapping with a glow and embers, and flies to her front for a slap.
   private drawButterfly(k: Kate, dt: number): void {
     const px = render.pixelScale;
+    if (!this.butterflyOut) {
+      this.fly.setVisible(false);
+      this.flyGlow.setVisible(false);
+      Object.assign(this.flyAt, { x: k.x, y: k.y, h: look.butterflyHeight * 0.55, placed: true });
+      return;
+    }
+    this.flyGrow = Math.min(1, this.flyGrow + dt / Math.max(look.butterflyOutTime, 1e-3));
     let tx: number;
     let ty: number;
     let th: number;
@@ -348,13 +451,13 @@ export class KateView {
     const frame = this.flyFrames[Math.floor(this.age / look.butterflyFrameTime) % this.flyFrames.length];
     const color = vestiges.get('flame_torrent')?.color ?? 0xff9a2a;
     const boost = k.slapping ? 2 : 1;
-    this.fly.setTexture(frame).setScale(px * look.butterflyScale).setPosition(s.x, y).setDepth(s.y + 0.6);
+    this.fly.setTexture(frame).setScale(px * look.butterflyScale * this.flyGrow).setPosition(s.x, y).setDepth(s.y + 0.6).setAlpha(k.deathAlpha);
     this.flyGlow
       .setPosition(s.x, y)
       .setDepth(s.y + 0.5)
       .setTint(color)
       .setScale((look.butterflyGlow * px * look.butterflyScale * boost) / 32)
-      .setAlpha(Math.min(1, look.butterflyGlowAlpha * (0.85 + 0.15 * Math.sin(this.age * 9)) * boost));
+      .setAlpha(Math.min(1, look.butterflyGlowAlpha * (0.85 + 0.15 * Math.sin(this.age * 9)) * boost) * this.flyGrow * k.deathAlpha);
     this.emberTimer -= dt * look.butterflyEmbers * boost;
     while (this.emberTimer < 0) {
       this.emberTimer += 1;
@@ -378,6 +481,19 @@ export class KatesView implements EnemyView<Kate> {
 
   onRisen(k: Kate): void {
     this.viewOf(k).onRisen();
+  }
+
+  // What the story does with her, for each one out.
+  look(face: string): void {
+    for (const k of this.kates.list) this.viewOf(k).face = face;
+  }
+
+  butterfly(on: boolean): void {
+    for (const k of this.kates.list) this.viewOf(k).setButterfly(on);
+  }
+
+  bark(text: string, color: string, seconds: number): void {
+    for (const k of this.kates.list) this.viewOf(k).bark(text, color, seconds);
   }
 
   onKilled(x: number, y: number, k: Kate): void {

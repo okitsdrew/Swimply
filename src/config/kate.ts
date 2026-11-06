@@ -9,6 +9,9 @@ import { defineConfig } from './store';
 //     slapShots times in all.
 //   Fire Slam (on its own cooldown, first when ready): she leaps at him and smashes down, and a ring of fire spreads
 //     from where she lands to the walls.
+// At phase2At of her health she starts phase 2, once: dropping what she was doing, she smacks four firespawns to the
+// middles of the map's four quarters. They stay for the rest of the fight, each sending out a ring of fire every
+// firespawnEvery seconds, staggered so the rings come evenly, until it is broken.
 export const kate = defineConfig(
   'kate',
   'bosses',
@@ -81,7 +84,7 @@ export const kate = defineConfig(
     slamWindup: 0.5,
     slamAirTime: 0.75,
     slamHeight: 160,
-    slamRadius: 110,
+    slamRadius: 170,
     slamLandTime: 0.45,
     slamShake: 12,
     slamColor: 0xff7a1a,
@@ -89,6 +92,24 @@ export const kate = defineConfig(
     waveWidth: 24,
     // How many pieces the ring is cut into, each stopping at its own wall.
     waveSegments: 72,
+    // Phase 2: the fraction of her health that starts it, how long a firespawn flies and how high its arc is (screen
+    // pixels), and the seconds between one firespawn's rings.
+    phase2At: 0.4,
+    firespawnFly: 0.7,
+    firespawnArc: 200,
+    firespawnEvery: 4,
+    // Its health and body circle once it has landed. Arrows and Flame Torrent can break it, and a broken one sends no
+    // more rings. Doomsday's blast passes it by.
+    firespawnHp: 350,
+    firespawnRadius: 30,
+    // How one looks: its size, how high it hovers and bobs (art pixels), bobs a second and clockwise turns a second.
+    firespawnScale: 2,
+    firespawnHover: 14,
+    firespawnBob: 3,
+    firespawnBobRate: 0.5,
+    firespawnSpin: 0.75,
+    // Beaten: she stands flickering while she says her last line, then fades out over this many seconds.
+    deathFade: 0.8,
     deathSmoke: 50,
     deathShake: 14,
   },
@@ -144,21 +165,39 @@ export const kate = defineConfig(
     waveSpeed: { min: 50, max: 2000, step: 10 },
     waveWidth: { min: 4, max: 200, step: 2 },
     waveSegments: { min: 8, max: 256, step: 4 },
+    phase2At: { min: 0.05, max: 1, step: 0.05 },
+    firespawnFly: { min: 0.1, max: 3, step: 0.05 },
+    firespawnArc: { min: 0, max: 600, step: 10 },
+    firespawnEvery: { min: 0.5, max: 20, step: 0.5 },
+    firespawnHp: { min: 1, max: 5000, step: 10 },
+    firespawnRadius: { min: 2, max: 150, step: 1 },
+    firespawnScale: { min: 0.5, max: 6, step: 0.25 },
+    firespawnHover: { min: 0, max: 60, step: 1 },
+    firespawnBob: { min: 0, max: 20, step: 0.5 },
+    firespawnBobRate: { min: 0, max: 4, step: 0.05 },
+    firespawnSpin: { min: 0, max: 5, step: 0.05 },
+    deathFade: { min: 0.05, max: 5, step: 0.05 },
     deathSmoke: { min: 0, max: 150, step: 1 },
     deathShake: { min: 0, max: 40, step: 1 },
   },
 );
 
 // Fire Slap's fireballs: Flame Torrent's, from the butterfly in front of her. Their tip is overshoot past where the
-// player stood, at least minRange and at most range away. The same fields as Flame Torrent's (see flame_torrent), but no damage:
-// one hit kills him.
+// player is, at least minRange and at most range away. For the first homingTime seconds of the flight they home on a
+// point that follows him at up to trackSpeed (faster than he walks, so backing away does not escape it, but slower
+// than a dash or teleport, so those leave it behind and the path swings over smoothly). Their aim turns toward the
+// point at up to homingTurn degrees a second (so moving across them can escape). homingTurn 0 turns homing off. The
+// same fields as Flame Torrent's (see flame_torrent), but no damage: one hit kills him.
 export const kateFireballs = defineConfig(
   'kate_fireballs',
   'bosses',
   {
     range: 1200,
     minRange: 150,
-    overshoot: 80,
+    overshoot: 20,
+    homingTurn: 30,
+    trackSpeed: 350,
+    homingTime: 0.8,
     width: 120,
     side: 24,
     outTime: 1,
@@ -177,6 +216,9 @@ export const kateFireballs = defineConfig(
     range: { min: 50, max: 2000, step: 10 },
     minRange: { min: 0, max: 1000, step: 10 },
     overshoot: { min: 0, max: 500, step: 5 },
+    homingTurn: { min: 0, max: 720, step: 5 },
+    trackSpeed: { min: 0, max: 2000, step: 10 },
+    homingTime: { min: 0, max: 3, step: 0.05 },
     width: { min: 0, max: 300, step: 5 },
     side: { min: 0, max: 100, step: 2 },
     outTime: { min: 0.1, max: 3, step: 0.05 },
@@ -245,6 +287,12 @@ export const kateLook = defineConfig(
     dashShoulderSpan: 5,
     // A pale trail behind the pan during the swing.
     trailAlpha: 0.35,
+    // The warning before a Pan Strike: the rim of the pan's head blinks this colour panFlashCount times in the last
+    // panFlashTime seconds of the windup, as bright as panFlashAlpha.
+    panFlashTime: 0.25,
+    panFlashCount: 2,
+    panFlashColor: 0xff2020,
+    panFlashAlpha: 1,
     // The fire butterfly circling her: how far (world units), how high (art pixels), turns a second, its size,
     // seconds per frame, its glow (art pixels across, and how bright) and embers a second.
     butterflyDistance: 40,
@@ -257,6 +305,17 @@ export const kateLook = defineConfig(
     butterflyEmbers: 6,
     // How quickly it flies to its spot in front of her for a slap, and back (higher is snappier).
     butterflyRate: 10,
+    // Seconds it takes to grow to full size as it first comes out of her.
+    butterflyOutTime: 0.4,
+    // Flickers a second as she stands beaten.
+    deathFlicker: 12,
+    // Waiting, the pan is put away and her arms hang: where the shoulders are, how far apart, and where the hands hang,
+    // out from each shoulder and up from the ground (art pixels). Woken, the pan grows into her hand over panOutTime.
+    idleShoulderX: -5.5,
+    idleShoulderSpan: 11,
+    idleHandOut: 1.5,
+    idleHandY: -17.5,
+    panOutTime: 0.2,
   },
   {
     sleeveColor: 'color',
@@ -293,6 +352,10 @@ export const kateLook = defineConfig(
     dashShoulderY: { min: -52, max: 0, step: 0.5 },
     dashShoulderSpan: { min: 0, max: 20, step: 0.5 },
     trailAlpha: { min: 0, max: 1, step: 0.05 },
+    panFlashTime: { min: 0, max: 1, step: 0.01 },
+    panFlashCount: { min: 1, max: 6, step: 1 },
+    panFlashColor: 'color',
+    panFlashAlpha: { min: 0, max: 1, step: 0.05 },
     butterflyDistance: { min: 0, max: 150, step: 1 },
     butterflyHeight: { min: 0, max: 120, step: 1 },
     butterflySpin: { min: 0, max: 1, step: 0.01 },
@@ -302,5 +365,12 @@ export const kateLook = defineConfig(
     butterflyGlowAlpha: { min: 0, max: 1, step: 0.05 },
     butterflyEmbers: { min: 0, max: 40, step: 1 },
     butterflyRate: { min: 0.5, max: 40, step: 0.5 },
+    butterflyOutTime: { min: 0.05, max: 3, step: 0.05 },
+    deathFlicker: { min: 1, max: 40, step: 1 },
+    idleShoulderX: { min: -30, max: 30, step: 0.5 },
+    idleShoulderSpan: { min: 0, max: 30, step: 0.5 },
+    idleHandOut: { min: -10, max: 10, step: 0.5 },
+    idleHandY: { min: -52, max: 0, step: 0.5 },
+    panOutTime: { min: 0.02, max: 2, step: 0.02 },
   },
 );

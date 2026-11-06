@@ -16,6 +16,9 @@ export interface Fireball {
   fromY: number;
   dirX: number;
   dirY: number;
+  // The point it is homing on, which follows him at no more than trackSpeed.
+  chaseX: number;
+  chaseY: number;
   // Out along its path, or back to him.
   back: boolean;
   x: number;
@@ -41,11 +44,20 @@ export interface FireballPath {
   damage?: number;
   hitRadius: number;
   rehitTime: number;
+  // Steering (a boss's; none for Flame Torrent): for the first homingTime seconds it homes on a point that follows
+  // `chase` at up to trackSpeed: its path turns toward the point at up to homingTurn degrees a second, and its tip
+  // stays overshoot past the point (minRange to range from where it left).
+  homingTurn?: number;
+  trackSpeed?: number;
+  homingTime?: number;
+  overshoot?: number;
+  minRange?: number;
 }
 
 const next = { x: 0, y: 0 };
 // Fireballs fly over and through everything but walls (the level editor's "walls" category) and the map's edge.
 const onlyWalls = (o: { asset: { category: string } }) => o.asset.category === 'walls';
+const DEG = Math.PI / 180;
 
 // Flame Torrent's fireballs, like boomerangs. Each flies out on its own path, set where it was shot: from his side,
 // across just in front of him and curving out to the tip. From the tip (or a wall on the way) it flies straight back
@@ -81,7 +93,8 @@ export class Fireballs {
     const n = Math.max(1, Math.round(cfg.perSide));
     for (let i = 0; i < n; i++) {
       for (const side of [1, -1]) {
-        const f: Fireball = { age: -i * cfg.gap, side, range, fromX: x, fromY: y, dirX: dirX / len, dirY: dirY / len, back: false, x: 0, y: 0, velX: 0, velY: 0, hitAt: new Map() };
+        const aim = range - (cfg.overshoot ?? 0);
+        const f: Fireball = { age: -i * cfg.gap, side, range, fromX: x, fromY: y, dirX: dirX / len, dirY: dirY / len, chaseX: x + (dirX / len) * aim, chaseY: y + (dirY / len) * aim, back: false, x: 0, y: 0, velX: 0, velY: 0, hitAt: new Map() };
         this.place(f, 0, f);
         this.list.push(f);
       }
@@ -99,7 +112,30 @@ export class Fireballs {
     out.y = f.fromY + f.dirY * forward + f.dirX * s;
   }
 
-  update(dt: number, heroX: number, heroY: number, targets: readonly Target[]): void {
+  // Bends a fireball's way out toward (x, y). It homes on its chase point, so a dash or teleport leaves that behind
+  // and the path swings over smoothly instead of jumping.
+  private steer(f: Fireball, dt: number, x: number, y: number): void {
+    const cfg = this.cfg;
+    const gapX = x - f.chaseX;
+    const gapY = y - f.chaseY;
+    const gap = Math.hypot(gapX, gapY);
+    const follow = gap > 1e-6 ? Math.min(1, ((cfg.trackSpeed ?? 0) * dt) / gap) : 0;
+    f.chaseX += gapX * follow;
+    f.chaseY += gapY * follow;
+    const dx = f.chaseX - f.fromX;
+    const dy = f.chaseY - f.fromY;
+    const d = Math.hypot(dx, dy);
+    if (d < 1e-6) return;
+    const now = Math.atan2(f.dirY, f.dirX);
+    const off = Math.atan2(Math.sin(Math.atan2(dy, dx) - now), Math.cos(Math.atan2(dy, dx) - now));
+    const most = (cfg.homingTurn ?? 0) * DEG * dt;
+    const a = now + Math.max(-most, Math.min(most, off));
+    f.dirX = Math.cos(a);
+    f.dirY = Math.sin(a);
+    f.range = Math.max(cfg.minRange ?? 0, Math.min(cfg.range, d + (cfg.overshoot ?? 0)));
+  }
+
+  update(dt: number, heroX: number, heroY: number, targets: readonly Target[], chase?: Vec2): void {
     const cfg = this.cfg;
     this.time += dt;
     for (let i = this.list.length - 1; i >= 0; i--) {
@@ -108,6 +144,7 @@ export class Fireballs {
       if (f.age < 0) continue;
       let gone = false;
       if (!f.back) {
+        if (chase && cfg.homingTurn && f.age <= (cfg.homingTime ?? 0)) this.steer(f, dt, chase.x, chase.y);
         const t = Math.min(1, f.age / cfg.outTime);
         this.place(f, t, next);
         if (t >= 1) f.back = true;

@@ -80,7 +80,7 @@ export const flameTorrent = defineConfig(
   'flame_torrent',
   'vestiges',
   {
-    cooldown: 8,
+    cooldown: 4,
     // How far out the tip is (world units), how wide the paths swing to each side, and how far to his side each
     // fireball starts.
     range: 400,
@@ -168,7 +168,7 @@ export const doomsday = defineConfig(
     chargeTime: 1.25,
     safeAfter: 0.3,
     damage: 250,
-    damageRadius: 150,
+    damageRadius: 200,
     // Everything this close (the hurt ones too) is thrown outward, this hard, so nothing is left standing on him
     // (werewolves take part of it: their knockbackTaken). Only the damage circle is drawn.
     knockbackRadius: 230,

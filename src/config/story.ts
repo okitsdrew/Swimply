@@ -52,6 +52,8 @@ export const dialogue = defineConfig(
     blipJitter: 0.12,
     // Size of the dialogue box, its words and the face (1 is the original size).
     scale: 1.25,
+    // Seconds a bubble said in the middle of play stays before it has faded.
+    barkTime: 2.5,
     // Seconds tutorial words stay before the wind takes them.
     tutorialTime: 3,
     // Seconds each letter takes to blow away, and the delay from one letter to the next.
@@ -66,6 +68,7 @@ export const dialogue = defineConfig(
     blipEvery: { min: 1, max: 6, step: 1 },
     blipJitter: { min: 0, max: 0.5, step: 0.01 },
     scale: { min: 0.5, max: 2, step: 0.05 },
+    barkTime: { min: 0.5, max: 10, step: 0.1 },
     tutorialTime: { min: 0.5, max: 10, step: 0.5 },
     blowTime: { min: 0.2, max: 5, step: 0.1 },
     blowStagger: { min: 0, max: 0.2, step: 0.005 },

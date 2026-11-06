@@ -12,7 +12,7 @@ import { Input, KeyboardMouseSource } from '../core/input';
 import { toScreen, toWorld, Vec2 } from '../core/iso';
 import { allOn, AreaMap, findMarker, maps, Placed, withFlags } from '../data/maps';
 import { ambienceFor, sounds } from '../data/sounds';
-import { scriptFor, storyFlags } from '../data/story';
+import { scriptFor, scripts, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
 import { forgetVestiges, isEquipped, unlockVestige, vestiges } from '../data/vestiges';
 import { save, writeSave } from '../core/save';
@@ -107,6 +107,9 @@ export class ArenaScene extends Phaser.Scene {
   private timo!: TimoView;
   // Whether Timo was thrown (a Doomsday on its way) last frame.
   private timoThrown = false;
+  // A story step has him hidden inside the hero.
+  private timoHidden = false;
+  private kates!: ReturnType<typeof kateKind>;
   private lids!: Eyelids;
   private pose!: HeroPose;
   // Whether the hero's own look was hidden (a pose, a Vestige) last frame.
@@ -257,7 +260,19 @@ export class ArenaScene extends Phaser.Scene {
       shadeK.dev!.spawn = () => this.run.spawn();
       bossK.dev!.spawn = () => this.mindscape?.spawnWolf();
     }
-    this.enemies = new Enemies([shadeK, priestKind(kc), bossK, werewolfKind(kc, 'werewolf', cfgElite, false), kateKind(kc, this.world)], this.world, this.nav, this.player);
+    const kateK = kateKind(kc, this.world);
+    this.kates = kateK;
+    // Beaten: a short freeze, then her last words; the script fades her out, and her death gives back the Vestige.
+    kateK.group.onDying = () => {
+      this.freeze(0.15, true);
+      this.playScript('kate-defeated');
+    };
+    // Said every time she gets here, over whatever is going on.
+    kateK.group.onPhase2 = () => {
+      const aside = scripts.get('kate-phase2');
+      if (aside) this.story.aside(aside);
+    };
+    this.enemies = new Enemies([shadeK, priestKind(kc), bossK, werewolfKind(kc, 'werewolf', cfgElite, false), kateK], this.world, this.nav, this.player);
     this.enemies.onFlag = (flag) => {
       this.areaFlags[flag] = true;
       this.showMap();
@@ -281,6 +296,7 @@ export class ArenaScene extends Phaser.Scene {
     this.box = new DialogueBox(this);
     this.ghost = new GhostText(this);
     this.timo = new TimoView(this);
+    this.timoHidden = false;
     this.timo.setVisible(this.calm);
     this.lids = new Eyelids(this);
     this.ambience = new AmbienceView(this, ambienceFor(this.mapId));
@@ -292,10 +308,19 @@ export class ArenaScene extends Phaser.Scene {
     this.pan = null;
     this.menuOpen = false;
     const walking = () => this.walkTo !== null;
+    const player = this.player;
+    const dying = () => this.kates.group.list.some((k) => k.dying);
     this.story = new StoryRunner(this.box, this.ghost, {
       // Timo keeps his face while someone else speaks or the scene pauses, and goes back to idling when it ends.
-      onLine: (speaker, face) => (speaker === 'timo' ? this.timo.setFace(face) : speaker === null && this.timo.setFace('')),
-      setControl: (on) => (this.control = on),
+      onLine: (speaker, face) => {
+        if (speaker === 'timo') this.timo.setFace(face);
+        else if (speaker === 'kate') this.kates.view.look(face);
+        else if (speaker === null) this.timo.setFace('');
+      },
+      setControl: (on) => {
+        this.control = on;
+        if (!on) this.player.stop();
+      },
       eyes: (open, seconds) => (open ? this.lids.wakeUp(seconds) : this.lids.close()),
       pose: (pose, seconds, frames) => (pose === 'asleep' ? this.pose.asleep() : this.pose.standUp(seconds, frames)),
       moveTimo: (target) => this.moveTimo(target),
@@ -307,6 +332,20 @@ export class ArenaScene extends Phaser.Scene {
       get walking() {
         return walking();
       },
+      dash: (target) => {
+        const s = this.spotOf(target);
+        if (s) this.player.dashAt(s.x, s.y);
+      },
+      get dashing() {
+        return player.dashing;
+      },
+      look: (who, face) => who === 'kate' && this.kates.view.look(face),
+      butterfly: (on) => this.kates.view.butterfly(on),
+      bark: (who, color, text, seconds) => who === 'kate' && this.kates.view.bark(text, color, seconds),
+      defeat: (who) => who === 'kate' && this.kates.group.list.forEach((k) => k.startFade()),
+      get defeating() {
+        return dying();
+      },
       vestige: (id) => this.reclaim(id),
     });
 
@@ -317,6 +356,7 @@ export class ArenaScene extends Phaser.Scene {
       this.sfx.play('fire');
       this.story.notify('fire');
     };
+    this.caster.onAim = () => this.story.notify('vestige');
     this.player.onDashStart = () => {
       this.view.onDashStart();
       this.sfx.play('dash');
@@ -360,6 +400,8 @@ export class ArenaScene extends Phaser.Scene {
     this.startRun();
     const script = scriptFor(this.mapId, save.flags);
     if (script) this.story.play(script);
+    // A retry: she has already met him, so she does not wait to be hit.
+    if (save.flags.kateMet) this.kates.group.list.forEach((k) => k.wake());
 
     DevMenu.get().setActions([
       { label: 'Restart run', run: () => this.startRun() },
@@ -444,6 +486,14 @@ export class ArenaScene extends Phaser.Scene {
 
   private moveTimo(target: string): void {
     if (target === 'hero') return this.timo.followHero();
+    if (target === 'hide') return void (this.timoHidden = true);
+    if (target === 'pop') {
+      this.timoHidden = false;
+      this.timo.popBack(this.player.x, this.player.y);
+      const s = toScreen(this.timo.x, this.timo.y);
+      this.fx.smoke(s.x, s.y - 12 * render.pixelScale, 6, 6 * render.pixelScale);
+      return;
+    }
     const o = this.map.objects.find((p) => p.asset.id === target);
     if (o) this.timo.goTo(o.x, o.y);
     else console.warn(`[story] Timo is sent to ${JSON.stringify(target)}, which is not placed in ${this.mapId}`);
@@ -459,7 +509,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private storyFresh(): void {
-    for (const f of storyFlags()) delete save.flags[f];
+    save.flags = {};
     resetTree(false);
     save.shards = 0;
     addShards(0);
@@ -655,7 +705,7 @@ export class ArenaScene extends Phaser.Scene {
       this.timo.throwAt(c.target.x, c.target.y, c.throwProgress);
     } else if (c.blastPending) this.timo.setVisible(false);
     else {
-      const shown = this.calm && (this.story.playing || !save.vestiges.includes('doomsday') || isEquipped('doomsday'));
+      const shown = this.calm && !this.timoHidden && (this.story.playing || !save.vestiges.includes('doomsday') || isEquipped('doomsday'));
       if (this.timoThrown) {
         this.timo.popBack(this.player.x, this.player.y);
         const s = toScreen(this.timo.x, this.timo.y);
@@ -716,6 +766,7 @@ export class ArenaScene extends Phaser.Scene {
     this.caster.update(dt, this.input2, this.aim, canAct);
     this.player.fireBlocked = this.story.talking || this.caster.aiming >= 0 || this.caster.throwing || ((aimed || this.player.fireBlocked) && this.input2.isDown('fire'));
     if (this.walkTo && r.state === 'fighting') this.stepWalk(dt);
+    else if (!this.control && this.player.dashing) this.player.stepDash(dt);
     // Charging a Vestige, he holds still.
     else if (this.caster.charging || this.caster.throwing) this.player.stop();
     else if (r.state === 'fighting' && !this.travel.leaving && this.control) {
@@ -760,6 +811,12 @@ export class ArenaScene extends Phaser.Scene {
     unlockVestige(id);
     this.hud.announce(`VESTIGE RECLAIMED\n${vestiges.get(id)?.name ?? id}`, story.vestigeBanner);
     this.sfx.play('unlock');
+  }
+
+  private playScript(id: string): void {
+    const script = scripts.get(id);
+    if (script) this.story.play(script);
+    else console.warn(`[story] no script ${JSON.stringify(id)}`);
   }
 
   // Kate is beaten for good (saved at once, like the Mindscape's win), and the fire butterfly is his again.
