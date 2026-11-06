@@ -29,7 +29,14 @@ export const wolfJumpFrames = ['werewolf_14', 'werewolf_12', 'werewolf_15', 'wer
 export const priestWalkFrames = ['priest_0', 'priest_1'];
 export const priestCastFrames = ['priest_11', 'priest_12'];
 
-export const heroWalkFrames = ['hero_walk0', 'hero_walk1', 'hero_walk2', 'hero_walk3'];
+// Kate Lamity, drawn sprites only: her walk (kate_0 is also her standing pose), her dash (facing right), and her
+// swing (facing the camera: windup, swing, follow-through, recover). Her arms and the pan (kate_pan) are code-drawn.
+export const kateWalkFrames = ['kate_0', 'kate_1', 'kate_2', 'kate_3'];
+export const kateDashFrames = [1, 2, 3, 4, 5, 6].map((i) => `kate_dash_${i}`);
+export const kateSwingFrames = [1, 2, 3, 4].map((i) => `kate_attack_${i}`);
+export const KATE_PAN = 'kate_pan';
+
+export const heroWalkFrames =['hero_walk0', 'hero_walk1', 'hero_walk2', 'hero_walk3'];
 
 // Doomsday's portal (0 to 2 open it, 2 and 3 alternate while open) and its ball dropping to the ground.
 export const portalFrames = ['doomsday_portal_0', 'doomsday_portal_1', 'doomsday_portal_2', 'doomsday_portal_3'];

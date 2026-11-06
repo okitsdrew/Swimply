@@ -78,6 +78,11 @@ The Mindscape is all basics (Shades), plus the empowered elite mini-boss (the we
 
 **Bosses** (coming): one per castle area, each with lots of unique attacks, each holding a stolen Vestige. The first is in the kitchen, using the fire butterfly.
 
+**Kate Lamity** (the kitchen boss, built 2026-11-06): a chef with a giant pan. The fire butterfly circles her. Beating her gives Flame Torrent back. Two attacks for now (two more likely later):
+- **Pan Strike** (her basic attack, when he is near): she dashes in to stop right beside him, winds up with no warning on the ground, and swings the pan round her from her left to her right. Only the pan hurts, as it passes.
+- **Fire Slap** (when he is further): the butterfly flies in front of her and she slaps it with the same swing, sending two fireballs (one each side) curving to where he stood, which then return to her. She dashes 200 sideways (leaning toward the middle of the room, so she does not end up in corners) and slaps again, four slaps in all.
+- Later: a short talk with Swimply when he first enters the kitchen.
+
 ## The world map and fast travel (not urgent)
 
 The world map is a top-down view of the castle's areas (throne, garden, courtyards and so on). Fast travel stays inside the castle: a fast travel point appears where a boss is beaten and takes him to the throne hub; from the world map he can click any such point, or the throne, to go there at once.

@@ -88,7 +88,7 @@ export interface Asset {
 }
 
 // The enemies a map can place or spawn. The Mindscape's own Shades and boss come from its run, not from these.
-export const ENEMY_KINDS = ['shade', 'werewolf', 'priest'] as const;
+export const ENEMY_KINDS = ['shade', 'werewolf', 'priest', 'kate'] as const;
 
 function parseAssets(data: unknown): Asset[] {
   const problems: Problems = [];
