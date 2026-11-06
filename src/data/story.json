@@ -1,6 +1,7 @@
 {
   "speakers": [
     { "id": "timo", "name": "Timo", "color": "#c58cff", "face": "timo", "voice": "voice_blip", "pitch": 1.5 },
+    { "id": "kate", "name": "Kate", "color": "#ffb04a", "face": "kate", "voice": "voice_blip", "pitch": 1.2 },
     { "id": "swimply", "name": "Swimply", "color": "#f2d7a6", "face": "hero", "bubble": true, "voice": "voice_blip", "pitch": 0.8, "lineSounds": ["swimply_dots_a", "swimply_dots_b"] }
   ],
   "scripts": [
@@ -126,6 +127,64 @@
         { "control": true },
         { "tutorial": "Press Q for Timo's Doomsday Scenario", "until": "vestige" },
         { "flag": "throneSeen" }
+      ]
+    },
+    {
+      "id": "kate-intro",
+      "map": "kitchen",
+      "unless": ["kateMet", "kateDefeated"],
+      "steps": [
+        { "timo": "hide" },
+        { "control": false },
+        { "butterfly": false },
+        { "look": "kate", "face": "kate" },
+        { "wait": 0.5 },
+        { "camera": "kate", "time": 1.5 },
+        { "wait": 0.4 },
+        { "say": "kate", "face": "kate_smile", "text": "What's this, a customer at last!?" },
+        { "walk": "800,1050" },
+        { "say": "swimply", "text": "..." },
+        { "say": "kate", "face": "kate_surprised", "text": "H...Health inspection, but I..." },
+        { "wait": 1 },
+        { "look": "kate", "face": "kate" },
+        { "wait": 1 },
+        { "say": "kate", "face": "kate_rage", "text": "You can't pull that crap on me, I run a tight kitchen around here" },
+        { "say": "swimply", "text": "..." },
+        { "say": "kate", "face": "kate", "text": "It's just me and Daryl, my Sous Chef!" },
+        { "butterfly": true },
+        { "wait": 0.8 },
+        { "say": "kate", "face": "kate_smile", "text": "He's new here but I think he's doing great" },
+        { "wait": 1 },
+        { "say": "swimply", "text": "..." },
+        { "say": "kate", "face": "kate_mad", "text": "I'll turn you into nachos if you touch him!" },
+        { "say": "swimply", "text": ".................." },
+        { "look": "kate", "face": "kate_surprised" },
+        { "wait": 1 },
+        { "say": "kate", "face": "kate_surprised", "text": "wha" },
+        { "timo": "pop" },
+        { "say": "timo", "face": "timo_shocked", "text": "holy crap dude, you're ruthless" },
+        { "say": "timo", "face": "timo_serious", "text": "quick, get her while she's still traumatized" },
+        { "camera": "hero", "time": 0.8 },
+        { "control": true },
+        { "flag": "kateMet" }
+      ]
+    },
+    {
+      "id": "kate-phase2",
+      "map": "",
+      "steps": [
+        { "bark": "kate", "text": "Let's turn up the temperature a little!" }
+      ]
+    },
+    {
+      "id": "kate-defeated",
+      "map": "",
+      "steps": [
+        { "control": false },
+        { "wait": 0.8 },
+        { "say": "kate", "face": "kate_surprised", "text": "Chat, am I cooked?" },
+        { "defeat": "kate" },
+        { "control": true }
       ]
     }
   ]

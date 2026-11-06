@@ -108,6 +108,8 @@ export const kate = defineConfig(
     firespawnBob: 3,
     firespawnBobRate: 0.5,
     firespawnSpin: 0.75,
+    // Beaten: she stands flickering while she says her last line, then fades out over this many seconds.
+    deathFade: 0.8,
     deathSmoke: 50,
     deathShake: 14,
   },
@@ -174,6 +176,7 @@ export const kate = defineConfig(
     firespawnBob: { min: 0, max: 20, step: 0.5 },
     firespawnBobRate: { min: 0, max: 4, step: 0.05 },
     firespawnSpin: { min: 0, max: 5, step: 0.05 },
+    deathFade: { min: 0.05, max: 5, step: 0.05 },
     deathSmoke: { min: 0, max: 150, step: 1 },
     deathShake: { min: 0, max: 40, step: 1 },
   },
@@ -302,6 +305,10 @@ export const kateLook = defineConfig(
     butterflyEmbers: 6,
     // How quickly it flies to its spot in front of her for a slap, and back (higher is snappier).
     butterflyRate: 10,
+    // Seconds it takes to grow to full size as it first comes out of her.
+    butterflyOutTime: 0.4,
+    // Flickers a second as she stands beaten.
+    deathFlicker: 12,
   },
   {
     sleeveColor: 'color',
@@ -351,5 +358,7 @@ export const kateLook = defineConfig(
     butterflyGlowAlpha: { min: 0, max: 1, step: 0.05 },
     butterflyEmbers: { min: 0, max: 40, step: 1 },
     butterflyRate: { min: 0.5, max: 40, step: 0.5 },
+    butterflyOutTime: { min: 0.05, max: 3, step: 0.05 },
+    deathFlicker: { min: 1, max: 40, step: 1 },
   },
 );

@@ -233,6 +233,33 @@ await check('Kate: phase 2 leaves nothing behind', async () => {
   await ctx.close();
 });
 
+await check('Kate: her scenes', async () => {
+  const { page, ctx } = await open('kate scenes', play('map=kitchen'));
+  await ready(page);
+  const scene = () => window.swimply.scene.getScene('arena');
+  const kate = () => window.swimply.scene.getScene('arena').enemies.group('kate').list[0];
+  // Clicks through the opening: he has control back, and she is still waiting.
+  for (let i = 0; i < 600 && !(await page.evaluate(`(${scene})().story.playing === false`)); i++) {
+    await page.keyboard.press('f');
+    await page.waitForTimeout(100);
+  }
+  const met = await page.evaluate(`({ control: (${scene})().control, state: (${kate})().state })`);
+  if (!met.control || met.state !== 'idle') throw new Error(`after the opening: ${JSON.stringify(met)}`);
+  await page.evaluate(`(${kate})().damage(1)`);
+  if ((await page.evaluate(`(${kate})().state`)) === 'idle') throw new Error('she did not wake when hurt');
+  // Beaten: her last words, then she fades and Flame Torrent comes back.
+  await press(page, 'Kate: one hit left');
+  await page.evaluate(`(${kate})().damage(1)`);
+  if (!(await page.evaluate(`(${kate})().dying`))) throw new Error('she is not standing beaten');
+  for (let i = 0; i < 100 && (await page.evaluate(`(${scene})().story.playing`)); i++) {
+    await page.keyboard.press('f');
+    await page.waitForTimeout(100);
+  }
+  const won = await page.evaluate(`({ out: (${scene})().enemies.group('kate').list.length, control: (${scene})().control })`);
+  if (won.out || !won.control) throw new Error(`after her death: ${JSON.stringify(won)}`);
+  await ctx.close();
+});
+
 await check('Mindscape: death opens the tree', async () => {
   const { page, ctx } = await open('mindscape death', play('map=mindscape'), false);
   await ready(page);

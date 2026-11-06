@@ -8,7 +8,7 @@ import { Status } from './status';
 import { Target } from './targets';
 import { CollisionWorld } from './World';
 
-export type KateState = 'gone' | 'idle' | 'rising' | 'walk' | 'strikeDash' | 'windup' | 'swing' | 'follow' | 'recover' | 'hop' | 'crouch' | 'jump' | 'land';
+export type KateState = 'gone' | 'idle' | 'rising' | 'walk' | 'strikeDash' | 'windup' | 'swing' | 'follow' | 'recover' | 'hop' | 'crouch' | 'jump' | 'land' | 'dying';
 
 // Fire Slam's ring of fire: its middle, how far it has spread, and how far each piece of it can go before a wall.
 export interface FireWave {
@@ -69,6 +69,7 @@ export class Firespawn implements Target {
 //               then recover
 //   Fire Slam:  crouch -> jump (over everything, at where he was) -> land (hurts the landing circle, and a ring of
 //               fire starts spreading from it to the walls) -> walk
+//   Beaten:     dying (she stands still, hurting nothing, until the scene is done with her: startFade -> gone)
 //   Firespawn:  phase 2's opening: windup -> swing (at its middle, a firespawn flies off to its quarter of the map) ->
 //               follow -> windup... once for each, then recover
 // The swing is one shared piece: `panAngle` is a screen angle round her (0 her right, 90 toward the camera), turned
@@ -119,6 +120,8 @@ export class Kate implements Target {
   readonly firespawns: Firespawn[] = [];
   private clock = 0;
   private ringStart = 0;
+  // Beaten and fading away.
+  private fading = false;
   // Which way she faces on screen while walking or dashing, -1 or 1.
   facing = 1;
   // Her fireballs, which come back to her.
@@ -133,6 +136,9 @@ export class Kate implements Target {
   onLand: () => void = () => {};
   // A ring of fire leaves a firespawn.
   onFireWave: () => void = () => {};
+  // Her health ran out (she is still standing), phase 2 began, and she is gone for good.
+  onDying: () => void = () => {};
+  onPhase2: () => void = () => {};
   onKilled: (x: number, y: number) => void = () => {};
 
   constructor(world: CollisionWorld) {
@@ -190,7 +196,9 @@ export class Kate implements Target {
   }
 
   wake(): void {
-    if (this.state === 'idle') this.enter('walk');
+    if (this.state !== 'idle') return;
+    this.slamCooldown = cfg.slamFirstDelay;
+    this.enter('walk');
   }
 
   clear(): void {
@@ -207,10 +215,45 @@ export class Kate implements Target {
     this.wake();
     this.hp -= amount;
     this.flash = feel.hitFlashTime;
-    if (this.hp <= 0) {
-      this.clear();
-      this.onKilled(this.x, this.y);
-    } else this.checkPhase2();
+    if (this.hp <= 0) this.die();
+    else this.checkPhase2();
+  }
+
+  // Beaten: everything she made goes, so nothing can hurt him now, and she stands there until startFade.
+  private die(): void {
+    this.alive = false;
+    this.status.clear();
+    this.fireballs.clear();
+    this.waves.length = 0;
+    this.firespawns.length = 0;
+    this.landed = false;
+    this.vx = this.vy = this.kx = this.ky = 0;
+    this.panAngle = this.lastAngle = cfg.restAngle;
+    this.turn = 0;
+    this.fading = false;
+    this.enter('dying');
+    this.onDying();
+  }
+
+  get dying(): boolean {
+    return this.state === 'dying';
+  }
+
+  startFade(): void {
+    if (!this.dying || this.fading) return;
+    this.fading = true;
+    this.time = 0;
+  }
+
+  // How much of her is left to see: 1 until she fades.
+  get deathAlpha(): number {
+    return this.dying && this.fading ? Math.max(0, 1 - this.time / Math.max(cfg.deathFade, 1e-3)) : 1;
+  }
+
+  // Gone for good, at once.
+  finish(): void {
+    this.clear();
+    this.onKilled(this.x, this.y);
   }
 
   // Dev aid: straight to the health that starts phase 2.
@@ -227,6 +270,7 @@ export class Kate implements Target {
     this.phase2 = true;
     this.interrupt();
     this.cooldown = 0;
+    this.onPhase2();
   }
 
   // Firespawns still to smack (broken ones stay on the list, so she does not smack them again). A stun drops the
@@ -297,7 +341,7 @@ export class Kate implements Target {
 
   // Stunned: drops the attack she was making. Not in the air: a leap always lands.
   interrupt(): void {
-    if (this.state === 'gone' || this.state === 'idle' || this.state === 'rising' || this.state === 'walk' || this.airborne) return;
+    if (this.state === 'gone' || this.state === 'idle' || this.state === 'rising' || this.state === 'walk' || this.dying || this.airborne) return;
     this.cooldown = cfg.attackCooldown;
     this.panAngle = this.lastAngle = cfg.restAngle;
     this.enter('walk');
@@ -313,6 +357,13 @@ export class Kate implements Target {
   }
 
   update(dt: number, world: CollisionWorld, nav: Navigator, target: Vec2): void {
+    if (this.dying) {
+      if (this.fading) {
+        this.time += dt;
+        if (this.time >= cfg.deathFade) this.finish();
+      }
+      return;
+    }
     this.fireballs.update(dt, this.x, this.y, [], target);
     this.spread(dt);
     this.tendFirespawns(dt, world);

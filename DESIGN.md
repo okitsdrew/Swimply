@@ -83,7 +83,8 @@ The Mindscape is all basics (Shades), plus the empowered elite mini-boss (the we
 - **Fire Slap** (when he is further): the butterfly flies in front of her and she slaps it with the same swing, sending two fireballs (one each side) curving to meet at him. While they fly out, their reach keeps up with him, so backing away does not escape them, but they turn only slowly and can't keep up with a dash or teleport, so moving across them or dashing does. Then they return to her. She dashes 200 sideways (leaning toward the middle of the room, so she does not end up in corners) and slaps again, four slaps in all.
 - **Fire Slam** (on its own cooldown, first a few seconds into the fight): she leaps at where he is (out of arrows' reach in the air) and smashes down, then a ring of fire spreads from the landing until each part of it meets a wall. He has to dash, teleport or cast Doomsday through it. The ring is placeholder art for now.
 - **Phase 2** (at 40% of her health, once): she drops what she was doing and swings four times, smacking a **firespawn** to the middle of each quarter of the map. They hover, bob and turn clockwise for the rest of the fight. Each sends out a ring of fire every 4 seconds, staggered so one ring comes each second, until it is broken: arrows and Flame Torrent can break one (350 health, apart from hers), and Doomsday's blast passes them by.
-- Later: a short talk with Swimply when he first enters the kitchen.
+- **Meeting her** (first visit only): Timo hides in Swimply, the camera goes to her, and she talks at him until Timo pops out and tells him to attack. She stands there, surprised, until she is first hurt. On a retry she fights straight away.
+- **Beating her:** a short freeze, everything she made goes, and she stands flickering and says her last line. Then she fades and he gets Flame Torrent back. At phase 2 she says a line in a small bubble that stops nothing, every time.
 
 ## The world map and fast travel (not urgent)
 

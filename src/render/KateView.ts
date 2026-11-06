@@ -7,6 +7,7 @@ import { Kate } from '../sim/Kate';
 import { Kates } from '../sim/Kates';
 import { FIRESPAWN, KATE_PAN, KATE_PAN_RIM, kateDashFrames, kateSwingFrames, kateWalkFrames, Tex } from './art';
 import { solveArm } from './armMath';
+import { Bark } from './Bark';
 import { BossBar } from './BossBar';
 import { EnemyView, ViewFrame } from './enemies';
 import { FireballsView } from './FireballsView';
@@ -64,7 +65,12 @@ export class KateView {
   private flyFrames: string[];
   private bar: BossBar;
   private fireballs: FireballsView;
-  private spawnImages: { sprite: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image; broken: boolean }[] = [];
+  private barkBubble: Bark;
+  // How she looks standing still (waiting, or beaten), and whether the butterfly is out of her and how grown it is.
+  face = 'kate_surprised';
+  butterflyOut = true;
+  private flyGrow = 1;
+  private spawnImages: { sprite: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image }[] = [];
   private age = 0;
   private walkTime = 0;
   private emberTimer = 0;
@@ -89,6 +95,17 @@ export class KateView {
     this.flyFrames = frames.concat(frames.slice(1, -1).reverse());
     this.bar = new BossBar(scene, 'KATE LAMITY');
     this.fireballs = new FireballsView(scene, kate.fireballs, fx, kateFireballs);
+    this.barkBubble = new Bark(scene);
+  }
+
+  // The butterfly hides in her, or comes out, growing as it flies to its place.
+  setButterfly(on: boolean): void {
+    if (on && !this.butterflyOut) this.flyGrow = 0;
+    this.butterflyOut = on;
+  }
+
+  bark(text: string, color: string, seconds: number): void {
+    this.barkBubble.say(text, color, seconds);
   }
 
   onRisen(): void {
@@ -130,6 +147,7 @@ export class KateView {
     }
     this.bar.destroy();
     this.fireballs.destroy();
+    this.barkBubble.destroy();
   }
 
   render(dt: number, simDt: number, width: number): void {
@@ -143,6 +161,8 @@ export class KateView {
     this.panRim.setVisible(false);
     this.drawWaves(g);
     this.drawFirespawns();
+    toScreen(k.x, k.y, screen);
+    this.barkBubble.update(dt, screen.x, screen.y - 52 * render.pixelScale * cfg.scale - 6);
     const shown = k.present && k.state !== 'rising';
     for (const o of [this.sprite, this.shadow, this.pan, this.fly, this.flyGlow]) o.setVisible(shown);
     if (!k.present) return;
@@ -158,7 +178,7 @@ export class KateView {
 
     const px = render.pixelScale * cfg.scale;
     const swinging = k.state === 'windup' || k.state === 'swing' || k.state === 'follow' || k.state === 'recover';
-    let frame = kateWalkFrames[0];
+    let frame = k.state === 'idle' || k.dying ? this.face : kateWalkFrames[0];
     let flip = false;
     let pose = key(4);
     let angle = cfg.restAngle;
@@ -217,8 +237,14 @@ export class KateView {
     const depth = screen.y;
     const top = screen.y - lift;
     this.sprite.setTexture(frame).setPosition(screen.x, top).setScale(px).setFlipX(flip).setDepth(depth);
-    if (k.flash > 0) this.sprite.setTintFill(0xffffff);
+    // Beaten, she flickers until she starts to fade; then she only fades.
+    const fade = k.deathAlpha;
+    const white = k.flash > 0 || (k.dying && fade >= 1 && Math.floor(this.age * look.deathFlicker) % 2 === 0);
+    if (white) this.sprite.setTintFill(0xffffff);
     else this.sprite.clearTint();
+    this.sprite.setAlpha(fade);
+    this.shadow.setAlpha(fade);
+    this.arms.setAlpha(fade);
     const shrink = 1 - 0.5 * (lift / Math.max(cfg.slamHeight, 1));
     this.shadow.setPosition(screen.x, screen.y).setScale(px * 1.2 * shrink, px * 0.45 * shrink).setDepth(depth - 1000);
 
@@ -241,8 +267,8 @@ export class KateView {
       .setRotation(Math.atan2(dir.y, dir.x))
       .setScale((reach / along) * (1 - look.panForeshorten * (1 - Math.max(0.18, len / reach))), (reach / along) * look.panThickness)
       .setDepth(behind ? depth - 0.5 : depth + 0.5)
-      .setAlpha(1);
-    if (k.flash > 0) this.pan.setTintFill(0xffffff);
+      .setAlpha(fade);
+    if (white) this.pan.setTintFill(0xffffff);
     else this.pan.clearTint();
     this.drawPanFlash(k);
 
@@ -259,8 +285,8 @@ export class KateView {
     const arms = shoulders.map((s, i) => solveArm(s, hands[swap ? 1 - i : i], look.armLength * px));
     const ag = this.arms.setDepth(depth + 0.3);
     for (const [w, color] of [
-      [(look.sleeveWidth + look.sleeveEdge * 2) * px, look.sleeveEdgeColor],
-      [look.sleeveWidth * px, look.sleeveColor],
+      [(look.sleeveWidth + look.sleeveEdge * 2) * px, white ? 0xffffff : look.sleeveEdgeColor],
+      [look.sleeveWidth * px, white ? 0xffffff : look.sleeveColor],
     ] as const) {
       if (w <= 0) continue;
       ag.lineStyle(w, color, 1);
@@ -272,7 +298,7 @@ export class KateView {
         ag.strokePath();
       }
     }
-    ag.fillStyle(look.handColor, 1);
+    ag.fillStyle(white ? 0xffffff : look.handColor, 1);
     for (const arm of arms) ag.fillCircle(arm.hand.x, arm.hand.y, look.handSize * px);
 
     this.drawButterfly(k, dt);
@@ -332,24 +358,20 @@ export class KateView {
     const list = this.kate.firespawns;
     const px = render.pixelScale;
     while (this.spawnImages.length < list.length) {
-      this.spawnImages.push({ sprite: this.scene.add.image(0, 0, FIRESPAWN), shadow: this.scene.add.image(0, 0, Tex.shadow), broken: false });
+      this.spawnImages.push({ sprite: this.scene.add.image(0, 0, FIRESPAWN), shadow: this.scene.add.image(0, 0, Tex.shadow) });
     }
     this.spawnImages.forEach((s, i) => {
       const f = list[i];
       const up = !!f && f.hp > 0;
+      // Broken, or gone with her: it goes up in smoke where it was.
+      if (!up && s.sprite.visible) {
+        this.fx.smoke(s.shadow.x, s.shadow.y - cfg.firespawnHover * px, 16, 12 * px);
+        this.fx.explosion(s.shadow.x, s.shadow.y, cfg.firespawnRadius, cfg.slamColor);
+      }
       s.sprite.setVisible(up);
       s.shadow.setVisible(up);
-      if (!f) return;
+      if (!up || !f) return;
       const p = toScreen(f.x, f.y);
-      if (!up) {
-        if (!s.broken) {
-          this.fx.smoke(p.x, p.y - cfg.firespawnHover * px, 16, 12 * px);
-          this.fx.explosion(p.x, p.y, f.radius, cfg.slamColor);
-        }
-        s.broken = true;
-        return;
-      }
-      s.broken = false;
       if (f.flash > 0) s.sprite.setTintFill(0xffffff);
       else s.sprite.clearTint();
       const k = clamp01(f.age / Math.max(cfg.firespawnFly, 1e-3));
@@ -385,6 +407,13 @@ export class KateView {
   // The butterfly circles her, flapping with a glow and embers, and flies to her front for a slap.
   private drawButterfly(k: Kate, dt: number): void {
     const px = render.pixelScale;
+    if (!this.butterflyOut) {
+      this.fly.setVisible(false);
+      this.flyGlow.setVisible(false);
+      Object.assign(this.flyAt, { x: k.x, y: k.y, h: look.butterflyHeight * 0.55, placed: true });
+      return;
+    }
+    this.flyGrow = Math.min(1, this.flyGrow + dt / Math.max(look.butterflyOutTime, 1e-3));
     let tx: number;
     let ty: number;
     let th: number;
@@ -410,13 +439,13 @@ export class KateView {
     const frame = this.flyFrames[Math.floor(this.age / look.butterflyFrameTime) % this.flyFrames.length];
     const color = vestiges.get('flame_torrent')?.color ?? 0xff9a2a;
     const boost = k.slapping ? 2 : 1;
-    this.fly.setTexture(frame).setScale(px * look.butterflyScale).setPosition(s.x, y).setDepth(s.y + 0.6);
+    this.fly.setTexture(frame).setScale(px * look.butterflyScale * this.flyGrow).setPosition(s.x, y).setDepth(s.y + 0.6).setAlpha(k.deathAlpha);
     this.flyGlow
       .setPosition(s.x, y)
       .setDepth(s.y + 0.5)
       .setTint(color)
       .setScale((look.butterflyGlow * px * look.butterflyScale * boost) / 32)
-      .setAlpha(Math.min(1, look.butterflyGlowAlpha * (0.85 + 0.15 * Math.sin(this.age * 9)) * boost));
+      .setAlpha(Math.min(1, look.butterflyGlowAlpha * (0.85 + 0.15 * Math.sin(this.age * 9)) * boost) * this.flyGrow * k.deathAlpha);
     this.emberTimer -= dt * look.butterflyEmbers * boost;
     while (this.emberTimer < 0) {
       this.emberTimer += 1;
@@ -440,6 +469,19 @@ export class KatesView implements EnemyView<Kate> {
 
   onRisen(k: Kate): void {
     this.viewOf(k).onRisen();
+  }
+
+  // What the story does with her, for each one out.
+  look(face: string): void {
+    for (const k of this.kates.list) this.viewOf(k).face = face;
+  }
+
+  butterfly(on: boolean): void {
+    for (const k of this.kates.list) this.viewOf(k).setButterfly(on);
+  }
+
+  bark(text: string, color: string, seconds: number): void {
+    for (const k of this.kates.list) this.viewOf(k).bark(text, color, seconds);
   }
 
   onKilled(x: number, y: number, k: Kate): void {

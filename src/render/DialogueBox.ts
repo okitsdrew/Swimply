@@ -83,7 +83,11 @@ export class DialogueBox {
     this.face.setVisible(hasFace);
     if (hasFace) {
       this.face.setTexture(face);
-      const scale = Math.floor(((FACE - 8) * k) / Math.max(this.face.width, this.face.height));
+      // A whole-body sprite shows only its head: a square from the top, as wide as it is, in the middle of the frame.
+      const w = this.face.width;
+      const h = Math.min(this.face.height, w * 2 <= this.face.height ? w : this.face.height);
+      this.face.setCrop(0, 0, w, h).setOrigin(0.5, h / 2 / this.face.height);
+      const scale = Math.floor(((FACE - 8) * k) / Math.max(w, h));
       this.face.setScale(Math.max(1, scale));
     }
   }

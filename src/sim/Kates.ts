@@ -19,6 +19,8 @@ export class Kates implements EnemyGroup<Kate> {
   onSlap: (k: Kate) => void = () => {};
   onLand: (k: Kate) => void = () => {};
   onFireWave: (k: Kate) => void = () => {};
+  onDying: (k: Kate) => void = () => {};
+  onPhase2: (k: Kate) => void = () => {};
 
   constructor(private world: CollisionWorld) {}
 
@@ -38,6 +40,8 @@ export class Kates implements EnemyGroup<Kate> {
     k.onSlap = () => this.onSlap(k);
     k.onLand = () => this.onLand(k);
     k.onFireWave = () => this.onFireWave(k);
+    k.onDying = () => this.onDying(k);
+    k.onPhase2 = () => this.onPhase2(k);
     k.onKilled = (x, y) => {
       this.list.splice(this.list.indexOf(k), 1);
       this.onKilled(x, y, k);
@@ -58,9 +62,8 @@ export class Kates implements EnemyGroup<Kate> {
     return k;
   }
 
-  wake(k: Kate): void {
-    k.wake();
-  }
+  // The hero coming near does not wake her: she stands there until she is hurt (or the scene wakes her, on a retry).
+  wake(_k: Kate): void {}
 
   waiting(k: Kate): boolean {
     return k.state === 'idle';
@@ -79,8 +82,9 @@ export class Kates implements EnemyGroup<Kate> {
     k.push(fromX, fromY, amount);
   }
 
+  // Dev aid: gone at once, with no last words.
   kill(k: Kate): void {
-    k.damage(k.hp);
+    k.finish();
   }
 
   clear(): void {

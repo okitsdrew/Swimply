@@ -1,5 +1,6 @@
+import { dialogue } from '../config/story';
 import { save, writeSave } from '../core/save';
-import { PoseFrame, Script } from '../data/story';
+import { PoseFrame, Script, Step } from '../data/story';
 import { DialogueBox } from '../render/DialogueBox';
 import { GhostText } from '../render/GhostText';
 
@@ -19,6 +20,13 @@ export interface Stage {
   walk(target: string): void;
   // Still walking to where a walk step sent him.
   readonly walking: boolean;
+  // A standing boss's look, her butterfly, a bubble over her, and her fading away.
+  look(who: string, face: string): void;
+  butterfly(on: boolean): void;
+  bark(who: string, color: string, text: string, seconds: number): void;
+  defeat(who: string): void;
+  // Still fading away.
+  readonly defeating: boolean;
   vestige(id: string): void;
 }
 
@@ -49,6 +57,15 @@ export class StoryRunner {
     this.script = script;
     this.index = -1;
     this.next();
+  }
+
+  // A script of bubbles, said at once without stopping (or counting as) whatever is playing.
+  aside(script: Script): void {
+    for (const s of script.steps) if (s.kind === 'bark') this.bark(s);
+  }
+
+  private bark(s: Extract<Step, { kind: 'bark' }>): void {
+    this.stage.bark(s.speaker.id, s.speaker.color, s.text, s.seconds || dialogue.barkTime);
   }
 
   stop(): void {
@@ -84,6 +101,7 @@ export class StoryRunner {
       : step.kind === 'eyes' ? !step.open || this.time >= step.seconds
       : step.kind === 'camera' ? this.time >= step.seconds
       : step.kind === 'walk' ? !this.stage.walking
+      : step.kind === 'defeat' ? !this.stage.defeating
       : true;
     if (done) this.next();
   }
@@ -119,6 +137,10 @@ export class StoryRunner {
     else if (step.kind === 'shake') this.stage.shake(step.amount);
     else if (step.kind === 'camera') this.stage.camera(step.target, step.seconds);
     else if (step.kind === 'walk') this.stage.walk(step.target);
+    else if (step.kind === 'look') this.stage.look(step.who, step.face);
+    else if (step.kind === 'butterfly') this.stage.butterfly(step.on);
+    else if (step.kind === 'bark') this.bark(step);
+    else if (step.kind === 'defeat') this.stage.defeat(step.who);
     else if (step.kind === 'vestige') this.stage.vestige(step.id);
     else if (step.kind === 'sound') this.stage.sound(step.id);
     // Steps that finish at once move on in the next update.

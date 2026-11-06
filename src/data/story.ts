@@ -50,6 +50,13 @@ export interface Speaker {
 //   { "walk": "throne" }                                     he walks up to the first placed thing of that asset id
 //                                                            (or to a spot, "800,640") on his own; the script waits
 //                                                            while Timo leads the way
+//   { "timo": "hide" }  { "timo": "pop" }                    Timo is hidden inside him, or pops back out in a puff
+//   { "look": "kate", "face": "kate_surprised" }             how a standing boss looks, without a line. A line of hers
+//                                                            sets it too, to that line's face; it stays until changed
+//   { "butterfly": false }                                   the fire butterfly hides in her, or (true) comes out
+//   { "bark": "kate", "text": "...", "time": 2.5 }           a small bubble over her that fades by itself and stops
+//                                                            nothing (`time` is optional; dialogue.barkTime otherwise)
+//   { "defeat": "kate" }                                     a beaten boss fades away and is gone; the script waits
 //   { "vestige": "doomsday" }                                he reclaims that Vestige: a banner, and it fills an
 //                                                            empty slot
 //   { "sound": "explosion_medium" }                          plays a sound (an id in sounds.json); carries on
@@ -68,6 +75,10 @@ export type Step =
   | { kind: 'shake'; amount: number }
   | { kind: 'camera'; target: string; seconds: number }
   | { kind: 'walk'; target: string }
+  | { kind: 'look'; who: string; face: string }
+  | { kind: 'butterfly'; on: boolean }
+  | { kind: 'bark'; speaker: Speaker; text: string; seconds: number }
+  | { kind: 'defeat'; who: string }
   | { kind: 'vestige'; id: string }
   | { kind: 'sound'; id: string };
 
@@ -148,8 +159,16 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
     if (!vestiges.get(id)) return problems.push(`${where}: unknown vestige ${JSON.stringify(id)} (see vestiges.json), skipped`), null;
     return { kind: 'vestige', id };
   }
+  if (e.look !== undefined) return { kind: 'look', who: str(e.look, '', `${where}.look`, problems), face: str(e.face, '', `${where}.face`, problems) };
+  if (e.butterfly !== undefined) return { kind: 'butterfly', on: bool(e.butterfly, true, `${where}.butterfly`, problems) };
+  if (e.bark !== undefined) {
+    const speaker = speakers.get(str(e.bark, '', `${where}.bark`, problems));
+    if (!speaker) return problems.push(`${where}: unknown speaker ${JSON.stringify(e.bark)}, skipped`), null;
+    return { kind: 'bark', speaker, text: str(e.text, '', `${where}.text`, problems), seconds: e.time === undefined ? 0 : Math.max(0, num(e.time, 0, `${where}.time`, problems)) };
+  }
+  if (e.defeat !== undefined) return { kind: 'defeat', who: str(e.defeat, '', `${where}.defeat`, problems) };
   if (e.sound !== undefined) return { kind: 'sound', id: str(e.sound, '', `${where}.sound`, problems) };
-  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, vestige, sound), skipped`);
+  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, look, butterfly, bark, defeat, vestige, sound), skipped`);
   return null;
 }
 

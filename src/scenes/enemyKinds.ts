@@ -91,7 +91,7 @@ export function werewolfKind(c: KindContext, id: string, cfg: WolfConfig, boss: 
 
 // Kate Lamity, the kitchen boss. Her fireballs need the map's walls, so she is given the world. Her sounds borrow the
 // werewolf's and Flame Torrent's until she has her own.
-export function kateKind(c: KindContext, world: CollisionWorld): EnemyKind<Kate> & { group: Kates } {
+export function kateKind(c: KindContext, world: CollisionWorld): EnemyKind<Kate> & { group: Kates; view: KatesView } {
   const group = new Kates(world);
   const view = new KatesView(c.scene, group, c.fx);
   group.onSwing = (k) => {
@@ -115,7 +115,10 @@ export function kateKind(c: KindContext, world: CollisionWorld): EnemyKind<Kate>
       spawnLabel: 'Spawn Kate',
       killLabel: 'Kill Kate',
       near: 500,
-      extra: [{ label: 'Kate: phase 2', run: () => group.list.forEach((k) => k.toPhase2()) }],
+      extra: [
+        { label: 'Kate: phase 2', run: () => group.list.forEach((k) => k.toPhase2()) },
+        { label: 'Kate: one hit left', run: () => group.list.forEach((k) => { k.wake(); k.hp = 1; }) },
+      ],
     },
   };
 }
