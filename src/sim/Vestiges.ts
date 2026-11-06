@@ -35,6 +35,8 @@ export class VestigeCaster {
   playing: (id: string) => boolean = () => false;
   // A key or click that cannot do anything now (an empty slot, cooling down, a spot he cannot land on).
   onDeny: () => void = () => {};
+  // He started aiming a Vestige.
+  onAim: () => void = () => {};
 
   // `reachable` says whether he could walk to a spot from where he stands.
   constructor(private world: CollisionWorld, private player: Player, private reachable: (x: number, y: number) => boolean) {}
@@ -125,7 +127,10 @@ export class VestigeCaster {
       const v = equippedIn(i);
       if (this.aiming === i) this.aiming = -1;
       else if (!v || this.cooldownLeft(v.id) > 0 || this.player.teleporting || this.blastIn >= 0) this.onDeny();
-      else this.aiming = i;
+      else {
+        this.aiming = i;
+        this.onAim();
+      }
     }
     const v = this.aiming >= 0 ? equippedIn(this.aiming) : undefined;
     if (!v) {

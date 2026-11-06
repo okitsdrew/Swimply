@@ -57,7 +57,7 @@ export class StoryRunner {
     this.stage.onLine(null, '');
   }
 
-  // The player did something a step might be waiting for: "move", "teleport", "dash", "fire".
+  // The player did something a step might be waiting for: "move", "teleport", "dash", "fire", "vestige".
   notify(event: string): void {
     this.events.add(event);
     if (event === this.heldUntil) {

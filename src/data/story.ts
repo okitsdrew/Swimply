@@ -30,7 +30,7 @@ export interface Speaker {
 //   { "tutorial": "Space to dodge." }                        ghostly words that blow away; the script carries on
 //   { "tutorial": "Right click to teleport", "until": "teleport" }
 //                                                            ...that stay until the player does it (see waitFor)
-//   { "waitFor": "teleport" }                                waits until the player does it: move, teleport, dash, fire
+//   { "waitFor": "teleport" }                                waits until the player does it: move, teleport, dash, fire, vestige
 //   { "flag": "teleportTaught" }                             sets a save flag; things in the map that wait on it
 //                                                            (only if / only unless) come or go at once
 //   { "eyes": "closed" }                                     a black screen (his eyes shut)
@@ -88,7 +88,7 @@ export interface Script {
   steps: Step[];
 }
 
-export const WAIT_EVENTS = ['move', 'teleport', 'dash', 'fire'];
+export const WAIT_EVENTS = ['move', 'teleport', 'dash', 'fire', 'vestige'];
 
 function parseSpeakers(data: unknown, problems: Problems): Speaker[] {
   return list(obj(data).speakers, 'story.json speakers', problems).flatMap((entry, i) => {

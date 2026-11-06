@@ -124,7 +124,7 @@
         { "wait": 2.5 },
         { "say": "timo", "face": "timo_serious", "text": "use my power. it's nothing compared to what it once was, but it should be more than enough" },
         { "control": true },
-        { "tutorial": "Press Q for Timo's Doomsday Scenario" },
+        { "tutorial": "Press Q for Timo's Doomsday Scenario", "until": "vestige" },
         { "flag": "throneSeen" }
       ]
     }

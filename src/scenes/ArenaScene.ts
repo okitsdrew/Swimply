@@ -317,6 +317,7 @@ export class ArenaScene extends Phaser.Scene {
       this.sfx.play('fire');
       this.story.notify('fire');
     };
+    this.caster.onAim = () => this.story.notify('vestige');
     this.player.onDashStart = () => {
       this.view.onDashStart();
       this.sfx.play('dash');
