@@ -57,6 +57,7 @@ import { MapWorld } from '../sim/World';
 import { Enemies } from './Enemies';
 import { kateKind, priestKind, shadeKind, werewolfKind } from './enemyKinds';
 import { ArenaParts, Mindscape, TreeScreen, winMindscape } from './Mindscape';
+import { menuPage, MENU_PAGES } from './MindscapeMenu';
 import { StoryRunner } from './StoryRunner';
 import { drawHitboxes } from './hitboxes';
 import { Travel } from './Travel';
@@ -433,16 +434,16 @@ export class ArenaScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input2.destroy();
       this.scene.stop('tree');
-      this.scene.stop('vestiges');
+      MENU_PAGES.forEach((page) => this.scene.stop(page));
     });
   }
 
-  // Tab: the Mindscape menu, to equip Vestiges. It opens only once he holds one, and only while no fight is on, no
+  // Tab: the Mindscape menu, to equip Vestiges and hats. It opens only once he holds one, and only while no fight is on, no
   // scene is playing and nothing else is open. The game waits while it is open.
   private toggleMenu(): void {
     if (this.menuOpen) {
       this.menuOpen = false;
-      this.scene.stop('vestiges');
+      MENU_PAGES.forEach((page) => this.scene.stop(page));
       this.sfx.play('click');
       // Clicks in the menu also reached the game's input; drop them so they don't fire an arrow.
       this.input2.endFrame();
@@ -456,7 +457,7 @@ export class ArenaScene extends Phaser.Scene {
     this.caster.aiming = -1;
     this.paused = true;
     this.sfx.play('treeOpen');
-    this.scene.launch('vestiges');
+    this.scene.launch(menuPage());
   }
 
   private nextMap(): void {
