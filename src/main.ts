@@ -11,6 +11,11 @@ loadSave();
 // Tree numbers may have changed since the save was written.
 refreshBaseline();
 
+// A right click in the borders round the game must not open the browser's menu either (the dev menu keeps its own).
+document.addEventListener('contextmenu', (e) => {
+  if (!(e.target as Element).closest?.('#dev-menu')) e.preventDefault();
+});
+
 // The game starts once the UI font is in, so no text is made in the fallback font.
 loadUiFont().then(() => {
   const game = new Phaser.Game({

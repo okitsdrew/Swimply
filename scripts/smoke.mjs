@@ -380,6 +380,19 @@ await check("Hat: the orb waits, F takes it, the Hats tab", async () => {
   await ctx.close();
 });
 
+await check("Page: no browser menu in the borders", async () => {
+  const { page, ctx } = await open('borders', play('map=spawn'));
+  await page.setViewportSize({ width: 1600, height: 800 });
+  await ready(page);
+  const blocked = await page.evaluate(() => {
+    const body = !document.body.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    const canvas = !document.querySelector('canvas').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    return { body, canvas };
+  });
+  if (!blocked.body || !blocked.canvas) throw new Error(`right click not blocked: ${JSON.stringify(blocked)}`);
+  await ctx.close();
+});
+
 for (const tool of ['asset-maker.html', 'level-editor.html']) {
   await check(`tool ${tool}`, async () => {
     const { page, ctx } = await open(tool, tool);
