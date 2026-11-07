@@ -2,7 +2,8 @@
   "speakers": [
     { "id": "timo", "name": "Timo", "color": "#c58cff", "face": "timo", "voice": "voice_blip", "pitch": 1.5 },
     { "id": "kate", "name": "Kate", "color": "#ffb04a", "face": "kate", "voice": "voice_blip", "pitch": 1.2 },
-    { "id": "swimply", "name": "Swimply", "color": "#f2d7a6", "face": "hero", "bubble": true, "voice": "voice_blip", "pitch": 0.8, "lineSounds": ["swimply_dots_a", "swimply_dots_b"] }
+    { "id": "swimply", "name": "Swimply", "color": "#f2d7a6", "face": "hero", "bubble": true, "voice": "voice_blip", "pitch": 0.8, "lineSounds": ["swimply_dots_a", "swimply_dots_b"] },
+    { "id": "wobbles", "name": "Wobbles", "color": "#f7c83a", "face": "wobbles_smile", "voice": "voice_blip", "pitch": 1 }
   ],
   "scripts": [
     {
@@ -187,6 +188,43 @@
         { "wait": 0.8 },
         { "say": "kate", "face": "kate_surprised", "text": "Chat, am I cooked?" },
         { "defeat": "kate" },
+        { "control": true }
+      ]
+    },
+    {
+      "id": "wobbles-grows",
+      "map": "garden",
+      "if": "gardenCleared",
+      "unless": "wobblesGrown",
+      "steps": [
+        { "control": false },
+        { "wait": 0.5 },
+        { "camera": "wobbles-curled", "time": 1.2 },
+        { "wait": 0.5 },
+        { "animate": "wobbles-curled", "frames": ["wobbles_curled", "wobbles_grow_0", "wobbles_grow_1", "wobbles_grow_2"], "time": 2 },
+        { "flag": "wobblesGrown" },
+        { "wait": 0.4 },
+        { "say": "wobbles", "face": "wobbles_sleepy", "text": "(Drew's scene goes here.)" },
+        { "say": "wobbles", "face": "wobbles_happy", "text": "(Wobbles wakes up and meets Swimply.)" },
+        { "camera": "hero", "time": 0.8 },
+        { "control": true }
+      ]
+    },
+    {
+      "id": "wobbles-talk",
+      "map": "",
+      "steps": [
+        { "control": false },
+        { "say": "wobbles", "face": "wobbles_smile", "text": "(Drew's first short line goes here.)" },
+        { "control": true }
+      ]
+    },
+    {
+      "id": "wobbles-talk-2",
+      "map": "",
+      "steps": [
+        { "control": false },
+        { "say": "wobbles", "face": "wobbles_happy", "text": "(Drew's second short line goes here.)" },
         { "control": true }
       ]
     }

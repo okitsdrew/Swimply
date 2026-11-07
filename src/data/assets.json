@@ -1046,6 +1046,7 @@
       "id": "wobbles",
       "name": "Wobbles (sunflower)",
       "category": "characters",
+      "talk": "wobbles-talk",
       "parts": [
         {
           "texture": "wobbles_0",

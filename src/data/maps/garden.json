@@ -3,6 +3,7 @@
   "kind": "area",
   "name": "garden",
   "tileSize": 64,
+  "clearedSets": "gardenCleared",
   "legend": {
     ".": "stone",
     "~": "purple_floor",
@@ -354,6 +355,8 @@
     { "asset": "wooden-bench-sw", "x": 384, "y": 608 },
     { "asset": "standing-lamp", "x": 384, "y": 416 },
     { "asset": "standing-lamp", "x": 384, "y": 544 },
-    { "asset": "spawner-priest", "x": 608, "y": 1056, "unless": "garden_p3spawner_broken", "onBreak": "garden_p3spawner_broken", "zone": "garden_a", "every": 1, "max": 2 }
+    { "asset": "spawner-priest", "x": 608, "y": 1056, "unless": "garden_p3spawner_broken", "onBreak": "garden_p3spawner_broken", "zone": "garden_a", "every": 1, "max": 2 },
+    { "asset": "wobbles-curled", "x": 800, "y": 1184, "unless": "wobblesGrown" },
+    { "asset": "wobbles", "x": 800, "y": 1184, "if": "wobblesGrown" }
   ]
 }

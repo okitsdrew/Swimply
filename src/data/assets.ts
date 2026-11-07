@@ -78,6 +78,8 @@ export interface Asset {
   light: Light | null;
   // A looping sound id (sounds.json), heard louder the nearer the player is to one of these (a fire's crackle).
   sound: string;
+  // A script id (story.json) that plays when he presses interact next to it. Scripts named <id>-2, <id>-3... take turns.
+  talk: string;
   // How much arrow damage breaks it. 0 can't be broken. Arrows hit its hit shapes, or its collision circles.
   health: number;
   // An enemy kind (ENEMY_KINDS). On an "enemy" marker it is the enemy placed there; on anything else it makes the
@@ -159,6 +161,7 @@ function parseAssets(data: unknown): Asset[] {
       hit,
       marker: str(e.marker, '', `${id}.marker`, problems),
       sound: str(e.sound, '', `${id}.sound`, problems),
+      talk: str(e.talk, '', `${id}.talk`, problems),
       health: Math.max(0, num(e.health, 0, `${id}.health`, problems)),
       enemy: enemyKind(str(e.enemy, '', `${id}.enemy`, problems), id, problems),
       spawnEvery: Math.max(0.1, num(e.spawnEvery, 3, `${id}.spawnEvery`, problems)),

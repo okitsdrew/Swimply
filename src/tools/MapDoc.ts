@@ -42,6 +42,7 @@ export function fromAreaMap(m: AreaMap): EditMap {
     rows: m.rows,
     legend: { ...m.legend },
     darkness: m.darkness,
+    clearedSets: m.clearedSets,
     tiles: m.tiles.map((t) => t.id),
     objects: m.objects.map((o) => ({ asset: o.asset.id, x: o.x, y: o.y, size: o.size, if: o.if, unless: o.unless, to: o.to, opens: o.opens, opensWhenClear: o.opensWhenClear, onBreak: o.onBreak, aggro: o.aggro, zone: o.zone, every: o.every, max: o.max })),
     zones: [...m.zones],
@@ -77,7 +78,7 @@ export class MapDoc {
       const asset = assets.get(o.asset);
       if (asset) objects.push({ asset, x: o.x, y: o.y, size: o.size, if: o.if ?? '', unless: o.unless ?? '', to: o.to ?? '', opens: o.opens ?? '', opensWhenClear: o.opensWhenClear ?? false, onBreak: o.onBreak ?? '', aggro: o.aggro ?? 0, zone: o.zone ?? '', every: o.every ?? 0, max: o.max ?? 0 });
     }
-    return { id: this.id, name: m.name, mode: m.mode ?? 'calm', tileSize: m.tileSize, cols: m.cols, rows: m.rows, legend: m.legend, tiles: m.tiles.map((id) => floors.get(id) ?? fallback), objects, darkness: m.darkness ?? 0, zones: m.tiles.map((_, i) => m.zones?.[i] ?? '') };
+    return { id: this.id, name: m.name, mode: m.mode ?? 'calm', tileSize: m.tileSize, cols: m.cols, rows: m.rows, legend: m.legend, tiles: m.tiles.map((id) => floors.get(id) ?? fallback), objects, darkness: m.darkness ?? 0, zones: m.tiles.map((_, i) => m.zones?.[i] ?? ''), clearedSets: m.clearedSets ?? '' };
   }
 
   // Records an undo step (unless a drag already has one), then lets fn change the map.

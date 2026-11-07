@@ -22,6 +22,8 @@ export class Travel {
   near: Placed | null = null;
   // He is leaving alive, so what he broke here can stay broken.
   onLeave: () => void = () => {};
+  // He pressed interact next to something that talks.
+  onTalk: (script: string) => void = () => {};
 
   constructor(private scene: Phaser.Scene, private mapId: string, private calm: boolean, private world: MapWorld, private hero: Vec2, private sfx: SoundFx) {}
 
@@ -60,13 +62,14 @@ export class Travel {
     return maps.list().find((m) => m.objects.some((o) => o.to === this.mapId))?.id ?? fallback;
   }
 
-  // Whatever link he is inside (a door's ring) or next to is what interact uses; a locked one only says no.
+  // Whatever link he is inside (a door's ring), or link or talker he is next to, is what interact uses; a locked one
+  // only says no.
   check(map: AreaMap, interact: boolean, open: (o: Placed) => boolean): void {
     const p = this.hero;
     this.near = null;
     let best = Infinity;
     for (const o of map.objects) {
-      if (!o.to) continue;
+      if (!o.to && !o.asset.talk) continue;
       const d = Math.hypot(o.x - p.x, o.y - p.y);
       const reach = o.asset.marker === 'door'
         ? story.doorRadius * o.size
@@ -77,7 +80,8 @@ export class Travel {
       }
     }
     if (!this.near || !interact) return;
-    if (open(this.near)) this.go(this.near.to);
+    if (this.near.asset.talk) this.onTalk(this.near.asset.talk);
+    else if (open(this.near)) this.go(this.near.to);
     else this.sfx.play('deny');
   }
 

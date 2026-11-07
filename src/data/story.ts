@@ -59,6 +59,11 @@ export interface Speaker {
 //   { "bark": "kate", "text": "...", "time": 2.5 }           a small bubble over her that fades by itself and stops
 //                                                            nothing (`time` is optional; dialogue.barkTime otherwise)
 //   { "defeat": "kate" }                                     a beaten boss fades away and is gone; the script waits
+//   { "animate": "wobbles-curled", "frames": ["a", "b"], "time": 2 }
+//                                                            the first placed thing of that asset id gives way to
+//                                                            these sprites, shown in turn over `time`; the script
+//                                                            waits. The last one stays until the next flag step
+//                                                            or the end of the script
 //   { "vestige": "doomsday" }                                he reclaims that Vestige: a banner, and it fills an
 //                                                            empty slot
 //   { "sound": "explosion_medium" }                          plays a sound (an id in sounds.json); carries on
@@ -82,6 +87,7 @@ export type Step =
   | { kind: 'butterfly'; on: boolean }
   | { kind: 'bark'; speaker: Speaker; text: string; seconds: number }
   | { kind: 'defeat'; who: string }
+  | { kind: 'animate'; target: string; frames: string[]; seconds: number }
   | { kind: 'vestige'; id: string }
   | { kind: 'sound'; id: string };
 
@@ -171,8 +177,9 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
     return { kind: 'bark', speaker, text: str(e.text, '', `${where}.text`, problems), seconds: e.time === undefined ? 0 : Math.max(0, num(e.time, 0, `${where}.time`, problems)) };
   }
   if (e.defeat !== undefined) return { kind: 'defeat', who: str(e.defeat, '', `${where}.defeat`, problems) };
+  if (e.animate !== undefined) return { kind: 'animate', target: str(e.animate, '', `${where}.animate`, problems), frames: list(e.frames, `${where}.frames`, problems).map((f) => str(f, '', `${where}.frames`, problems)), seconds: Math.max(0, num(e.time, 1, `${where}.time`, problems)) };
   if (e.sound !== undefined) return { kind: 'sound', id: str(e.sound, '', `${where}.sound`, problems) };
-  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, dash, look, butterfly, bark, defeat, vestige, sound), skipped`);
+  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, dash, look, butterfly, bark, defeat, animate, vestige, sound), skipped`);
   return null;
 }
 

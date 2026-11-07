@@ -380,6 +380,53 @@ await check("Hat: the orb waits, F takes it, the Hats tab", async () => {
   await ctx.close();
 });
 
+await check('Wobbles: grows when the Garden is cleared, talks with F', async () => {
+  const { page, ctx } = await open('wobbles', play('map=garden'));
+  await ready(page);
+  await page.evaluate(() => localStorage.setItem('swimply.save', JSON.stringify({ version: 4, baseline: {}, tree: {}, shards: 0, flags: { enteredMindscape: true, mindscapeCleared: true, teleport: true, introSeen: true, teleportTaught: true, dodgeTaught: true }, vestiges: [], equipped: [], hats: [], hat: '' })));
+  await page.reload();
+  await ready(page);
+  const scene = () => window.swimply.scene.getScene('arena');
+  const placed = `(${scene})().map.objects.map((o) => o.asset.id)`;
+  if (!(await page.evaluate(placed)).includes('wobbles-curled')) throw new Error('he is not curled up on the first visit');
+  if (await page.evaluate(`(${scene})().story.playing`)) throw new Error('his scene started before the Garden was cleared');
+  // Every spawner broken and nobody left.
+  await page.evaluate(() => {
+    const s = window.swimply.scene.getScene('arena');
+    for (const o of s.map.objects.filter((p) => p.asset.enemy)) s.broken.add(o);
+    s.showMap();
+    for (const k of s.enemies.kinds.values()) k.group.clear?.();
+  });
+  await until(page, `(${scene})().story.playing`, null, 10).catch(() => {
+    throw new Error('clearing the Garden did not start his scene');
+  });
+  for (let i = 0; i < 200 && (await page.evaluate(`(${scene})().story.playing`)); i++) {
+    await page.keyboard.press('f');
+    await page.waitForTimeout(100);
+  }
+  const grown = await page.evaluate(placed);
+  if (!grown.includes('wobbles') || grown.includes('wobbles-curled')) throw new Error(`after his scene: ${grown.filter((a) => a.startsWith('wobbles'))}`);
+  // Next to him, F talks, and again.
+  await page.evaluate(() => {
+    const s = window.swimply.scene.getScene('arena');
+    const w = s.map.objects.find((o) => o.asset.id === 'wobbles');
+    s.player.x = w.x + 30;
+    s.player.y = w.y + 30;
+  });
+  for (let turn = 0; turn < 2; turn++) {
+    await page.waitForTimeout(300);
+    await page.keyboard.press('f');
+    await until(page, `(${scene})().story.talking`, null, 5).catch(() => {
+      throw new Error('F next to him did not start him talking');
+    });
+    for (let i = 0; i < 50 && (await page.evaluate(`(${scene})().story.playing`)); i++) {
+      await page.keyboard.press('f');
+      await page.waitForTimeout(100);
+    }
+  }
+  await ctx.close();
+});
+
 await check("Page: no browser menu in the borders", async () => {
   const { page, ctx } = await open('borders', play('map=spawn'));
   await page.setViewportSize({ width: 1600, height: 800 });

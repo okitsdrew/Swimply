@@ -71,6 +71,8 @@ const DEFAULT_MAP = 'spawn';
 //   &calm             no Shades appear, to walk round a map
 // The map is kept in the address, so the reload after a tool saves comes back to the same map.
 const params = new URLSearchParams(location.search);
+// Whose turn it is among the scripts of each thing he can talk to. Kept while the page is open, not saved.
+const talkTurns = new Map<string, number>();
 
 // The arena: a map from src/data/maps, played the way its mode says. In the Mindscape the run (Shades that keep
 // coming, death, the upgrade tree, and the next run) is Mindscape.ts's. Any other map is calm: no Shades, no run
@@ -146,6 +148,8 @@ export class ArenaScene extends Phaser.Scene {
   private everyone: Enemy[] = [];
   // The Mindscape menu (Vestiges) is open over the arena.
   private menuOpen = false;
+  // A placed thing's frames playing in a story step.
+  private acting: { img: Phaser.GameObjects.Image; frames: string[]; time: number; total: number } | null = null;
   private pickupsView!: PickupsView;
   // Every enemy, of every kind (see enemyKinds.ts).
   private enemies!: Enemies;
@@ -312,6 +316,7 @@ export class ArenaScene extends Phaser.Scene {
     this.control = true;
     this.walkTo = null;
     this.pan = null;
+    this.acting = null;
     this.menuOpen = false;
     const walking = () => this.walkTo !== null;
     const player = this.player;
@@ -321,7 +326,10 @@ export class ArenaScene extends Phaser.Scene {
       onLine: (speaker, face) => {
         if (speaker === 'timo') this.timo.setFace(face);
         else if (speaker === 'kate') this.kates.view.look(face);
-        else if (speaker === null) this.timo.setFace('');
+        else if (speaker === null) {
+          this.timo.setFace('');
+          this.endAnimation();
+        }
       },
       setControl: (on) => {
         this.control = on;
@@ -331,7 +339,10 @@ export class ArenaScene extends Phaser.Scene {
       pose: (pose, seconds, frames) => (pose === 'asleep' ? this.pose.asleep() : this.pose.standUp(seconds, frames)),
       moveTimo: (target) => this.moveTimo(target),
       shake: (amount) => this.fx.addShake(amount),
-      flag: () => this.showMap(),
+      flag: () => {
+        this.showMap();
+        this.endAnimation();
+      },
       sound: (id) => this.sfx.playSound(id),
       camera: (target, seconds) => this.panTo(target, seconds),
       walk: (target) => this.walkToward(target),
@@ -352,8 +363,10 @@ export class ArenaScene extends Phaser.Scene {
       get defeating() {
         return dying();
       },
+      animate: (target, frames, seconds) => this.animate(target, frames, seconds),
       vestige: (id) => this.reclaim(id),
     });
+    this.travel.onTalk = (id) => this.talk(id);
 
     this.player.onFire = (_x, _y, dx, dy) => {
       const m = this.view.muzzle();
@@ -481,6 +494,43 @@ export class ArenaScene extends Phaser.Scene {
     return { x: o.x, y: o.y, reach };
   }
 
+  // A story step: the placed thing is gone for this visit, and its frames play where it stood.
+  private animate(target: string, frames: string[], seconds: number): void {
+    const o = this.map.objects.find((p) => p.asset.id === target);
+    if (!o || !frames.length) return console.warn(`[story] cannot animate ${JSON.stringify(target)} in ${this.mapId}`);
+    const part = o.asset.parts[0];
+    const s = toScreen(o.x, o.y);
+    this.endAnimation();
+    this.acting = { img: this.add.image(s.x, s.y, frames[0]).setOrigin(part?.originX ?? 0.5, part?.originY ?? 1).setScale(render.pixelScale * o.size).setDepth(s.y), frames, time: 0, total: seconds };
+    this.broken.add(o);
+    this.showMap();
+  }
+
+  private endAnimation(): void {
+    this.acting?.img.destroy();
+    this.acting = null;
+  }
+
+  // He talks to something: its script, or the next of those that take turns with it (<id>-2, <id>-3...).
+  private talk(id: string): void {
+    this.input2.consume('interact');
+    const turns = scripts.list().filter((s) => s.id === id || s.id.startsWith(`${id}-`));
+    if (!turns.length) return console.warn(`[story] no script ${JSON.stringify(id)}`);
+    const turn = talkTurns.get(id) ?? 0;
+    talkTurns.set(id, turn + 1);
+    this.story.play(turns[turn % turns.length]);
+  }
+
+  // The map's "cleared sets" flag turns on for this visit once no enemy or spawner is left, and a scene may wait for it.
+  private checkCleared(): void {
+    const flag = this.map.clearedSets;
+    if (!flag || save.flags[flag] || this.areaFlags[flag] || this.story.playing || !this.enemies.cleared(this.map)) return;
+    this.areaFlags[flag] = true;
+    this.showMap();
+    const script = scriptFor(this.mapId, { ...save.flags, ...this.areaFlags });
+    if (script) this.story.play(script);
+  }
+
   private panTo(target: string, seconds: number): void {
     const to = target === 'hero' ? null : this.spotOf(target);
     if (target !== 'hero' && !to) return;
@@ -512,6 +562,12 @@ export class ArenaScene extends Phaser.Scene {
   // where he stands, so broken spawners and killed enemies are back for testing.
   private resetMapFlags(): void {
     for (const o of this.baseMap.objects) if (o.onBreak) delete save.flags[o.onBreak];
+    // The scenes waiting for it being cleared can play again too.
+    const cleared = this.baseMap.clearedSets;
+    if (cleared) {
+      delete save.flags[cleared];
+      for (const s of scripts.list()) if (s.if.includes(cleared)) for (const f of s.unless) delete save.flags[f];
+    }
     writeSave();
     this.scene.restart({ map: this.mapId, at: { x: this.player.x, y: this.player.y } });
   }
@@ -728,6 +784,12 @@ export class ArenaScene extends Phaser.Scene {
     if (!this.story.playing) this.timo.setFace(doom ? 'timo_doom' : '');
     this.timo.setGlow(doom ? doomsday.blastColor : -1);
     this.timo.update(frameDt, this.player.x, this.player.y);
+    if (this.acting) {
+      const a = this.acting;
+      a.time += frameDt;
+      const i = a.total > 0 ? Math.floor((a.time / a.total) * a.frames.length) : a.frames.length - 1;
+      a.img.setTexture(a.frames[Math.min(a.frames.length - 1, i)]);
+    }
     this.pedestals.update(frameDt, this.map);
     this.statusView.update(frameDt, this.enemies.all(this.everyone));
     this.vestigesView.update(frameDt, this.player.x, this.player.y, this.run.state === 'fighting' && !hidden, cam.width, cam.height);
@@ -790,6 +852,7 @@ export class ArenaScene extends Phaser.Scene {
         this.input2.consume('interact');
       }
       this.travel.check(this.map, this.input2.justPressed('interact'), (o) => this.isOpen(o));
+      this.checkCleared();
       this.enemies.updateWorld(dt, this.map);
     }
     r.update(dt);

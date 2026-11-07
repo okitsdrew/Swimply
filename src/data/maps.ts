@@ -68,6 +68,8 @@ export interface AreaMap {
   darkness: number;
   // Named areas painted on the tiles, row by row like tiles: a zone name, or '' for none. Spawners use them.
   zones: string[];
+  // A flag turned on for this visit once no enemy or spawner is left in the map (saved when he leaves). Empty for none.
+  clearedSets: string;
 }
 
 // The zone painted under a world point, or ''.
@@ -207,7 +209,7 @@ export function parseMap(id: string, data: unknown, problems: Problems): AreaMap
   const mode = str(d.mode, 'calm', `${where}.mode`, problems) as MapMode;
   if (!MAP_MODES.includes(mode)) problems.push(`${where}: mode ${JSON.stringify(mode)} is not one of ${MAP_MODES.join(', ')}; played as calm`);
 
-  return { id, name: str(d.name, id, `${where}.name`, problems), mode: MAP_MODES.includes(mode) ? mode : 'calm', tileSize: num(d.tileSize, 64, `${where}.tileSize`, problems), cols, rows, legend: legendIds, tiles, objects, darkness: num(d.darkness, 0, `${where}.darkness`, problems), zones };
+  return { id, name: str(d.name, id, `${where}.name`, problems), mode: MAP_MODES.includes(mode) ? mode : 'calm', tileSize: num(d.tileSize, 64, `${where}.tileSize`, problems), cols, rows, legend: legendIds, tiles, objects, darkness: num(d.darkness, 0, `${where}.darkness`, problems), zones, clearedSets: str(d.clearedSets, '', `${where}.clearedSets`, problems) };
 }
 
 function loadAll(): AreaMap[] {
