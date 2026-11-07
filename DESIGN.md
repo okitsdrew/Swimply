@@ -35,8 +35,8 @@ All numbers in config are test values and will change.
 - **The first four:**
   - **Momentum** (Doomsday, buffs Swimply): each arrow that hits an enemy adds 1% damage and attack speed, up to 25%. They last 5 seconds, and any hit restarts the timer.
   - **Soul Mending** (Doomsday, buffs the Vestige): 2x Doomsday damage.
-  - **Toasted Tips** (Flame Torrent, buffs Swimply): arrows apply burn on hit.
-  - **Kitchen Rush** (Flame Torrent, buffs the Vestige): 2x damage to Flame Torrent and its burn.
+  - **Toasted Tips** (Flame Torrent, buffs Swimply): arrows apply burn on hit, the same burn as Flame Torrent's. A new hit restarts it.
+  - **Kitchen Rush** (Flame Torrent, buffs the Vestige): 2x damage to Flame Torrent and to his burn, Toasted Tips' too. Fire is universal: one burn, however it was lit.
 - **Perception** comes from certain bosses and encounters: 1 for beating the werewolf (with the memories restored), 1 for beating Kate. What Swimply has earned is worked out from those story flags; the save only keeps what he has spent.
 
 ## Hats (built)

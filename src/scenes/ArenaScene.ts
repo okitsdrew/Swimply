@@ -345,7 +345,7 @@ export class ArenaScene extends Phaser.Scene {
       },
       sound: (id) => this.sfx.playSound(id),
       camera: (target, seconds) => this.panTo(target, seconds),
-      walk: (target) => this.walkToward(target),
+      walk: (target, stop) => this.walkToward(target, stop),
       get walking() {
         return walking();
       },
@@ -537,9 +537,9 @@ export class ArenaScene extends Phaser.Scene {
     this.pan = { from: { ...this.camCenter }, to: to ? toScreen(to.x, to.y) : null, time: 0, total: seconds };
   }
 
-  private walkToward(target: string): void {
+  private walkToward(target: string, stop: number): void {
     const s = this.spotOf(target);
-    this.walkTo = s && { x: s.x, y: s.y, stop: s.reach + cfgPlayer.bodyRadius + story.walkStop, stuck: 0, last: Infinity };
+    this.walkTo = s && { x: s.x, y: s.y, stop: s.reach + cfgPlayer.bodyRadius + (stop < 0 ? story.walkStop : stop), stuck: 0, last: Infinity };
   }
 
   private moveTimo(target: string): void {

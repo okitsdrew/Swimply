@@ -204,9 +204,21 @@
         { "animate": "wobbles-curled", "frames": ["wobbles_curled", "wobbles_grow_0", "wobbles_grow_1", "wobbles_grow_2"], "time": 2 },
         { "flag": "wobblesGrown" },
         { "wait": 0.4 },
-        { "say": "wobbles", "face": "wobbles_sleepy", "text": "(Drew's scene goes here.)" },
-        { "say": "wobbles", "face": "wobbles_happy", "text": "(Wobbles wakes up and meets Swimply.)" },
-        { "camera": "hero", "time": 0.8 },
+        { "say": "wobbles", "face": "wobbles_happy", "text": "oh, praise the sun!" },
+        { "say": "wobbles", "face": "wobbles_smile", "text": "glad to see someone's finally taking care of the weeds around here" },
+        { "walk": "wobbles", "stop": 70 },
+        { "camera": "hero", "time": 0.6 },
+        { "say": "swimply", "text": "..." },
+        { "wait": 1 },
+        { "say": "wobbles", "face": "wobbles_sleepy", "text": "...no i've never tried it before..." },
+        { "wait": 1 },
+        { "say": "wobbles", "face": "wobbles_smile", "text": "anyways, I'm Wobbles, Robert Wobbles. Pleasure to meet you" },
+        { "say": "swimply", "text": "..." },
+        { "say": "wobbles", "face": "wobbles_smile", "text": "Swimply, eh? Very curious.." },
+        { "say": "wobbles", "face": "wobbles_surprised", "text": "Ah what is this now, I see you've found a Vestige!" },
+        { "say": "timo", "face": "timo_serious", "text": "Sup nerd" },
+        { "say": "wobbles", "face": "wobbles_smile", "text": "I can show you how to unlock its full potential" },
+        { "say": "wobbles", "face": "wobbles_happy", "text": "all you need, is a little Perception..." },
         { "control": true }
       ]
     },
@@ -215,16 +227,7 @@
       "map": "",
       "steps": [
         { "control": false },
-        { "say": "wobbles", "face": "wobbles_smile", "text": "(Drew's first short line goes here.)" },
-        { "control": true }
-      ]
-    },
-    {
-      "id": "wobbles-talk-2",
-      "map": "",
-      "steps": [
-        { "control": false },
-        { "say": "wobbles", "face": "wobbles_happy", "text": "(Drew's second short line goes here.)" },
+        { "say": "wobbles", "face": "wobbles_happy", "text": "all you need, is a little Perception..." },
         { "control": true }
       ]
     }

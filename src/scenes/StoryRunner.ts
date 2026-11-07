@@ -17,7 +17,8 @@ export interface Stage {
   moveTimo(target: string): void;
   shake(amount: number): void;
   camera(target: string, seconds: number): void;
-  walk(target: string): void;
+  // `stop` is how far off he stops; below 0 for the usual distance.
+  walk(target: string, stop: number): void;
   // Still walking to where a walk step sent him.
   readonly walking: boolean;
   dash(target: string): void;
@@ -142,7 +143,7 @@ export class StoryRunner {
     else if (step.kind === 'timo') this.stage.moveTimo(step.target);
     else if (step.kind === 'shake') this.stage.shake(step.amount);
     else if (step.kind === 'camera') this.stage.camera(step.target, step.seconds);
-    else if (step.kind === 'walk') this.stage.walk(step.target);
+    else if (step.kind === 'walk') this.stage.walk(step.target, step.stop);
     else if (step.kind === 'dash') this.stage.dash(step.target);
     else if (step.kind === 'look') this.stage.look(step.who, step.face);
     else if (step.kind === 'butterfly') this.stage.butterfly(step.on);

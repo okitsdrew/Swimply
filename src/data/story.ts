@@ -49,7 +49,8 @@ export interface Speaker {
 //                                                            the script waits. "hero" slides back and follows him
 //   { "walk": "throne" }                                     he walks up to the first placed thing of that asset id
 //                                                            (or to a spot, "800,640") on his own; the script waits
-//                                                            while Timo leads the way
+//                                                            while Timo leads the way; `stop` is how far off he
+//                                                            stops (story.walkStop if not given)
 //   { "dash": "800,640" }                                    one real dash toward the spot (or a placed thing's asset
 //                                                            id), its usual length; the script waits
 //   { "timo": "hide" }  { "timo": "pop" }                    Timo is hidden inside him, or pops back out in a puff
@@ -81,7 +82,7 @@ export type Step =
   | { kind: 'timo'; target: string }
   | { kind: 'shake'; amount: number }
   | { kind: 'camera'; target: string; seconds: number }
-  | { kind: 'walk'; target: string }
+  | { kind: 'walk'; target: string; stop: number }
   | { kind: 'dash'; target: string }
   | { kind: 'look'; who: string; face: string }
   | { kind: 'butterfly'; on: boolean }
@@ -162,7 +163,7 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
   if (e.timo !== undefined) return { kind: 'timo', target: str(e.timo, 'hero', `${where}.timo`, problems) };
   if (e.shake !== undefined) return { kind: 'shake', amount: num(e.shake, 6, `${where}.shake`, problems) };
   if (e.camera !== undefined) return { kind: 'camera', target: str(e.camera, 'hero', `${where}.camera`, problems), seconds: Math.max(0, num(e.time, 1.2, `${where}.time`, problems)) };
-  if (e.walk !== undefined) return { kind: 'walk', target: str(e.walk, '', `${where}.walk`, problems) };
+  if (e.walk !== undefined) return { kind: 'walk', target: str(e.walk, '', `${where}.walk`, problems), stop: e.stop === undefined ? -1 : Math.max(0, num(e.stop, 0, `${where}.stop`, problems)) };
   if (e.vestige !== undefined) {
     const id = str(e.vestige, '', `${where}.vestige`, problems);
     if (!vestiges.get(id)) return problems.push(`${where}: unknown vestige ${JSON.stringify(id)} (see vestiges.json), skipped`), null;
