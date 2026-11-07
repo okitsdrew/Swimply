@@ -4,8 +4,9 @@ import { color, list, num, obj, Problems, Registry, report, str } from './regist
 // Things enemies drop for the player to pick up, such as memory shards. Each kind says which wallet it fills and
 // how it looks, so a new kind (soul shards) is a new entry in pickups.json, not new code.
 
-// Where a pickup's value goes. "memory" is the banked memory shards the Mindscape's tree is bought with.
-export const WALLETS = ['memory'] as const;
+// Where a pickup's value goes. "memory" is the banked memory shards the Mindscape's tree is bought with. "item" fills
+// no wallet: it lies still until he walks up and presses F, and gives him the thing the orb holds.
+export const WALLETS = ['memory', 'item'] as const;
 export type Wallet = (typeof WALLETS)[number];
 
 export interface PickupKind {
@@ -14,6 +15,8 @@ export interface PickupKind {
   wallet: Wallet;
   // What one picked up is worth, before bonuses (Memory Echo doubles memory shards).
   value: number;
+  // How big its orb is, times pickups.orbScale and glowScale.
+  scale: number;
   // The orb's colours: its middle, its edge, and the glow round it.
   core: number;
   rim: number;
@@ -33,6 +36,7 @@ function parsePickups(data: unknown): PickupKind[] {
       name: str(e.name, id, `${id}.name`, problems),
       wallet: wallet as Wallet,
       value: num(e.value, 1, `${id}.value`, problems),
+      scale: num(e.scale, 1, `${id}.scale`, problems),
       core: color(e.core ?? '#ffffff', `${id}.core`, problems),
       rim: color(e.rim ?? '#a8dcff', `${id}.rim`, problems),
       glow: color(e.glow ?? '#4aa8ff', `${id}.glow`, problems),

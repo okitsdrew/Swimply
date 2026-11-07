@@ -75,6 +75,8 @@ export const heroLook = defineConfig(
     // Where the eye glows sit, from the bottom middle of his sprite.
     eyeSpread: 2.5,
     eyeHeight: 15,
+    // How far above the bottom of his sprite the bottom of a hat sits (the top row of his head is 17 up).
+    hatHeight: 17,
   },
   {
     sleeveColor: 'color',
@@ -87,6 +89,7 @@ export const heroLook = defineConfig(
     eyeGlowColor: 'color',
     eyeSpread: { min: 0, max: 8, step: 0.5 },
     eyeHeight: { min: 0, max: 30, step: 0.5 },
+    hatHeight: { min: 0, max: 30, step: 1 },
   },
 );
 

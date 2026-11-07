@@ -54,8 +54,8 @@ export class PickupsView {
       const bob = (Math.sin(this.time * cfg.bobRate * Math.PI * 2 + p.phase) + 1) * 0.5 * cfg.bobHeight;
       const y = screen.y - (4 + hop + bob) * px;
       const pulse = 0.85 + 0.15 * Math.sin(this.time * cfg.bobRate * Math.PI * 2 + p.phase + 1);
-      v.orb.setPosition(screen.x, y).setScale(px * cfg.orbScale).setDepth(screen.y);
-      v.glow.setPosition(screen.x, y).setScale(px * cfg.glowScale * pulse).setAlpha(cfg.glowAlpha * pulse).setDepth(screen.y - 0.1);
+      v.orb.setPosition(screen.x, y).setScale(px * cfg.orbScale * p.kind.scale).setDepth(screen.y);
+      v.glow.setPosition(screen.x, y).setScale(px * cfg.glowScale * p.kind.scale * pulse).setAlpha(cfg.glowAlpha * pulse).setDepth(screen.y - 0.1);
     }
   }
 }

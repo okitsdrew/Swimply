@@ -4,11 +4,17 @@ import { refreshBaseline } from './data/tree';
 import { ArenaScene } from './scenes/ArenaScene';
 import { TreeScene } from './scenes/TreeScene';
 import { VestigeScene } from './scenes/VestigeScene';
+import { HatScene } from './scenes/HatScene';
 import { loadUiFont } from './render/ui';
 
 loadSave();
 // Tree numbers may have changed since the save was written.
 refreshBaseline();
+
+// A right click in the borders round the game must not open the browser's menu either (the dev menu keeps its own).
+document.addEventListener('contextmenu', (e) => {
+  if (!(e.target as Element).closest?.('#dev-menu')) e.preventDefault();
+});
 
 // The game starts once the UI font is in, so no text is made in the fallback font.
 loadUiFont().then(() => {
@@ -20,7 +26,7 @@ loadUiFont().then(() => {
     pixelArt: true,
     roundPixels: true,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: 1280, height: 800 },
-    scene: [ArenaScene, TreeScene, VestigeScene],
+    scene: [ArenaScene, TreeScene, VestigeScene, HatScene],
   });
 
   // Handy for poking at scenes from the browser console while tuning.

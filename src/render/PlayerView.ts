@@ -4,6 +4,7 @@ import { camera, cloak, feel, heroLook } from '../config/feel';
 import { render } from '../config/render';
 import { doomsday } from '../config/vestiges';
 import { ellipseHalfSize, toScreen, toWorld, Vec2 } from '../core/iso';
+import { hatTexture, wornHat } from '../data/hats';
 import { Player } from '../sim/Player';
 import { ellipseArc, lerp, solveArm } from './armMath';
 import { heroWalkFrames, portalFrames, Tex } from './art';
@@ -23,6 +24,7 @@ const ahead = { x: 0, y: 0 };
 // It reads the sim and never changes it.
 export class PlayerView {
   private body: Phaser.GameObjects.Image;
+  private hat: Phaser.GameObjects.Image;
   private shadow: Phaser.GameObjects.Image;
   private bow: BowView;
   private handGlow: Phaser.GameObjects.Image[];
@@ -51,6 +53,7 @@ export class PlayerView {
   constructor(private scene: Phaser.Scene, private player: Player, private fx: Fx) {
     this.shadow = scene.add.image(0, 0, Tex.shadow);
     this.body = scene.add.image(0, 0, Tex.hero).setOrigin(0.5, 1);
+    this.hat = scene.add.image(0, 0, Tex.glow).setOrigin(0.5, 1).setVisible(false);
     this.cloak = scene.add.graphics();
     this.eyeGlow = [0, 1].map(() => scene.add.image(0, 0, Tex.glow).setTint(0xa060ff).setBlendMode(Phaser.BlendModes.ADD));
     this.bow = new BowView(scene, fx);
@@ -151,6 +154,23 @@ export class PlayerView {
   setVisible(visible: boolean): void {
     for (const o of [this.body, this.shadow, this.cloak, ...this.eyeGlow, this.arms, this.ring, ...this.handGlow]) o.setVisible(visible);
     this.bow.setVisible(visible);
+    this.hat.setVisible(visible && !!wornHat());
+  }
+
+  // The hat he wears sits on his head, moving, turning and flashing with his body.
+  private updateHat(y: number): void {
+    const worn = wornHat();
+    this.hat.setVisible(this.body.visible && !!worn);
+    if (!worn) return;
+    this.hat
+      .setTexture(hatTexture(worn.id))
+      .setPosition(this.body.x, y - heroLook.hatHeight * this.px)
+      .setScale(this.px)
+      .setFlipX(this.body.flipX)
+      .setAlpha(this.body.alpha)
+      .setDepth(this.body.depth + 0.25);
+    if (this.flashTime > 0) this.hat.setTintFill(0xffffff);
+    else this.hat.clearTint();
   }
 
   onFire(): void {
@@ -259,6 +279,7 @@ export class PlayerView {
     this.flashTime = Math.max(0, this.flashTime - dt);
     if (this.flashTime > 0) this.body.setTintFill(0xffffff);
     else this.body.clearTint();
+    this.updateHat(screen.y - bob);
     this.shadow.setPosition(screen.x, screen.y).setScale(px * 0.9, px * 0.35).setDepth(screen.y - 1000);
 
     // While shooting he holds his arms up as if steering the bow with magic, and flaps them.
@@ -364,6 +385,8 @@ export class PlayerView {
       this.afterimageTimer -= dt;
       if (this.afterimageTimer <= 0) {
         this.fx.afterimage(this.body.texture.key, screen.x, screen.y, facingLeft, px, screen.y);
+        const worn = wornHat();
+        if (worn) this.fx.afterimage(hatTexture(worn.id), screen.x, screen.y - heroLook.hatHeight * px, facingLeft, px, screen.y);
         this.afterimageTimer += dash.duration / dash.afterimages;
       }
     }

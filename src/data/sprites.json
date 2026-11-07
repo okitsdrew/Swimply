@@ -38,6 +38,72 @@
       ]
     },
     {
+      "id": "hero_chef",
+      "name": "hero_chef",
+      "palette": {
+        "a": "#0b0910",
+        "r": "#2a2140",
+        "h": "#1c1826",
+        "b": "#9a50ff",
+        "c": "#f0e0ff",
+        "f": "#5a2a9a",
+        "d": "#949494",
+        "e": "#b4b4c6",
+        "s": "#5e5e70",
+        "g": "#07070a",
+        "i": "#f5f2ec",
+        "j": "#c9c5d0",
+        "k": "#2a1a14",
+        "l": "#5a5a5a"
+      },
+      "rows": [
+        "...llllll...",
+        "..ljjiiiil..",
+        ".liiiiiiijl.",
+        "ljiijiiiijjl",
+        ".ljiiiiiijl.",
+        "..ljiijijl..",
+        "..liiiiijl..",
+        "..ljjjjjjl..",
+        "..arhhaaaa..",
+        ".arbcaacbaa.",
+        ".ahbbaabbaa.",
+        ".ahaaaaaaaa.",
+        "..aaaaaaaa..",
+        "...aeaasa...",
+        "...edddds...",
+        "...edffds...",
+        "...ddddss...",
+        "...bbbbbf...",
+        "...ggedgg...",
+        "...aaedaa...",
+        "...ahedaa...",
+        "...aa..aa...",
+        "...ed..ed...",
+        "...ds..ds...",
+        "..sss..sss.."
+      ]
+    },
+    {
+      "id": "hat_chef",
+      "name": "hat_chef",
+      "palette": {
+        "i": "#f5f2ec",
+        "j": "#c9c5d0",
+        "l": "#5a5a5a"
+      },
+      "rows": [
+        "...llllll...",
+        "..ljjiiiil..",
+        ".liiiiiiijl.",
+        "ljiijiiiijjl",
+        ".ljiiiiiijl.",
+        "..ljiijijl..",
+        "..liiiiijl..",
+        "..ljjjjjjl.."
+      ]
+    },
+    {
       "id": "hero_asleep",
       "name": "hero_asleep",
       "palette": {
