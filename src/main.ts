@@ -5,6 +5,7 @@ import { ArenaScene } from './scenes/ArenaScene';
 import { TreeScene } from './scenes/TreeScene';
 import { VestigeScene } from './scenes/VestigeScene';
 import { HatScene } from './scenes/HatScene';
+import { ShopScene } from './scenes/ShopScene';
 import { loadUiFont } from './render/ui';
 
 loadSave();
@@ -26,7 +27,7 @@ loadUiFont().then(() => {
     pixelArt: true,
     roundPixels: true,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: 1280, height: 800 },
-    scene: [ArenaScene, TreeScene, VestigeScene, HatScene],
+    scene: [ArenaScene, TreeScene, VestigeScene, HatScene, ShopScene],
   });
 
   // Handy for poking at scenes from the browser console while tuning.

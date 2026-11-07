@@ -94,6 +94,7 @@ class PreviewScene extends Phaser.Scene {
       tiles: Array.from({ length: TILES * TILES }, () => floor),
       objects: asset ? [{ asset, x: mid, y: mid, size: 1, if: '', unless: '', to: '', opens: '', opensWhenClear: false, onBreak: '', aggro: 0, zone: '', every: 0, max: 0 }] : [],
       darkness: 0,
+      clearedSets: '',
       zones: [],
     };
     this.view?.destroy();

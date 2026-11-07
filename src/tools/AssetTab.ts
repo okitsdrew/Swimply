@@ -149,6 +149,10 @@ export class AssetTab {
       el('h3', { text: 'Sound' }),
       row('loops', select(['', ...sounds.list().map((s) => s.id)], a.sound ?? '', (v) => { a.sound = v; this.edit(); })),
       el('p', { class: 'hint', text: 'A looping sound, louder the nearer the player is to one of these (a fire\'s crackle). Range and volume are in the dev menu\'s sound section.' }),
+
+      el('h3', { text: 'Talking' }),
+      row('talk', textInput(a.talk ?? '', (v) => { a.talk = v.trim(); this.edit(); })),
+      el('p', { class: 'hint', text: 'A script id in story.json: pressing F next to this plays it. More scripts named <id>-2, <id>-3... take turns with it.' }),
     );
   }
 
@@ -198,7 +202,7 @@ export class AssetTab {
 
   private create(): void {
     const id = uniqueId('asset', this.taken);
-    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], hit: [], marker: '', light: null, sound: '', health: 0, enemy: '', spawnEvery: 3, spawnMax: 3 };
+    const a: Asset = { id, name: id, category: this.current?.category ?? 'props', parts: [], collision: [], hit: [], marker: '', light: null, sound: '', talk: '', health: 0, enemy: '', spawnEvery: 3, spawnMax: 3 };
     this.ws.assets.push(a);
     this.ws.touch('assets');
     this.open(a);

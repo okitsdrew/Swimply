@@ -69,11 +69,12 @@ export function assetsText(list: Asset[]): string {
     hit: (a.hit ?? []).map((h) => (h.box ? compact({ box: true, x: h.x, y: h.y, w: h.w, h: h.h, turned: h.turned }, { x: 0, y: 0, turned: false }) : compact({ x: h.x, y: h.y, radius: h.radius }, { x: 0, y: 0 }))),
     light: a.light ? compact({ ...a.light }, { x: 0, y: 0, flicker: 0 }) : null,
     sound: a.sound ?? '',
+    talk: a.talk ?? '',
     health: a.health ?? 0,
     enemy: a.enemy ?? '',
     spawnEvery: a.enemy && a.marker !== 'enemy' ? a.spawnEvery : 3,
     spawnMax: a.enemy && a.marker !== 'enemy' ? a.spawnMax : 3,
-  }, { marker: '', light: null, sound: '', health: 0, enemy: '', spawnEvery: 3, spawnMax: 3 })));
+  }, { marker: '', light: null, sound: '', talk: '', health: 0, enemy: '', spawnEvery: 3, spawnMax: 3 })));
 }
 
 export const hex = (c: number): string => '#' + c.toString(16).padStart(6, '0');
@@ -112,6 +113,8 @@ export interface MapFile {
   zones?: string[];
   legend: Record<string, string>;
   darkness: number;
+  // Missing on drafts kept from before maps had it.
+  clearedSets?: string;
 }
 
 // Characters for zones, in order of first use.
@@ -164,7 +167,7 @@ ${zoneRows.map((r) => `    ${JSON.stringify(r)}`).join(',\n')}
   "format": ${MAP_FORMAT},
   "kind": "area",
   "name": ${JSON.stringify(m.name)},${m.mode && m.mode !== 'calm' ? `\n  "mode": ${JSON.stringify(m.mode)},` : ''}
-  "tileSize": ${m.tileSize},${m.darkness ? `\n  "darkness": ${round(m.darkness)},` : ''}
+  "tileSize": ${m.tileSize},${m.darkness ? `\n  "darkness": ${round(m.darkness)},` : ''}${m.clearedSets ? `\n  "clearedSets": ${JSON.stringify(m.clearedSets)},` : ''}
   "legend": {
 ${legendLines.join(',\n')}
   },

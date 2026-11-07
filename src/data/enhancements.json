@@ -1,0 +1,9 @@
+{
+  "perception": ["mindscapeCleared", "kateDefeated"],
+  "enhancements": [
+    { "id": "momentum", "vestige": "doomsday", "side": 0, "name": "Momentum", "text": "Each arrow that hits an enemy adds 1% damage and attack speed, up to 25%. They last 5 seconds, and any hit restarts the timer." },
+    { "id": "soul_mending", "vestige": "doomsday", "side": 1, "name": "Soul Mending", "text": "2x damage to Timo's Doomsday Scenario." },
+    { "id": "toasted_tips", "vestige": "flame_torrent", "side": 0, "name": "Toasted Tips", "text": "Arrows apply burn on hit." },
+    { "id": "kitchen_rush", "vestige": "flame_torrent", "side": 1, "name": "Kitchen Rush", "text": "2x damage to Flame Torrent and burn." }
+  ]
+}

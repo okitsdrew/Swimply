@@ -49,7 +49,8 @@ export interface Speaker {
 //                                                            the script waits. "hero" slides back and follows him
 //   { "walk": "throne" }                                     he walks up to the first placed thing of that asset id
 //                                                            (or to a spot, "800,640") on his own; the script waits
-//                                                            while Timo leads the way
+//                                                            while Timo leads the way; `stop` is how far off he
+//                                                            stops (story.walkStop if not given)
 //   { "dash": "800,640" }                                    one real dash toward the spot (or a placed thing's asset
 //                                                            id), its usual length; the script waits
 //   { "timo": "hide" }  { "timo": "pop" }                    Timo is hidden inside him, or pops back out in a puff
@@ -59,6 +60,12 @@ export interface Speaker {
 //   { "bark": "kate", "text": "...", "time": 2.5 }           a small bubble over her that fades by itself and stops
 //                                                            nothing (`time` is optional; dialogue.barkTime otherwise)
 //   { "defeat": "kate" }                                     a beaten boss fades away and is gone; the script waits
+//   { "animate": "wobbles-curled", "frames": ["a", "b"], "time": 2 }
+//                                                            the first placed thing of that asset id gives way to
+//                                                            these sprites, shown in turn over `time`; the script
+//                                                            waits. The last one stays until the next flag step
+//                                                            or the end of the script
+//   { "shop": true }                                       opens Wobbles' shop; the game waits until it is closed
 //   { "vestige": "doomsday" }                                he reclaims that Vestige: a banner, and it fills an
 //                                                            empty slot
 //   { "sound": "explosion_medium" }                          plays a sound (an id in sounds.json); carries on
@@ -76,12 +83,14 @@ export type Step =
   | { kind: 'timo'; target: string }
   | { kind: 'shake'; amount: number }
   | { kind: 'camera'; target: string; seconds: number }
-  | { kind: 'walk'; target: string }
+  | { kind: 'walk'; target: string; stop: number }
   | { kind: 'dash'; target: string }
   | { kind: 'look'; who: string; face: string }
   | { kind: 'butterfly'; on: boolean }
   | { kind: 'bark'; speaker: Speaker; text: string; seconds: number }
   | { kind: 'defeat'; who: string }
+  | { kind: 'animate'; target: string; frames: string[]; seconds: number }
+  | { kind: 'shop' }
   | { kind: 'vestige'; id: string }
   | { kind: 'sound'; id: string };
 
@@ -156,7 +165,7 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
   if (e.timo !== undefined) return { kind: 'timo', target: str(e.timo, 'hero', `${where}.timo`, problems) };
   if (e.shake !== undefined) return { kind: 'shake', amount: num(e.shake, 6, `${where}.shake`, problems) };
   if (e.camera !== undefined) return { kind: 'camera', target: str(e.camera, 'hero', `${where}.camera`, problems), seconds: Math.max(0, num(e.time, 1.2, `${where}.time`, problems)) };
-  if (e.walk !== undefined) return { kind: 'walk', target: str(e.walk, '', `${where}.walk`, problems) };
+  if (e.walk !== undefined) return { kind: 'walk', target: str(e.walk, '', `${where}.walk`, problems), stop: e.stop === undefined ? -1 : Math.max(0, num(e.stop, 0, `${where}.stop`, problems)) };
   if (e.vestige !== undefined) {
     const id = str(e.vestige, '', `${where}.vestige`, problems);
     if (!vestiges.get(id)) return problems.push(`${where}: unknown vestige ${JSON.stringify(id)} (see vestiges.json), skipped`), null;
@@ -171,8 +180,10 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
     return { kind: 'bark', speaker, text: str(e.text, '', `${where}.text`, problems), seconds: e.time === undefined ? 0 : Math.max(0, num(e.time, 0, `${where}.time`, problems)) };
   }
   if (e.defeat !== undefined) return { kind: 'defeat', who: str(e.defeat, '', `${where}.defeat`, problems) };
+  if (e.animate !== undefined) return { kind: 'animate', target: str(e.animate, '', `${where}.animate`, problems), frames: list(e.frames, `${where}.frames`, problems).map((f) => str(f, '', `${where}.frames`, problems)), seconds: Math.max(0, num(e.time, 1, `${where}.time`, problems)) };
+  if (e.shop !== undefined) return { kind: 'shop' };
   if (e.sound !== undefined) return { kind: 'sound', id: str(e.sound, '', `${where}.sound`, problems) };
-  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, dash, look, butterfly, bark, defeat, vestige, sound), skipped`);
+  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, dash, look, butterfly, bark, defeat, animate, shop, vestige, sound), skipped`);
   return null;
 }
 

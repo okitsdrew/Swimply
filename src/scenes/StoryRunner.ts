@@ -17,7 +17,8 @@ export interface Stage {
   moveTimo(target: string): void;
   shake(amount: number): void;
   camera(target: string, seconds: number): void;
-  walk(target: string): void;
+  // `stop` is how far off he stops; below 0 for the usual distance.
+  walk(target: string, stop: number): void;
   // Still walking to where a walk step sent him.
   readonly walking: boolean;
   dash(target: string): void;
@@ -28,6 +29,9 @@ export interface Stage {
   butterfly(on: boolean): void;
   bark(who: string, color: string, text: string, seconds: number): void;
   defeat(who: string): void;
+  // A placed thing gives way to these frames, shown in turn.
+  animate(target: string, frames: string[], seconds: number): void;
+  shop(): void;
   // Still fading away.
   readonly defeating: boolean;
   vestige(id: string): void;
@@ -102,7 +106,7 @@ export class StoryRunner {
       : step.kind === 'wait' ? this.time >= step.seconds
       : step.kind === 'waitFor' ? this.events.has(step.event)
       : step.kind === 'eyes' ? !step.open || this.time >= step.seconds
-      : step.kind === 'camera' ? this.time >= step.seconds
+      : step.kind === 'camera' || step.kind === 'animate' ? this.time >= step.seconds
       : step.kind === 'walk' ? !this.stage.walking
       : step.kind === 'dash' ? !this.stage.dashing
       : step.kind === 'defeat' ? !this.stage.defeating
@@ -140,12 +144,14 @@ export class StoryRunner {
     else if (step.kind === 'timo') this.stage.moveTimo(step.target);
     else if (step.kind === 'shake') this.stage.shake(step.amount);
     else if (step.kind === 'camera') this.stage.camera(step.target, step.seconds);
-    else if (step.kind === 'walk') this.stage.walk(step.target);
+    else if (step.kind === 'walk') this.stage.walk(step.target, step.stop);
     else if (step.kind === 'dash') this.stage.dash(step.target);
     else if (step.kind === 'look') this.stage.look(step.who, step.face);
     else if (step.kind === 'butterfly') this.stage.butterfly(step.on);
     else if (step.kind === 'bark') this.bark(step);
     else if (step.kind === 'defeat') this.stage.defeat(step.who);
+    else if (step.kind === 'animate') this.stage.animate(step.target, step.frames, step.seconds);
+    else if (step.kind === 'shop') this.stage.shop();
     else if (step.kind === 'vestige') this.stage.vestige(step.id);
     else if (step.kind === 'sound') this.stage.sound(step.id);
     // Steps that finish at once move on in the next update.

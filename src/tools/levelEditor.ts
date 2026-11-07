@@ -1220,6 +1220,8 @@ class LevelEditor {
         : 'Calm: no run. Shade spawn zones do nothing here, and a death puts him back where he came in.' }),
       row('darkness', numberInput(m.darkness ?? 0, 0.05, (v) => { d.change((mm) => (mm.darkness = Phaser.Math.Clamp(v, 0, 1))); this.changed(); }, { min: 0, max: 1 })),
       el('p', { class: 'hint', text: 'How dark the map is away from lights, 0 to 1. Assets with a light (set in the asset maker) light it up.' }),
+      row('cleared sets', textInput(m.clearedSets ?? '', (v) => { d.change((mm) => (mm.clearedSets = v.trim())); this.changed(); })),
+      el('p', { class: 'hint', text: 'A save flag turned on once no enemy or spawner is left in the map, so a story scene or a thing can wait for it. Empty for none.' }),
       el('p', { class: 'hint', text: `${m.cols} × ${m.rows} tiles, each ${m.tileSize} world units across. The top corner of the diamond is row 0, column 0.` }),
       edge('top', 'top edge'),
       edge('left', 'left edge'),

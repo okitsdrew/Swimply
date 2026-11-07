@@ -72,6 +72,29 @@ const emblemRanges = {
   emblemEmbers: { min: 0, max: 40, step: 1 },
 };
 
+// Skill enhancements' numbers. What each one is lives in src/data/enhancements.json.
+export const enhancementValues = defineConfig(
+  'enhancements',
+  'vestiges',
+  {
+    // Momentum: what each arrow hit adds to damage and attack speed (0.01 is 1%), the most it can reach, and seconds
+    // it lasts after the last hit.
+    momentumPerHit: 0.01,
+    momentumMax: 0.25,
+    momentumTime: 5,
+    soulMendingDamage: 2,
+    // Kitchen Rush: Flame Torrent's damage and all his burn.
+    kitchenRushDamage: 2,
+  },
+  {
+    momentumPerHit: { min: 0, max: 0.2, step: 0.005 },
+    momentumMax: { min: 0, max: 2, step: 0.05 },
+    momentumTime: { min: 0.5, max: 30, step: 0.5 },
+    soulMendingDamage: { min: 1, max: 10, step: 0.25 },
+    kitchenRushDamage: { min: 1, max: 10, step: 0.25 },
+  },
+);
+
 // Flame Torrent, the fire butterfly's Vestige: fireballs from each side of him cross just in front of him and curve
 // out to their full range toward the mouse on paths set where they were shot, then fly straight back to him wherever
 // he is now. They pass over everything but walls: a wall turns one back on the way out and puts it out on the way

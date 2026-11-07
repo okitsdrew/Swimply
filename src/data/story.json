@@ -2,7 +2,8 @@
   "speakers": [
     { "id": "timo", "name": "Timo", "color": "#c58cff", "face": "timo", "voice": "voice_blip", "pitch": 1.5 },
     { "id": "kate", "name": "Kate", "color": "#ffb04a", "face": "kate", "voice": "voice_blip", "pitch": 1.2 },
-    { "id": "swimply", "name": "Swimply", "color": "#f2d7a6", "face": "hero", "bubble": true, "voice": "voice_blip", "pitch": 0.8, "lineSounds": ["swimply_dots_a", "swimply_dots_b"] }
+    { "id": "swimply", "name": "Swimply", "color": "#f2d7a6", "face": "hero", "bubble": true, "voice": "voice_blip", "pitch": 0.8, "lineSounds": ["swimply_dots_a", "swimply_dots_b"] },
+    { "id": "wobbles", "name": "Wobbles", "color": "#f7c83a", "face": "wobbles_smile", "voice": "voice_blip", "pitch": 1 }
   ],
   "scripts": [
     {
@@ -188,6 +189,48 @@
         { "say": "kate", "face": "kate_surprised", "text": "Chat, am I cooked?" },
         { "defeat": "kate" },
         { "control": true }
+      ]
+    },
+    {
+      "id": "wobbles-grows",
+      "map": "garden",
+      "if": "gardenCleared",
+      "unless": "wobblesGrown",
+      "steps": [
+        { "control": false },
+        { "wait": 0.5 },
+        { "camera": "wobbles-curled", "time": 1.2 },
+        { "wait": 0.5 },
+        { "animate": "wobbles-curled", "frames": ["wobbles_curled", "wobbles_grow_0", "wobbles_grow_1", "wobbles_grow_2"], "time": 2 },
+        { "flag": "wobblesGrown" },
+        { "wait": 0.4 },
+        { "say": "wobbles", "face": "wobbles_happy", "text": "oh, praise the sun!" },
+        { "say": "wobbles", "face": "wobbles_smile", "text": "glad to see someone's finally taking care of the weeds around here" },
+        { "walk": "wobbles", "stop": 70 },
+        { "camera": "hero", "time": 0.6 },
+        { "say": "swimply", "text": "..." },
+        { "wait": 1 },
+        { "say": "wobbles", "face": "wobbles_sleepy", "text": "...no i've never tried it before..." },
+        { "wait": 1 },
+        { "say": "wobbles", "face": "wobbles_smile", "text": "anyways, I'm Wobbles, Robert Wobbles. Pleasure to meet you" },
+        { "say": "swimply", "text": "..." },
+        { "say": "wobbles", "face": "wobbles_smile", "text": "Swimply, eh? Very curious.." },
+        { "say": "wobbles", "face": "wobbles_surprised", "text": "Ah what is this now, I see you've found a Vestige!" },
+        { "say": "timo", "face": "timo_serious", "text": "Sup nerd" },
+        { "say": "wobbles", "face": "wobbles_smile", "text": "I can show you how to unlock its full potential" },
+        { "say": "wobbles", "face": "wobbles_happy", "text": "all you need, is a little Perception..." },
+        { "control": true },
+        { "shop": true }
+      ]
+    },
+    {
+      "id": "wobbles-talk",
+      "map": "",
+      "steps": [
+        { "control": false },
+        { "say": "wobbles", "face": "wobbles_happy", "text": "all you need, is a little Perception..." },
+        { "control": true },
+        { "shop": true }
       ]
     }
   ]

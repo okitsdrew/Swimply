@@ -14,6 +14,7 @@ import { allOn, AreaMap, findMarker, maps, Placed, withFlags } from '../data/map
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, scripts, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
+import { enhancementOn, forgetEnhancements } from '../data/enhancements';
 import { forgetHats, gainHat, hats, ownsHat } from '../data/hats';
 import { pickupKinds } from '../data/pickups';
 import { forgetVestiges, isEquipped, unlockVestige, vestiges } from '../data/vestiges';
@@ -48,7 +49,7 @@ import { Breakables } from '../sim/Breakables';
 import { Pickup, Pickups } from '../sim/Pickups';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
-import { stats } from '../sim/stats';
+import { momentum, stats } from '../sim/stats';
 import { Enemy } from '../sim/enemies';
 import { Effect, EFFECT_KINDS } from '../sim/status';
 import { Target } from '../sim/targets';
@@ -71,6 +72,8 @@ const DEFAULT_MAP = 'spawn';
 //   &calm             no Shades appear, to walk round a map
 // The map is kept in the address, so the reload after a tool saves comes back to the same map.
 const params = new URLSearchParams(location.search);
+// Whose turn it is among the scripts of each thing he can talk to. Kept while the page is open, not saved.
+const talkTurns = new Map<string, number>();
 
 // The arena: a map from src/data/maps, played the way its mode says. In the Mindscape the run (Shades that keep
 // coming, death, the upgrade tree, and the next run) is Mindscape.ts's. Any other map is calm: no Shades, no run
@@ -146,6 +149,8 @@ export class ArenaScene extends Phaser.Scene {
   private everyone: Enemy[] = [];
   // The Mindscape menu (Vestiges) is open over the arena.
   private menuOpen = false;
+  // A placed thing's frames playing in a story step.
+  private acting: { img: Phaser.GameObjects.Image; frames: string[]; time: number; total: number } | null = null;
   private pickupsView!: PickupsView;
   // Every enemy, of every kind (see enemyKinds.ts).
   private enemies!: Enemies;
@@ -225,11 +230,12 @@ export class ArenaScene extends Phaser.Scene {
     this.caster.onDeny = () => this.sfx.play('deny');
     this.caster.onBlast = (x, y) => this.doomsdayBlast(x, y);
     this.fireballs = new Fireballs(this.world, (o) => this.breakables.canBreak(o));
-    this.fireballs.onHitThing = (thing, damage) => {
+    this.fireballs.onHitThing = (thing) => {
+      const damage = stats.torrentDamage();
       const s = toScreen(thing.x, thing.y);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
       this.sfx.play('hit');
-      this.breakables.burn(thing, flameTorrent.burn, flameTorrent.burnPower);
+      this.breakables.burn(thing, flameTorrent.burn, stats.burnPower());
       this.breakables.damage(thing, damage);
     };
     this.fireballsView = new FireballsView(this, this.fireballs, this.fx);
@@ -243,9 +249,10 @@ export class ArenaScene extends Phaser.Scene {
     };
     this.caster.playing = (id) => id === 'flame_torrent' && this.fireballs.active;
     this.vestigesView.emblemAt = (id) => (id === 'flame_torrent' ? this.fireballs.lead : null);
-    this.fireballs.onHit = (target, damage, x, y) => {
+    this.fireballs.onHit = (target, _damage, x, y) => {
+      const damage = stats.torrentDamage();
       this.enemies.damage(target, damage, x, y);
-      this.enemies.afflict(target as Enemy, [{ kind: 'burn', seconds: flameTorrent.burn, power: flameTorrent.burnPower }]);
+      this.enemies.afflict(target as Enemy, [this.burn()]);
       const s = toScreen(target.x, target.y);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
       this.sfx.play('hit');
@@ -312,6 +319,7 @@ export class ArenaScene extends Phaser.Scene {
     this.control = true;
     this.walkTo = null;
     this.pan = null;
+    this.acting = null;
     this.menuOpen = false;
     const walking = () => this.walkTo !== null;
     const player = this.player;
@@ -321,7 +329,10 @@ export class ArenaScene extends Phaser.Scene {
       onLine: (speaker, face) => {
         if (speaker === 'timo') this.timo.setFace(face);
         else if (speaker === 'kate') this.kates.view.look(face);
-        else if (speaker === null) this.timo.setFace('');
+        else if (speaker === null) {
+          this.timo.setFace('');
+          this.endAnimation();
+        }
       },
       setControl: (on) => {
         this.control = on;
@@ -331,10 +342,13 @@ export class ArenaScene extends Phaser.Scene {
       pose: (pose, seconds, frames) => (pose === 'asleep' ? this.pose.asleep() : this.pose.standUp(seconds, frames)),
       moveTimo: (target) => this.moveTimo(target),
       shake: (amount) => this.fx.addShake(amount),
-      flag: () => this.showMap(),
+      flag: () => {
+        this.showMap();
+        this.endAnimation();
+      },
       sound: (id) => this.sfx.playSound(id),
       camera: (target, seconds) => this.panTo(target, seconds),
-      walk: (target) => this.walkToward(target),
+      walk: (target, stop) => this.walkToward(target, stop),
       get walking() {
         return walking();
       },
@@ -352,8 +366,11 @@ export class ArenaScene extends Phaser.Scene {
       get defeating() {
         return dying();
       },
+      animate: (target, frames, seconds) => this.animate(target, frames, seconds),
+      shop: () => this.openShop(),
       vestige: (id) => this.reclaim(id),
     });
+    this.travel.onTalk = (id) => this.talk(id);
 
     this.player.onFire = (_x, _y, dx, dy) => {
       const m = this.view.muzzle();
@@ -381,6 +398,8 @@ export class ArenaScene extends Phaser.Scene {
     this.arrows.onHit = (target, damage, ax, ay, dx, dy) => {
       // Knockback pushes away from a point just behind the hit, so along the arrow's flight.
       this.enemies.damage(target, damage, ax - dx, ay - dy);
+      momentum.hit();
+      if (enhancementOn('toasted_tips')) this.enemies.afflict(target as Enemy, [this.burn()]);
       const s = toScreen(ax, ay);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
       this.fx.addShake(camera.shakeOnHit);
@@ -391,6 +410,7 @@ export class ArenaScene extends Phaser.Scene {
       const s = toScreen(x, y);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
       this.sfx.play('hit');
+      if (enhancementOn('toasted_tips')) this.breakables.burn(thing, flameTorrent.burn, stats.burnPower());
       this.breakables.damage(thing, damage);
     };
     this.breakables.onHit = (thing) => this.breakablesView.onHit(thing);
@@ -431,6 +451,8 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Vestiges: forget all', run: () => forgetVestiges() },
       { label: "Hat: grant Chef's hat", run: () => gainHat('chef') },
       { label: 'Hats: forget all', run: () => forgetHats() },
+      { label: 'Enhancements: forget all', run: () => forgetEnhancements() },
+      { label: "Wobbles' shop: open", run: () => this.openShop() },
       ...EFFECT_KINDS.map((kind) => ({ label: `Effect: ${kind} all (3s)`, run: () => this.afflictAll({ kind, seconds: 3, power: kind === 'burn' ? 20 : 0.5 }) })),
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
       { label: 'Level editor', run: () => window.open(`level-editor.html?map=${this.mapId}`, 'swimply-level-editor') },
@@ -438,8 +460,21 @@ export class ArenaScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input2.destroy();
       this.scene.stop('tree');
-      MENU_PAGES.forEach((page) => this.scene.stop(page));
+      this.closeScreens();
     });
+  }
+
+  private closeScreens(): void {
+    for (const page of [...MENU_PAGES, 'shop']) this.scene.stop(page);
+  }
+
+  // A story step opens Wobbles' shop. Like the Mindscape menu, the game waits, and Tab (or F) closes it.
+  private openShop(): void {
+    this.menuOpen = true;
+    this.caster.aiming = -1;
+    this.paused = true;
+    this.sfx.play('treeOpen');
+    this.scene.launch('shop');
   }
 
   // Tab: the Mindscape menu, to equip Vestiges and hats. It opens only once he holds one, and only while no fight is on, no
@@ -447,7 +482,7 @@ export class ArenaScene extends Phaser.Scene {
   private toggleMenu(): void {
     if (this.menuOpen) {
       this.menuOpen = false;
-      MENU_PAGES.forEach((page) => this.scene.stop(page));
+      this.closeScreens();
       this.sfx.play('click');
       // Clicks in the menu also reached the game's input; drop them so they don't fire an arrow.
       this.input2.endFrame();
@@ -481,15 +516,52 @@ export class ArenaScene extends Phaser.Scene {
     return { x: o.x, y: o.y, reach };
   }
 
+  // A story step: the placed thing is gone for this visit, and its frames play where it stood.
+  private animate(target: string, frames: string[], seconds: number): void {
+    const o = this.map.objects.find((p) => p.asset.id === target);
+    if (!o || !frames.length) return console.warn(`[story] cannot animate ${JSON.stringify(target)} in ${this.mapId}`);
+    const part = o.asset.parts[0];
+    const s = toScreen(o.x, o.y);
+    this.endAnimation();
+    this.acting = { img: this.add.image(s.x, s.y, frames[0]).setOrigin(part?.originX ?? 0.5, part?.originY ?? 1).setScale(render.pixelScale * o.size).setDepth(s.y), frames, time: 0, total: seconds };
+    this.broken.add(o);
+    this.showMap();
+  }
+
+  private endAnimation(): void {
+    this.acting?.img.destroy();
+    this.acting = null;
+  }
+
+  // He talks to something: its script, or the next of those that take turns with it (<id>-2, <id>-3...).
+  private talk(id: string): void {
+    this.input2.consume('interact');
+    const turns = scripts.list().filter((s) => s.id === id || s.id.startsWith(`${id}-`));
+    if (!turns.length) return console.warn(`[story] no script ${JSON.stringify(id)}`);
+    const turn = talkTurns.get(id) ?? 0;
+    talkTurns.set(id, turn + 1);
+    this.story.play(turns[turn % turns.length]);
+  }
+
+  // The map's "cleared sets" flag turns on for this visit once no enemy or spawner is left, and a scene may wait for it.
+  private checkCleared(): void {
+    const flag = this.map.clearedSets;
+    if (!flag || save.flags[flag] || this.areaFlags[flag] || this.story.playing || !this.enemies.cleared(this.map)) return;
+    this.areaFlags[flag] = true;
+    this.showMap();
+    const script = scriptFor(this.mapId, { ...save.flags, ...this.areaFlags });
+    if (script) this.story.play(script);
+  }
+
   private panTo(target: string, seconds: number): void {
     const to = target === 'hero' ? null : this.spotOf(target);
     if (target !== 'hero' && !to) return;
     this.pan = { from: { ...this.camCenter }, to: to ? toScreen(to.x, to.y) : null, time: 0, total: seconds };
   }
 
-  private walkToward(target: string): void {
+  private walkToward(target: string, stop: number): void {
     const s = this.spotOf(target);
-    this.walkTo = s && { x: s.x, y: s.y, stop: s.reach + cfgPlayer.bodyRadius + story.walkStop, stuck: 0, last: Infinity };
+    this.walkTo = s && { x: s.x, y: s.y, stop: s.reach + cfgPlayer.bodyRadius + (stop < 0 ? story.walkStop : stop), stuck: 0, last: Infinity };
   }
 
   private moveTimo(target: string): void {
@@ -512,6 +584,12 @@ export class ArenaScene extends Phaser.Scene {
   // where he stands, so broken spawners and killed enemies are back for testing.
   private resetMapFlags(): void {
     for (const o of this.baseMap.objects) if (o.onBreak) delete save.flags[o.onBreak];
+    // The scenes waiting for it being cleared can play again too.
+    const cleared = this.baseMap.clearedSets;
+    if (cleared) {
+      delete save.flags[cleared];
+      for (const s of scripts.list()) if (s.if.includes(cleared)) for (const f of s.unless) delete save.flags[f];
+    }
     writeSave();
     this.scene.restart({ map: this.mapId, at: { x: this.player.x, y: this.player.y } });
   }
@@ -523,6 +601,7 @@ export class ArenaScene extends Phaser.Scene {
     addShards(0);
     forgetVestiges();
     forgetHats();
+    forgetEnhancements();
     Travel.forget();
     this.scene.restart({ map: DEFAULT_MAP });
   }
@@ -552,8 +631,9 @@ export class ArenaScene extends Phaser.Scene {
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, amount);
     };
     const stun = [{ kind: 'stun' as const, seconds: doomsday.stun, power: 0 }];
-    this.enemies.blast(x, y, doomsday.damageRadius, doomsday.damage, doomsday.knockbackRadius, doomsday.knockback, stun, (e) => number(e.x, e.y, doomsday.damage));
-    const amount = doomsday.damage * doomsday.breakDamage;
+    const damage = stats.doomsdayDamage();
+    this.enemies.blast(x, y, doomsday.damageRadius, damage, doomsday.knockbackRadius, doomsday.knockback, stun, (e) => number(e.x, e.y, damage));
+    const amount = damage * doomsday.breakDamage;
     for (const o of [...this.map.objects]) {
       if (amount <= 0 || !this.breakables.canBreak(o) || Math.hypot(o.x - x, o.y - y) > doomsday.damageRadius) continue;
       number(o.x, o.y, amount);
@@ -596,6 +676,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private startRun(): void {
+    momentum.reset();
     this.enemies.clear();
     this.pickups.clear();
     this.pickupsView.clear();
@@ -636,6 +717,10 @@ export class ArenaScene extends Phaser.Scene {
     if (this.tree.open && input.justPressed('dash')) this.tree.close();
     if (input.justPressed('menu')) {
       input.consume('menu');
+      this.toggleMenu();
+    }
+    if (this.menuOpen && this.scene.isActive('shop') && input.justPressed('interact')) {
+      input.consume('interact');
       this.toggleMenu();
     }
     this.mapView.reveal(this.player.x, this.player.y);
@@ -728,6 +813,12 @@ export class ArenaScene extends Phaser.Scene {
     if (!this.story.playing) this.timo.setFace(doom ? 'timo_doom' : '');
     this.timo.setGlow(doom ? doomsday.blastColor : -1);
     this.timo.update(frameDt, this.player.x, this.player.y);
+    if (this.acting) {
+      const a = this.acting;
+      a.time += frameDt;
+      const i = a.total > 0 ? Math.floor((a.time / a.total) * a.frames.length) : a.frames.length - 1;
+      a.img.setTexture(a.frames[Math.min(a.frames.length - 1, i)]);
+    }
     this.pedestals.update(frameDt, this.map);
     this.statusView.update(frameDt, this.enemies.all(this.everyone));
     this.vestigesView.update(frameDt, this.player.x, this.player.y, this.run.state === 'fighting' && !hidden, cam.width, cam.height);
@@ -790,9 +881,11 @@ export class ArenaScene extends Phaser.Scene {
         this.input2.consume('interact');
       }
       this.travel.check(this.map, this.input2.justPressed('interact'), (o) => this.isOpen(o));
+      this.checkCleared();
       this.enemies.updateWorld(dt, this.map);
     }
     r.update(dt);
+    momentum.update(dt);
     this.mindscape?.update();
     this.nav.setGoal(this.player.x, this.player.y);
     this.enemies.update(dt);
@@ -821,6 +914,11 @@ export class ArenaScene extends Phaser.Scene {
     this.walkTo = null;
     this.player.stop();
     this.timo.followHero();
+  }
+
+  // His burn, however it was lit.
+  private burn(): Effect {
+    return { kind: 'burn', seconds: flameTorrent.burn, power: stats.burnPower() };
   }
 
   // He takes a Vestige back: a banner, and it fills an empty slot.
