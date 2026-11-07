@@ -30,7 +30,13 @@ All numbers in config are test values and will change.
 ## Wobbles and skill enhancements (planned, not built)
 
 - **Wobbles** is a talking sunflower in the Garden. On the first visit he lies curled up and dead, face hidden. When the Garden is cleared and its doors open, he grows into his normal self and talks to Swimply. From then on he is always in the Garden, the first NPC Swimply can talk to again and again (F).
-- He sells **skill enhancements**: each Vestige has 2, one that buffs Swimply and one that buffs that Vestige. Both can be bought. Each costs 1 **Perception** for now, and a right click refunds one.
+- He sells **skill enhancements**: each Vestige has 2, one that buffs Swimply and one that buffs that Vestige. Both can be bought. Each costs 1 **Perception** for now, and a right click refunds one, only at Wobbles. An enhancement only works while its Vestige is equipped. Pressing F by him gives one short line, then opens the shop.
+- **His shop is laid out like the throne room:** each Vestige's node sits where its pedestal is (Timo's top right, Flame Torrent's next clockwise), and its two enhancements come off it side by side, away from the middle. Vestiges not held yet show as dim empty nodes.
+- **The first four:**
+  - **Momentum** (Doomsday, buffs Swimply): each arrow that hits an enemy adds 1% damage and attack speed, up to 25%. They last 5 seconds, and any hit restarts the timer.
+  - **Soul Mending** (Doomsday, buffs the Vestige): 2x Doomsday damage.
+  - **Toasted Tips** (Flame Torrent, buffs Swimply): arrows apply burn on hit.
+  - **Kitchen Rush** (Flame Torrent, buffs the Vestige): 2x damage to Flame Torrent and its burn.
 - **Perception** comes from certain bosses and encounters: 1 for beating the werewolf (with the memories restored), 1 for beating Kate. What Swimply has earned is worked out from those story flags; the save only keeps what he has spent.
 
 ## Hats (built)

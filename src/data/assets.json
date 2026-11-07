@@ -1064,6 +1064,13 @@
         }
       ],
       "collision": [{ "radius": 10 }]
+    },
+    {
+      "id": "wobbles-curled",
+      "name": "Wobbles, curled up",
+      "category": "characters",
+      "parts": [{ "texture": "wobbles_curled", "originY": 0.96 }],
+      "collision": [{ "radius": 10 }]
     }
   ]
 }
