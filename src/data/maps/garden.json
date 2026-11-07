@@ -333,8 +333,6 @@
     { "asset": "planter-box-empty-se", "x": 320, "y": 544 },
     { "asset": "planter-box-empty-se", "x": 320, "y": 576 },
     { "asset": "planter-box-empty-se", "x": 320, "y": 608 },
-    { "asset": "planter-box-empty-se", "x": 320, "y": 640 },
-    { "asset": "planter-box-empty-se", "x": 320, "y": 672 },
     { "asset": "planter-box-empty-se", "x": 704, "y": 288 },
     { "asset": "planter-box-empty-se", "x": 704, "y": 320 },
     { "asset": "planter-box-empty-se", "x": 704, "y": 352 },
@@ -356,7 +354,7 @@
     { "asset": "standing-lamp", "x": 384, "y": 416 },
     { "asset": "standing-lamp", "x": 384, "y": 544 },
     { "asset": "spawner-priest", "x": 608, "y": 1056, "unless": "garden_p3spawner_broken", "onBreak": "garden_p3spawner_broken", "zone": "garden_a", "every": 1, "max": 2 },
-    { "asset": "wobbles-curled", "x": 800, "y": 1184, "unless": "wobblesGrown" },
-    { "asset": "wobbles", "x": 800, "y": 1184, "if": "wobblesGrown" }
+    { "asset": "wobbles-curled", "x": 320, "y": 672, "unless": "wobblesGrown" },
+    { "asset": "wobbles", "x": 320, "y": 672, "if": "wobblesGrown" }
   ]
 }
