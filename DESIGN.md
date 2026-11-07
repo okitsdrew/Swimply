@@ -33,6 +33,11 @@ All numbers in config are test values and will change.
 - He sells **skill enhancements**: each Vestige has 2, one that buffs Swimply and one that buffs that Vestige. Both can be bought. Each costs 1 **Perception** for now, and a right click refunds one.
 - **Perception** comes from certain bosses and encounters: 1 for beating the werewolf (with the memories restored), 1 for beating Kate. What Swimply has earned is worked out from those story flags; the save only keeps what he has spent.
 
+## Hats (built)
+
+- **Hats** are for looks only: they change nothing about how he plays. They have their own **Hats** tab in the Mindscape menu, next to Vestiges and laid out the same way (8 places), but he wears one at a time. Picking up a hat puts it on if he has none on. Clicking the one he wears takes it off.
+- **The Chef's hat** is the first, and about 8 are planned. Kate drops a yellow orb when she dies. It looks like a memory shard but does not fly to him: he walks up and presses F, and "Chef's hat acquired" shows. If he leaves or dies without it, it waits at the spot she started the fight until he comes back for it.
+
 ## The early game (built)
 
 The **spawn room**, the **Mindscape** and the **throne room** (the hub, the only safe place).

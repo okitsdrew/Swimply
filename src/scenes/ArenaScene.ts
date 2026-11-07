@@ -14,6 +14,7 @@ import { allOn, AreaMap, findMarker, maps, Placed, withFlags } from '../data/map
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, scripts, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
+import { forgetHats, gainHat } from '../data/hats';
 import { forgetVestiges, isEquipped, unlockVestige, vestiges } from '../data/vestiges';
 import { save, writeSave } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
@@ -423,6 +424,8 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Vestige: grant Doomsday', run: () => unlockVestige('doomsday') },
       { label: 'Vestige: grant Flame Torrent', run: () => unlockVestige('flame_torrent') },
       { label: 'Vestiges: forget all', run: () => forgetVestiges() },
+      { label: "Hat: grant Chef's hat", run: () => gainHat('chef') },
+      { label: 'Hats: forget all', run: () => forgetHats() },
       ...EFFECT_KINDS.map((kind) => ({ label: `Effect: ${kind} all (3s)`, run: () => this.afflictAll({ kind, seconds: 3, power: kind === 'burn' ? 20 : 0.5 }) })),
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
       { label: 'Level editor', run: () => window.open(`level-editor.html?map=${this.mapId}`, 'swimply-level-editor') },
@@ -514,6 +517,7 @@ export class ArenaScene extends Phaser.Scene {
     save.shards = 0;
     addShards(0);
     forgetVestiges();
+    forgetHats();
     Travel.forget();
     this.scene.restart({ map: DEFAULT_MAP });
   }

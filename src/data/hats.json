@@ -1,0 +1,5 @@
+{
+  "hats": [
+    { "id": "chef", "name": "Chef's hat", "place": 0, "droppedBy": "kate" }
+  ]
+}
