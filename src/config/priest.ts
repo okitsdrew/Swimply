@@ -6,7 +6,7 @@ export const priest = defineConfig(
   'priest',
   'enemies',
   {
-    hp: 250,
+    hp: 175,
     // How much of a stun, freeze, slow or burn it shrugs off: 0 takes it all, 1 is immune.
     ccResist: 0,
     speed: 90,

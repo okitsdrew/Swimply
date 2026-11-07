@@ -27,6 +27,12 @@ All numbers in config are test values and will change.
 - **Flame Torrent** (the fire butterfly's): four fireballs from each side of him (eight in all) cross just in front of him and curve out to their full range toward the mouse, on paths set where they were shot, then fly straight back to him wherever he is now, like boomerangs (teleporting or dashing drags them through whatever is between). They pass over everything but walls: a wall turns one back on the way out and puts it out on the way back. They burn what they hit, breakable things too. Drew's sketch is in the project files (`vestiges/flame-torrent-sketch.png`).
 - **Later: things only an element breaks.** Some objects will need a certain element to break (a bush only fire burns away, opening the way to a door). Build it when the first one is needed in a map, as a per-asset setting saying which element counts.
 
+## Wobbles and skill enhancements (planned, not built)
+
+- **Wobbles** is a talking sunflower in the Garden. On the first visit he lies curled up and dead, face hidden. When the Garden is cleared and its doors open, he grows into his normal self and talks to Swimply. From then on he is always in the Garden, the first NPC Swimply can talk to again and again (F).
+- He sells **skill enhancements**: each Vestige has 2, one that buffs Swimply and one that buffs that Vestige. Both can be bought. Each costs 1 **Perception** for now, and a right click refunds one.
+- **Perception** comes from certain bosses and encounters: 1 for beating the werewolf (with the memories restored), 1 for beating Kate. What Swimply has earned is worked out from those story flags; the save only keeps what he has spent.
+
 ## The early game (built)
 
 The **spawn room**, the **Mindscape** and the **throne room** (the hub, the only safe place).
@@ -96,7 +102,7 @@ The long-term vision, listed so the ideas are safe, not so code is written for t
 
 - A large world map beyond the castle, travelling to and **sieging an enemy castle** (more humanoid enemies with weapons, siege equipment; this needs big preparation).
 - **City management:** light at most, a puzzle minigame, tied to "liberating" sections of the castle. The `liberated_X` style flags maps already use are all the preparation it needs.
-- Large-scale siege combat, factory management, a second upgrade tree, map generation.
+- Large-scale siege combat, factory management, map generation.
 
 Large-scale combat conflicts with pillar 1 and would need its own simulation, so it must not shape the current scope.
 
