@@ -15,6 +15,8 @@ export interface PickupKind {
   wallet: Wallet;
   // What one picked up is worth, before bonuses (Memory Echo doubles memory shards).
   value: number;
+  // How big its orb is, times pickups.orbScale and glowScale.
+  scale: number;
   // The orb's colours: its middle, its edge, and the glow round it.
   core: number;
   rim: number;
@@ -34,6 +36,7 @@ function parsePickups(data: unknown): PickupKind[] {
       name: str(e.name, id, `${id}.name`, problems),
       wallet: wallet as Wallet,
       value: num(e.value, 1, `${id}.value`, problems),
+      scale: num(e.scale, 1, `${id}.scale`, problems),
       core: color(e.core ?? '#ffffff', `${id}.core`, problems),
       rim: color(e.rim ?? '#a8dcff', `${id}.rim`, problems),
       glow: color(e.glow ?? '#4aa8ff', `${id}.glow`, problems),
