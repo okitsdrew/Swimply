@@ -27,10 +27,10 @@ All numbers in config are test values and will change.
 - **Flame Torrent** (the fire butterfly's): four fireballs from each side of him (eight in all) cross just in front of him and curve out to their full range toward the mouse, on paths set where they were shot, then fly straight back to him wherever he is now, like boomerangs (teleporting or dashing drags them through whatever is between). They pass over everything but walls: a wall turns one back on the way out and puts it out on the way back. They burn what they hit, breakable things too. Drew's sketch is in the project files (`vestiges/flame-torrent-sketch.png`).
 - **Later: things only an element breaks.** Some objects will need a certain element to break (a bush only fire burns away, opening the way to a door). Build it when the first one is needed in a map, as a per-asset setting saying which element counts.
 
-## Wobbles and skill enhancements (planned, not built)
+## Wobbles and skill enhancements (built)
 
 - **Wobbles** is a talking sunflower in the Garden. On the first visit he lies curled up and dead, face hidden. When the Garden is cleared and its doors open, he grows into his normal self and talks to Swimply. From then on he is always in the Garden, the first NPC Swimply can talk to again and again (F).
-- He sells **skill enhancements**: each Vestige has 2, one that buffs Swimply and one that buffs that Vestige. Both can be bought. Each costs 1 **Perception** for now, and a right click refunds one, only at Wobbles. An enhancement only works while its Vestige is equipped. Pressing F by him gives one short line, then opens the shop.
+- He sells **skill enhancements**: each Vestige has 2, one that buffs Swimply and one that buffs that Vestige. Both can be bought. Each costs 1 **Perception** for now, and a right click refunds one, only at Wobbles. An enhancement only works while its Vestige is equipped. Pressing F by him gives one short line, then opens the shop, and the shop first opens right after his scene.
 - **His shop is laid out like the throne room:** each Vestige's node sits where its pedestal is (Timo's top right, Flame Torrent's next clockwise), and its two enhancements come off it side by side, away from the middle. Vestiges not held yet show as dim empty nodes.
 - **The first four:**
   - **Momentum** (Doomsday, buffs Swimply): each arrow that hits an enemy adds 1% damage and attack speed, up to 25%. They last 5 seconds, and any hit restarts the timer.

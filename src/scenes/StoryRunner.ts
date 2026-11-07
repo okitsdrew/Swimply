@@ -31,6 +31,7 @@ export interface Stage {
   defeat(who: string): void;
   // A placed thing gives way to these frames, shown in turn.
   animate(target: string, frames: string[], seconds: number): void;
+  shop(): void;
   // Still fading away.
   readonly defeating: boolean;
   vestige(id: string): void;
@@ -150,6 +151,7 @@ export class StoryRunner {
     else if (step.kind === 'bark') this.bark(step);
     else if (step.kind === 'defeat') this.stage.defeat(step.who);
     else if (step.kind === 'animate') this.stage.animate(step.target, step.frames, step.seconds);
+    else if (step.kind === 'shop') this.stage.shop();
     else if (step.kind === 'vestige') this.stage.vestige(step.id);
     else if (step.kind === 'sound') this.stage.sound(step.id);
     // Steps that finish at once move on in the next update.

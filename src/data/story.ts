@@ -65,6 +65,7 @@ export interface Speaker {
 //                                                            these sprites, shown in turn over `time`; the script
 //                                                            waits. The last one stays until the next flag step
 //                                                            or the end of the script
+//   { "shop": true }                                       opens Wobbles' shop; the game waits until it is closed
 //   { "vestige": "doomsday" }                                he reclaims that Vestige: a banner, and it fills an
 //                                                            empty slot
 //   { "sound": "explosion_medium" }                          plays a sound (an id in sounds.json); carries on
@@ -89,6 +90,7 @@ export type Step =
   | { kind: 'bark'; speaker: Speaker; text: string; seconds: number }
   | { kind: 'defeat'; who: string }
   | { kind: 'animate'; target: string; frames: string[]; seconds: number }
+  | { kind: 'shop' }
   | { kind: 'vestige'; id: string }
   | { kind: 'sound'; id: string };
 
@@ -179,8 +181,9 @@ function parseStep(entry: unknown, where: string, speakers: Registry<Speaker>, p
   }
   if (e.defeat !== undefined) return { kind: 'defeat', who: str(e.defeat, '', `${where}.defeat`, problems) };
   if (e.animate !== undefined) return { kind: 'animate', target: str(e.animate, '', `${where}.animate`, problems), frames: list(e.frames, `${where}.frames`, problems).map((f) => str(f, '', `${where}.frames`, problems)), seconds: Math.max(0, num(e.time, 1, `${where}.time`, problems)) };
+  if (e.shop !== undefined) return { kind: 'shop' };
   if (e.sound !== undefined) return { kind: 'sound', id: str(e.sound, '', `${where}.sound`, problems) };
-  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, dash, look, butterfly, bark, defeat, animate, vestige, sound), skipped`);
+  problems.push(`${where}: not a known kind of step (say, wait, tutorial, waitFor, flag, eyes, control, pose, timo, shake, camera, walk, dash, look, butterfly, bark, defeat, animate, shop, vestige, sound), skipped`);
   return null;
 }
 

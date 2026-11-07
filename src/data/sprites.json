@@ -9934,6 +9934,95 @@
       ]
     },
     {
+      "id": "enh_momentum",
+      "name": "enh_momentum",
+      "palette": {
+        "a": "#5a2a9a",
+        "b": "#c58cff"
+      },
+      "rows": [
+        "......a......",
+        ".....aba.....",
+        "....abbba....",
+        "...ab.a.ba...",
+        "..a..aba..a..",
+        "....abbba....",
+        "...ab.a.ba...",
+        "..a..aba..a..",
+        "....abbba....",
+        "...ab...ba...",
+        "..a.......a.."
+      ]
+    },
+    {
+      "id": "enh_soul_mending",
+      "name": "enh_soul_mending",
+      "palette": {
+        "a": "#5a2a9a",
+        "b": "#c58cff",
+        "w": "#f0e0ff"
+      },
+      "rows": [
+        "..aaa...aaa..",
+        ".abbba.abbba.",
+        "abbbbbabbbbba",
+        "abbbbbbbbbbba",
+        "abbbwbbbwbbba",
+        ".abbbwbwbbba.",
+        "..abbbwbbba..",
+        "...abbbbba...",
+        "....abbba....",
+        ".....aba.....",
+        "......a......"
+      ]
+    },
+    {
+      "id": "enh_toasted_tips",
+      "name": "enh_toasted_tips",
+      "palette": {
+        "f": "#d9481e",
+        "o": "#ff9a2a",
+        "y": "#ffe27a",
+        "s": "#c9c5d0"
+      },
+      "rows": [
+        "......f......",
+        ".....fof.....",
+        "....fooof....",
+        "....foyof....",
+        ".....fyf.....",
+        "......s......",
+        "......s......",
+        "......s......",
+        "......s......",
+        ".....sss.....",
+        "....s.s.s...."
+      ]
+    },
+    {
+      "id": "enh_kitchen_rush",
+      "name": "enh_kitchen_rush",
+      "palette": {
+        "f": "#d9481e",
+        "o": "#ff9a2a",
+        "y": "#ffe27a",
+        "w": "#fff8d0"
+      },
+      "rows": [
+        "......f......",
+        ".....ff......",
+        "....ffo.f....",
+        "...ffoofff...",
+        "..ffoooofof..",
+        "..foooyooof..",
+        ".ffooyyyoof..",
+        ".fooyyyyyof..",
+        ".fooyywyyof..",
+        "..foyyyyof...",
+        "...ffffff...."
+      ]
+    },
+    {
       "id": "wooden_gate_sw",
       "name": "wooden_gate_sw",
       "palette": {

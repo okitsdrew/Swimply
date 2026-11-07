@@ -400,10 +400,15 @@ await check('Wobbles: grows when the Garden is cleared, talks with F', async () 
   await until(page, `(${scene})().story.playing`, null, 10).catch(() => {
     throw new Error('clearing the Garden did not start his scene');
   });
-  for (let i = 0; i < 200 && (await page.evaluate(`(${scene})().story.playing`)); i++) {
+  // His scene ends by opening the shop; F closes it.
+  const busy = () => window.swimply.scene.getScene('arena').story.playing || window.swimply.scene.isActive('shop');
+  let shopped = false;
+  for (let i = 0; i < 200 && (await page.evaluate(busy)); i++) {
+    shopped ||= await page.evaluate(() => window.swimply.scene.isActive('shop'));
     await page.keyboard.press('f');
     await page.waitForTimeout(100);
   }
+  if (!shopped) throw new Error('his scene did not open the shop');
   const grown = await page.evaluate(placed);
   if (!grown.includes('wobbles') || grown.includes('wobbles-curled')) throw new Error(`after his scene: ${grown.filter((a) => a.startsWith('wobbles'))}`);
   // Next to him, F talks, and again.
@@ -419,11 +424,99 @@ await check('Wobbles: grows when the Garden is cleared, talks with F', async () 
     await until(page, `(${scene})().story.talking`, null, 5).catch(() => {
       throw new Error('F next to him did not start him talking');
     });
-    for (let i = 0; i < 50 && (await page.evaluate(`(${scene})().story.playing`)); i++) {
+    for (let i = 0; i < 50 && (await page.evaluate(busy)); i++) {
       await page.keyboard.press('f');
       await page.waitForTimeout(100);
     }
   }
+  await ctx.close();
+});
+
+await check("Wobbles' shop: buy, refund, and the enhancements work", async () => {
+  const { page, ctx } = await open('shop', play('map=garden'));
+  await ready(page);
+  await page.evaluate(() => localStorage.setItem('swimply.save', JSON.stringify({ version: 4, baseline: {}, tree: {}, shards: 0, flags: { enteredMindscape: true, mindscapeCleared: true, teleport: true, introSeen: true, teleportTaught: true, dodgeTaught: true, gardenCleared: true, wobblesGrown: true, garden_p1spawner_broken: true, garden_p2spawner_broken: true, garden_p3spawner_broken: true, kateDefeated: true }, vestiges: ['doomsday', 'flame_torrent'], equipped: ['doomsday', 'flame_torrent'], hats: [], hat: '' })));
+  await page.reload();
+  await ready(page);
+  const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('swimply.save')).enhancements);
+  const click = async (id, button = 'left') => {
+    const at = await page.evaluate((i) => {
+      const l = window.swimply.scene.getScene('shop').leaves.find((x) => x.id === i);
+      return { x: l.box.x, y: l.box.y };
+    }, id);
+    await page.mouse.click(at.x, at.y, { button });
+    await page.waitForTimeout(500);
+  };
+  // F next to him: his line, then the shop.
+  await page.evaluate(() => {
+    const s = window.swimply.scene.getScene('arena');
+    const w = s.map.objects.find((o) => o.asset.id === 'wobbles');
+    s.player.x = w.x + 30;
+    s.player.y = w.y + 30;
+  });
+  await page.waitForTimeout(300);
+  await page.keyboard.press('f');
+  await until(page, () => window.swimply.scene.getScene('arena').story.talking, null, 5);
+  await page.waitForTimeout(100);
+  for (let i = 0; i < 30 && !(await page.evaluate(() => window.swimply.scene.isActive('shop'))); i++) {
+    await page.keyboard.press('f');
+    await page.waitForTimeout(200);
+  }
+  if (!(await page.evaluate(() => window.swimply.scene.isActive('shop')))) throw new Error('his line did not open the shop');
+  await page.waitForTimeout(200);
+  // Two Perception: two buys, and a third is refused until one is refunded.
+  await click('soul_mending');
+  await click('kitchen_rush');
+  await click('momentum');
+  if (JSON.stringify(await saved()) !== '["soul_mending","kitchen_rush"]') throw new Error(`after three buys: ${await saved()}`);
+  await click('soul_mending', 'right');
+  await click('momentum');
+  await click('kitchen_rush', 'right');
+  await click('toasted_tips');
+  if (JSON.stringify(await saved()) !== '["momentum","toasted_tips"]') throw new Error(`after refunds: ${await saved()}`);
+  await page.keyboard.press('f');
+  await until(page, () => !window.swimply.scene.isActive('shop'), null, 5).catch(() => {
+    throw new Error('F did not close the shop');
+  });
+  await page.waitForTimeout(300);
+  // Momentum and Toasted Tips on arrow hits, and only with their Vestiges equipped.
+  await press(page, 'Spawn a Shade');
+  await until(page, () => window.swimply.scene.getScene('arena').enemies.group('shade').list.length > 0, null, 10);
+  const hits = await page.evaluate(async () => {
+    const { stats, momentum } = await import('/src/sim/stats.ts');
+    const s = window.swimply.scene.getScene('arena');
+    const e = s.enemies.group('shade').list[0];
+    e.hp = 1e6;
+    const damage = stats.damage();
+    const hit = () => s.arrows.onHit(e, 0, e.x, e.y, 1, 0);
+    hit();
+    const one = momentum.bonus;
+    for (let i = 0; i < 40; i++) hit();
+    return { one, max: momentum.bonus, more: stats.damage() / damage, burning: e.status.burn > 0 };
+  });
+  if (Math.abs(hits.one - 0.01) > 1e-6 || Math.abs(hits.max - 0.25) > 1e-6 || Math.abs(hits.more - 1.25) > 1e-6) throw new Error(`Momentum: ${JSON.stringify(hits)}`);
+  if (!hits.burning) throw new Error('Toasted Tips did not burn what an arrow hit');
+  const doubled = await page.evaluate(async () => {
+    const { stats, momentum } = await import('/src/sim/stats.ts');
+    const data = await import('/src/data/enhancements.ts');
+    const v = await import('/src/data/vestiges.ts');
+    const { doomsday, flameTorrent } = await import('/src/config/vestiges.ts');
+    const out = { off: stats.damage() };
+    data.refundEnhancement('momentum');
+    data.refundEnhancement('toasted_tips');
+    momentum.reset();
+    data.buyEnhancement('soul_mending');
+    data.buyEnhancement('kitchen_rush');
+    out.doomsday = stats.doomsdayDamage() / doomsday.damage;
+    out.torrent = stats.torrentDamage() / flameTorrent.damage;
+    out.burn = stats.burnPower() / flameTorrent.burnPower;
+    v.equip(0, '');
+    v.equip(1, '');
+    out.unequipped = [stats.doomsdayDamage() / doomsday.damage, stats.torrentDamage() / flameTorrent.damage, stats.burnPower() / flameTorrent.burnPower];
+    return out;
+  });
+  if (doubled.doomsday !== 2 || doubled.torrent !== 2 || doubled.burn !== 2) throw new Error(`Soul Mending and Kitchen Rush: ${JSON.stringify(doubled)}`);
+  if (doubled.unequipped.some((n) => n !== 1)) throw new Error(`they work unequipped: ${JSON.stringify(doubled)}`);
   await ctx.close();
 });
 

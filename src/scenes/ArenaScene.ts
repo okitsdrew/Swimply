@@ -14,6 +14,7 @@ import { allOn, AreaMap, findMarker, maps, Placed, withFlags } from '../data/map
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, scripts, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
+import { enhancementOn, forgetEnhancements } from '../data/enhancements';
 import { forgetHats, gainHat, hats, ownsHat } from '../data/hats';
 import { pickupKinds } from '../data/pickups';
 import { forgetVestiges, isEquipped, unlockVestige, vestiges } from '../data/vestiges';
@@ -48,7 +49,7 @@ import { Breakables } from '../sim/Breakables';
 import { Pickup, Pickups } from '../sim/Pickups';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
-import { stats } from '../sim/stats';
+import { momentum, stats } from '../sim/stats';
 import { Enemy } from '../sim/enemies';
 import { Effect, EFFECT_KINDS } from '../sim/status';
 import { Target } from '../sim/targets';
@@ -229,11 +230,12 @@ export class ArenaScene extends Phaser.Scene {
     this.caster.onDeny = () => this.sfx.play('deny');
     this.caster.onBlast = (x, y) => this.doomsdayBlast(x, y);
     this.fireballs = new Fireballs(this.world, (o) => this.breakables.canBreak(o));
-    this.fireballs.onHitThing = (thing, damage) => {
+    this.fireballs.onHitThing = (thing) => {
+      const damage = stats.torrentDamage();
       const s = toScreen(thing.x, thing.y);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
       this.sfx.play('hit');
-      this.breakables.burn(thing, flameTorrent.burn, flameTorrent.burnPower);
+      this.breakables.burn(thing, flameTorrent.burn, stats.burnPower());
       this.breakables.damage(thing, damage);
     };
     this.fireballsView = new FireballsView(this, this.fireballs, this.fx);
@@ -247,9 +249,10 @@ export class ArenaScene extends Phaser.Scene {
     };
     this.caster.playing = (id) => id === 'flame_torrent' && this.fireballs.active;
     this.vestigesView.emblemAt = (id) => (id === 'flame_torrent' ? this.fireballs.lead : null);
-    this.fireballs.onHit = (target, damage, x, y) => {
+    this.fireballs.onHit = (target, _damage, x, y) => {
+      const damage = stats.torrentDamage();
       this.enemies.damage(target, damage, x, y);
-      this.enemies.afflict(target as Enemy, [{ kind: 'burn', seconds: flameTorrent.burn, power: flameTorrent.burnPower }]);
+      this.enemies.afflict(target as Enemy, [this.burn()]);
       const s = toScreen(target.x, target.y);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
       this.sfx.play('hit');
@@ -364,6 +367,7 @@ export class ArenaScene extends Phaser.Scene {
         return dying();
       },
       animate: (target, frames, seconds) => this.animate(target, frames, seconds),
+      shop: () => this.openShop(),
       vestige: (id) => this.reclaim(id),
     });
     this.travel.onTalk = (id) => this.talk(id);
@@ -394,6 +398,8 @@ export class ArenaScene extends Phaser.Scene {
     this.arrows.onHit = (target, damage, ax, ay, dx, dy) => {
       // Knockback pushes away from a point just behind the hit, so along the arrow's flight.
       this.enemies.damage(target, damage, ax - dx, ay - dy);
+      momentum.hit();
+      if (enhancementOn('toasted_tips')) this.enemies.afflict(target as Enemy, [this.burn()]);
       const s = toScreen(ax, ay);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
       this.fx.addShake(camera.shakeOnHit);
@@ -404,6 +410,7 @@ export class ArenaScene extends Phaser.Scene {
       const s = toScreen(x, y);
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, damage);
       this.sfx.play('hit');
+      if (enhancementOn('toasted_tips')) this.breakables.burn(thing, flameTorrent.burn, stats.burnPower());
       this.breakables.damage(thing, damage);
     };
     this.breakables.onHit = (thing) => this.breakablesView.onHit(thing);
@@ -444,6 +451,8 @@ export class ArenaScene extends Phaser.Scene {
       { label: 'Vestiges: forget all', run: () => forgetVestiges() },
       { label: "Hat: grant Chef's hat", run: () => gainHat('chef') },
       { label: 'Hats: forget all', run: () => forgetHats() },
+      { label: 'Enhancements: forget all', run: () => forgetEnhancements() },
+      { label: "Wobbles' shop: open", run: () => this.openShop() },
       ...EFFECT_KINDS.map((kind) => ({ label: `Effect: ${kind} all (3s)`, run: () => this.afflictAll({ kind, seconds: 3, power: kind === 'burn' ? 20 : 0.5 }) })),
       { label: 'Asset maker', run: () => window.open('asset-maker.html', 'swimply-asset-maker') },
       { label: 'Level editor', run: () => window.open(`level-editor.html?map=${this.mapId}`, 'swimply-level-editor') },
@@ -451,8 +460,21 @@ export class ArenaScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input2.destroy();
       this.scene.stop('tree');
-      MENU_PAGES.forEach((page) => this.scene.stop(page));
+      this.closeScreens();
     });
+  }
+
+  private closeScreens(): void {
+    for (const page of [...MENU_PAGES, 'shop']) this.scene.stop(page);
+  }
+
+  // A story step opens Wobbles' shop. Like the Mindscape menu, the game waits, and Tab (or F) closes it.
+  private openShop(): void {
+    this.menuOpen = true;
+    this.caster.aiming = -1;
+    this.paused = true;
+    this.sfx.play('treeOpen');
+    this.scene.launch('shop');
   }
 
   // Tab: the Mindscape menu, to equip Vestiges and hats. It opens only once he holds one, and only while no fight is on, no
@@ -460,7 +482,7 @@ export class ArenaScene extends Phaser.Scene {
   private toggleMenu(): void {
     if (this.menuOpen) {
       this.menuOpen = false;
-      MENU_PAGES.forEach((page) => this.scene.stop(page));
+      this.closeScreens();
       this.sfx.play('click');
       // Clicks in the menu also reached the game's input; drop them so they don't fire an arrow.
       this.input2.endFrame();
@@ -579,6 +601,7 @@ export class ArenaScene extends Phaser.Scene {
     addShards(0);
     forgetVestiges();
     forgetHats();
+    forgetEnhancements();
     Travel.forget();
     this.scene.restart({ map: DEFAULT_MAP });
   }
@@ -608,8 +631,9 @@ export class ArenaScene extends Phaser.Scene {
       this.fx.damageNumber(s.x, s.y - render.arrowHeight, amount);
     };
     const stun = [{ kind: 'stun' as const, seconds: doomsday.stun, power: 0 }];
-    this.enemies.blast(x, y, doomsday.damageRadius, doomsday.damage, doomsday.knockbackRadius, doomsday.knockback, stun, (e) => number(e.x, e.y, doomsday.damage));
-    const amount = doomsday.damage * doomsday.breakDamage;
+    const damage = stats.doomsdayDamage();
+    this.enemies.blast(x, y, doomsday.damageRadius, damage, doomsday.knockbackRadius, doomsday.knockback, stun, (e) => number(e.x, e.y, damage));
+    const amount = damage * doomsday.breakDamage;
     for (const o of [...this.map.objects]) {
       if (amount <= 0 || !this.breakables.canBreak(o) || Math.hypot(o.x - x, o.y - y) > doomsday.damageRadius) continue;
       number(o.x, o.y, amount);
@@ -652,6 +676,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private startRun(): void {
+    momentum.reset();
     this.enemies.clear();
     this.pickups.clear();
     this.pickupsView.clear();
@@ -692,6 +717,10 @@ export class ArenaScene extends Phaser.Scene {
     if (this.tree.open && input.justPressed('dash')) this.tree.close();
     if (input.justPressed('menu')) {
       input.consume('menu');
+      this.toggleMenu();
+    }
+    if (this.menuOpen && this.scene.isActive('shop') && input.justPressed('interact')) {
+      input.consume('interact');
       this.toggleMenu();
     }
     this.mapView.reveal(this.player.x, this.player.y);
@@ -856,6 +885,7 @@ export class ArenaScene extends Phaser.Scene {
       this.enemies.updateWorld(dt, this.map);
     }
     r.update(dt);
+    momentum.update(dt);
     this.mindscape?.update();
     this.nav.setGoal(this.player.x, this.player.y);
     this.enemies.update(dt);
@@ -884,6 +914,11 @@ export class ArenaScene extends Phaser.Scene {
     this.walkTo = null;
     this.player.stop();
     this.timo.followHero();
+  }
+
+  // His burn, however it was lit.
+  private burn(): Effect {
+    return { kind: 'burn', seconds: flameTorrent.burn, power: stats.burnPower() };
   }
 
   // He takes a Vestige back: a banner, and it fills an empty slot.

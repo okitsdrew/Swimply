@@ -219,7 +219,8 @@
         { "say": "timo", "face": "timo_serious", "text": "Sup nerd" },
         { "say": "wobbles", "face": "wobbles_smile", "text": "I can show you how to unlock its full potential" },
         { "say": "wobbles", "face": "wobbles_happy", "text": "all you need, is a little Perception..." },
-        { "control": true }
+        { "control": true },
+        { "shop": true }
       ]
     },
     {
@@ -228,7 +229,8 @@
       "steps": [
         { "control": false },
         { "say": "wobbles", "face": "wobbles_happy", "text": "all you need, is a little Perception..." },
-        { "control": true }
+        { "control": true },
+        { "shop": true }
       ]
     }
   ]
