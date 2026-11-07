@@ -1,5 +1,6 @@
 {
   "pickups": [
-    { "id": "memory_shard", "name": "Memory shard", "wallet": "memory", "value": 1, "core": "#ffffff", "rim": "#a8dcff", "glow": "#4aa8ff" }
+    { "id": "memory_shard", "name": "Memory shard", "wallet": "memory", "value": 1, "core": "#ffffff", "rim": "#a8dcff", "glow": "#4aa8ff" },
+    { "id": "hat_orb", "name": "Hat orb", "wallet": "item", "value": 0, "core": "#fff8d0", "rim": "#ffd84a", "glow": "#ffb020" }
   ]
 }

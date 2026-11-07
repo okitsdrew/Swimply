@@ -16,6 +16,8 @@ export const pickups = defineConfig(
     flySpeed: 3600,
     // An orb this close to him is picked up.
     collectRadius: 8,
+    // How close he must be to an item orb to pick it up with F.
+    itemReach: 50,
     // Dropped orbs pop out from the body up to this fast, then slow down and settle.
     popSpeed: 120,
     // A boss's pile of orbs bursts out up to this fast.
@@ -38,6 +40,7 @@ export const pickups = defineConfig(
     flyAccel: { min: 100, max: 50000, step: 100 },
     flySpeed: { min: 100, max: 8000, step: 50 },
     collectRadius: { min: 1, max: 60, step: 1 },
+    itemReach: { min: 10, max: 200, step: 5 },
     popSpeed: { min: 0, max: 600, step: 5 },
     burstSpeed: { min: 0, max: 1500, step: 10 },
     popDrag: { min: 0, max: 20, step: 0.5 },

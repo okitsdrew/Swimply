@@ -27,22 +27,24 @@ export interface Pickup {
   // Fly to him once settled, wherever he is (after the Mindscape is won).
   called: boolean;
   phase: number;
+  // What an item orb gives him when he picks it up with F ('' for an orb that flies to him).
+  item: string;
 }
 
 // Orbs on the ground. Each lies where it settled until the player comes within reach, then flies to him, faster
-// and faster, and is picked up. They never merge and never fade; a new run clears them. No drawing:
-// render/PickupsView reads `list`.
+// and faster, and is picked up. An item orb stays put until he takes it with F. They never merge and never fade; a
+// new run clears them. No drawing: render/PickupsView reads `list`.
 export class Pickups {
   readonly list: Pickup[] = [];
 
   onCollected: (kind: PickupKind) => void = () => {};
 
   // Drops `count` orbs at a spot, popping out in random directions up to `speed` fast.
-  drop(kind: PickupKind, x: number, y: number, count: number, speed = cfg.popSpeed): void {
+  drop(kind: PickupKind, x: number, y: number, count: number, speed = cfg.popSpeed, item = ''): void {
     for (let i = 0; i < count; i++) {
       const a = Math.random() * Math.PI * 2;
       const v = speed * (0.3 + 0.7 * Math.random());
-      this.list.push({ kind, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, flying: false, speed: 0, called: false, phase: Math.random() * Math.PI * 2 });
+      this.list.push({ kind, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, flying: false, speed: 0, called: false, phase: Math.random() * Math.PI * 2, item });
     }
   }
 
@@ -53,6 +55,25 @@ export class Pickups {
 
   clear(): void {
     this.list.length = 0;
+  }
+
+  // The nearest settled item orb within his reach, if any.
+  nearItem(px: number, py: number): Pickup | null {
+    let best: Pickup | null = null;
+    let bestD = cfg.itemReach;
+    for (const p of this.list) {
+      if (!p.item || p.age < cfg.settleTime) continue;
+      const d = reach(px - p.x, py - p.y);
+      if (d <= bestD) {
+        best = p;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  take(p: Pickup): void {
+    this.list.splice(this.list.indexOf(p), 1);
   }
 
   // `collecting` is false while he cannot pick things up (dead, or a scene has control).
@@ -69,7 +90,7 @@ export class Pickups {
         p.y += p.vy * dt;
         p.vx *= drag;
         p.vy *= drag;
-        if (collecting && p.age >= cfg.settleTime && (p.called || reach(dx, dy) <= cfg.pickupRadius)) {
+        if (!p.item && collecting && p.age >= cfg.settleTime && (p.called || reach(dx, dy) <= cfg.pickupRadius)) {
           p.flying = true;
           p.speed = cfg.flyStartSpeed;
         }

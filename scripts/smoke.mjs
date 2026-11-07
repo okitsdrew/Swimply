@@ -257,6 +257,8 @@ await check('Kate: her scenes', async () => {
   }
   const won = await page.evaluate(`({ out: (${scene})().enemies.group('kate').list.length, control: (${scene})().control })`);
   if (won.out || !won.control) throw new Error(`after her death: ${JSON.stringify(won)}`);
+  const orbs = await page.evaluate(`(${scene})().pickups.list.map((p) => p.item)`);
+  if (orbs.length !== 1 || orbs[0] !== 'chef') throw new Error(`she dropped ${JSON.stringify(orbs)}, not the Chef's hat's orb`);
   await ctx.close();
 });
 
@@ -319,6 +321,62 @@ await check('Vestige: Flame Torrent', async () => {
   await until(page, () => window.swimply.scene.getScene('arena').fireballs.list.length === 0, null, 10).catch(() => {
     throw new Error('Flame Torrent fireballs never came home');
   });
+  await ctx.close();
+});
+
+await check("Hat: the orb waits, F takes it, the Hats tab", async () => {
+  const { page, ctx } = await open('hat', play('map=kitchen'));
+  await ready(page);
+  // Kate beaten earlier, and the orb left behind.
+  await page.evaluate(() => localStorage.setItem('swimply.save', JSON.stringify({ version: 3, baseline: {}, tree: {}, shards: 0, flags: { enteredMindscape: true, mindscapeCleared: true, teleport: true, introSeen: true, teleportTaught: true, dodgeTaught: true, kateMet: true, kateDefeated: true }, vestiges: ['doomsday'], equipped: ['doomsday'] })));
+  await page.reload();
+  await ready(page);
+  const state = () => {
+    const s = window.swimply.scene.getScene('arena');
+    return { orbs: s.pickups.list.length, near: !!s.itemNear };
+  };
+  const owned = `JSON.parse(localStorage.getItem('swimply.save') ?? '{}').hats ?? []`;
+  if ((await page.evaluate(state)).orbs !== 1) throw new Error('no orb waiting where Kate started');
+  // Right beside it, it does not come to him by itself.
+  await page.evaluate(() => {
+    const s = window.swimply.scene.getScene('arena');
+    const o = s.pickups.list[0];
+    s.player.x = o.x + 10;
+    s.player.y = o.y;
+  });
+  await page.waitForTimeout(1000);
+  const beside = await page.evaluate(state);
+  if (beside.orbs !== 1) throw new Error('the orb was picked up without F');
+  if (!beside.near) throw new Error('the orb is not within reach right beside him');
+  await page.keyboard.press('f');
+  await until(page, () => window.swimply.scene.getScene('arena').pickups.list.length === 0, null, 5).catch(() => {
+    throw new Error('F beside the orb did not pick it up');
+  });
+  await page.waitForTimeout(500);
+  if (!(await page.evaluate(owned)).includes('chef')) throw new Error('he does not own the hat after picking it up');
+  await page.keyboard.press('Tab');
+  await until(page, () => window.swimply.scene.isActive('vestiges'), null, 5);
+  await page.mouse.click(152, 38);
+  await until(page, () => window.swimply.scene.isActive('hats'), null, 5).catch(() => {
+    throw new Error('the HATS tab did not open the Hats page');
+  });
+  await page.mouse.click(532, 364);
+  await page.waitForTimeout(500);
+  if ((await page.evaluate(`JSON.parse(localStorage.getItem('swimply.save')).hat`)) !== '') throw new Error('clicking the hat he wears did not take it off');
+  await page.mouse.click(532, 364);
+  await page.waitForTimeout(500);
+  if ((await page.evaluate(`JSON.parse(localStorage.getItem('swimply.save')).hat`)) !== 'chef') throw new Error('clicking the hat did not put it on');
+  await page.keyboard.press('Tab');
+  await until(page, () => !window.swimply.scene.isActive('hats'), null, 5).catch(() => {
+    throw new Error('Tab did not close the Hats page');
+  });
+  // Tab opens the page it was left on, and the orb does not come back.
+  await page.keyboard.press('Tab');
+  await until(page, () => window.swimply.scene.isActive('hats'), null, 5);
+  await page.keyboard.press('Tab');
+  await page.reload();
+  await ready(page);
+  if ((await page.evaluate(state)).orbs) throw new Error('the orb came back after he took it');
   await ctx.close();
 });
 

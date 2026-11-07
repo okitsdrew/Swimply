@@ -4,8 +4,9 @@ import { color, list, num, obj, Problems, Registry, report, str } from './regist
 // Things enemies drop for the player to pick up, such as memory shards. Each kind says which wallet it fills and
 // how it looks, so a new kind (soul shards) is a new entry in pickups.json, not new code.
 
-// Where a pickup's value goes. "memory" is the banked memory shards the Mindscape's tree is bought with.
-export const WALLETS = ['memory'] as const;
+// Where a pickup's value goes. "memory" is the banked memory shards the Mindscape's tree is bought with. "item" fills
+// no wallet: it lies still until he walks up and presses F, and gives him the thing the orb holds.
+export const WALLETS = ['memory', 'item'] as const;
 export type Wallet = (typeof WALLETS)[number];
 
 export interface PickupKind {

@@ -14,7 +14,8 @@ import { allOn, AreaMap, findMarker, maps, Placed, withFlags } from '../data/map
 import { ambienceFor, sounds } from '../data/sounds';
 import { scriptFor, scripts, storyFlags } from '../data/story';
 import { addShards, maxTree, resetTree } from '../data/tree';
-import { forgetHats, gainHat } from '../data/hats';
+import { forgetHats, gainHat, hats, ownsHat } from '../data/hats';
+import { pickupKinds } from '../data/pickups';
 import { forgetVestiges, isEquipped, unlockVestige, vestiges } from '../data/vestiges';
 import { save, writeSave } from '../core/save';
 import { DevMenu } from '../dev/DevMenu';
@@ -44,7 +45,7 @@ import { VestigesView } from '../render/VestigesView';
 import { Arrows } from '../sim/Arrows';
 import { Fireballs } from '../sim/Fireballs';
 import { Breakables } from '../sim/Breakables';
-import { Pickups } from '../sim/Pickups';
+import { Pickup, Pickups } from '../sim/Pickups';
 import { Player } from '../sim/Player';
 import { Run } from '../sim/Run';
 import { stats } from '../sim/stats';
@@ -134,6 +135,8 @@ export class ArenaScene extends Phaser.Scene {
   private arrows!: Arrows;
   private arrowsView!: ArrowsView;
   private pickups!: Pickups;
+  // The item orb next to him, which interact would pick up.
+  private itemNear: Pickup | null = null;
   private caster!: VestigeCaster;
   private fireballs!: Fireballs;
   private fireballsView!: FireballsView;
@@ -282,6 +285,7 @@ export class ArenaScene extends Phaser.Scene {
     this.enemies.onKilled = (kind, x, y) => {
       this.mindscape?.onKilled(kind, x, y);
       if (kind === 'kate') this.kateBeaten();
+      this.dropHat(kind, x, y);
     };
     this.enemies.onBurn = (e, amount) => {
       const s = toScreen(e.x, e.y);
@@ -608,6 +612,8 @@ export class ArenaScene extends Phaser.Scene {
       this.showMap();
     }
     this.enemies.place(this.map);
+    this.itemNear = null;
+    this.placeWaitingHats();
     // Where the address says, else the map's player start marker, else the middle of the map.
     const at = params.get('at')?.split(',').map(Number);
     const start = (this.arriveDoor && this.travel.besideDoor(this.map, this.arriveDoor)) ?? this.arriveAt ?? (at?.length === 2 && at.every(Number.isFinite) ? { x: at[0], y: at[1] }
@@ -730,7 +736,7 @@ export class ArenaScene extends Phaser.Scene {
     this.loops.update(this.player.x, this.player.y);
     this.box.update(frameDt, cam.width, this.player.x, this.player.y);
     this.ghost.update(frameDt, cam.width, cam.height);
-    this.hint.update(frameDt, this.player.x, this.player.y, !!this.travel.near && !this.travel.leaving && this.control && this.run.state === 'fighting');
+    this.hint.update(frameDt, this.player.x, this.player.y, (!!this.travel.near || !!this.itemNear) && !this.travel.leaving && this.control && this.run.state === 'fighting');
     const notes = [...(this.mindscape?.notes(this.showHitboxes) ?? []), this.paused && !this.tree.open && !this.menuOpen && 'PAUSED', sim.godMode && 'GOD MODE'].filter(Boolean);
     this.hud.update(frameDt, cam.width, cam.height, notes.join('   '));
     this.debug.clear();
@@ -777,6 +783,12 @@ export class ArenaScene extends Phaser.Scene {
     else if (r.state === 'fighting' && !this.travel.leaving && this.control) {
       this.player.update(dt, this.input2, this.aim);
       if (Math.hypot(this.input2.move.x, this.input2.move.y) > 0.1) this.story.notify('move');
+      // An item orb within reach comes before any door.
+      this.itemNear = this.pickups.nearItem(this.player.x, this.player.y);
+      if (this.itemNear && this.input2.justPressed('interact')) {
+        this.pickUp(this.itemNear);
+        this.input2.consume('interact');
+      }
       this.travel.check(this.map, this.input2.justPressed('interact'), (o) => this.isOpen(o));
       this.enemies.updateWorld(dt, this.map);
     }
@@ -829,6 +841,33 @@ export class ArenaScene extends Phaser.Scene {
     save.flags.kateDefeated = true;
     if (save.vestiges.includes('flame_torrent')) writeSave();
     else this.reclaim('flame_torrent');
+  }
+
+  // The enemy that was killed may drop a hat's orb at its feet, if he does not own that hat.
+  private dropHat(kind: string, x: number, y: number): void {
+    const orb = pickupKinds.get('hat_orb');
+    if (!orb) return;
+    for (const h of hats.list()) if (h.droppedBy === kind && !ownsHat(h.id)) this.pickups.drop(orb, x, y, 1, 0, h.id);
+  }
+
+  // A hat he left behind: its boss stays dead, so the orb must not be lost. It waits where the boss started the fight.
+  private placeWaitingHats(): void {
+    for (const h of hats.list()) {
+      if (!h.droppedBy || ownsHat(h.id)) continue;
+      const o = this.baseMap.objects.find((p) => p.asset.marker === 'enemy' && p.asset.enemy === h.droppedBy && p.onBreak && save.flags[p.onBreak]);
+      if (o) this.dropHat(h.droppedBy, o.x, o.y);
+    }
+  }
+
+  // He picks up an item orb with F: a banner, and the hat goes on if he has none on.
+  private pickUp(p: Pickup): void {
+    this.pickups.take(p);
+    this.itemNear = null;
+    gainHat(p.item);
+    this.hud.announce(`${hats.get(p.item)?.name ?? p.item} acquired`, story.vestigeBanner);
+    this.sfx.play('unlock');
+    const s = toScreen(this.player.x, this.player.y);
+    this.fx.smoke(s.x, s.y - 22 * render.pixelScale, 6, 6 * render.pixelScale);
   }
 
   private die(): void {
