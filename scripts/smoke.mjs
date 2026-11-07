@@ -1,6 +1,6 @@
 // The smoke test: `npm run smoke`. It starts the dev server, opens every map in a hidden browser, spawns and kills
 // each kind of enemy, fires arrows, stands next to every spawner, wins the Mindscape, casts Doomsday and Flame Torrent, opens the
-// Vestiges menu and the two tools. It fails if any page throws an error or logs one. It does not judge whether
+// Vestiges menu, picks up the Chef's hat, opens the Hats tab, and opens the two tools. It fails if any page throws an error or logs one. It does not judge whether
 // anything looks or plays right; it catches "I broke the kitchen while fixing the garden".
 //
 // `npm run smoke garden` checks only that map (plus the Mindscape and tool checks).
